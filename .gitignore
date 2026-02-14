@@ -46,7 +46,6 @@ htmlcov/
 # Local artifacts
 config.ini
 collection.db
-tmp/
 
 # Playwright MCP
 .playwright-mcp/
