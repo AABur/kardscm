@@ -35,25 +35,6 @@ wheels/
 
 # Logs
 *.log
-scraper_output.log
-scraper_v2_output.log
-final_scraper_output.log
-
-# Debug files
-page_debug.html
-api_responses.txt
-
-# Test files
-debug_page_structure.py
-inspect_page.py
-inspect_after_load.py
-
-# Output files
-kards_cards*.xlsx
-kards_cards*.csv
-kards_cards*.json
-kards_collection*.xlsx
-~$*.xlsx
 
 # Coverage
 .coverage
@@ -68,3 +49,4 @@ htmlcov/
 
 # Local artifacts
 collection.db
+tmp/

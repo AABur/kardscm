@@ -1,6 +1,6 @@
 """Tests for scrape sanitization helpers."""
 
-from scrape import sanitize_text
+from kards.scraping.localization import sanitize_text
 
 
 def test_sanitize_decodes_hex_quotes() -> None:

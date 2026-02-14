@@ -211,8 +211,8 @@ wheels = [
 ]
 
 [[package]]
-name = "kards-scraper"
-version = "0.1.0"
+name = "kards-manager"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

@@ -3,20 +3,23 @@ requires = ["setuptools>=45"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kards-scraper"
-version = "0.1.0"
-description = "KARDS card scraper with multi-language and multi-format export"
+name = "kards-manager"
+version = "0.2.0"
+description = "KARDS Manager for player collection and decks with multi-format export"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [
-    { name = "KARDS Scraper Team" }
+    { name = "Alexander Burchenko", email = "aabur@mail.ru" }
 ]
 dependencies = [
     "playwright>=1.40.0",
     "openpyxl>=3.1.0",
     "httpx>=0.27.0",
 ]
+
+[project.scripts]
+kards = "kards.cli:run"
 
 [project.optional-dependencies]
 dev = [
@@ -27,6 +30,9 @@ dev = [
     "mypy>=1.8.0",
 ]
 
+[tool.setuptools]
+packages = ["kards"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -36,7 +42,7 @@ select = ["E", "F", "I", "N", "W", "UP"]
 ignore = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["collection", "scrape", "storage", "exporters"]
+known-first-party = ["kards"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -48,4 +54,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-v --cov=. --cov-report=term-missing"
+addopts = "-v --cov=kards --cov-report=term-missing"

@@ -4,7 +4,7 @@ import argparse
 
 import pytest
 
-from collection import parse_args, validate_args
+from kards.cli import parse_args, validate_args
 
 
 def test_parse_args_sync() -> None:
@@ -21,25 +21,25 @@ def test_parse_args_export() -> None:
 
 
 def test_validate_args_requires_mode() -> None:
-    args = argparse.Namespace(sync=False, export=False, format=None, file=None)
+    args = argparse.Namespace(sync=False, export=False, update=False, format=None, file=None)
     with pytest.raises(SystemExit):
         validate_args(args)
 
 
 def test_validate_args_export_requires_format() -> None:
-    args = argparse.Namespace(sync=False, export=True, format=None, file="out.csv")
+    args = argparse.Namespace(sync=False, export=True, update=False, format=None, file="out.csv")
     with pytest.raises(SystemExit):
         validate_args(args)
 
 
 def test_validate_args_export_requires_file() -> None:
-    args = argparse.Namespace(sync=False, export=True, format="csv", file=None)
+    args = argparse.Namespace(sync=False, export=True, update=False, format="csv", file=None)
     with pytest.raises(SystemExit):
         validate_args(args)
 
 
 def test_validate_args_export_ok() -> None:
-    args = argparse.Namespace(sync=False, export=True, format="csv", file="out.csv")
+    args = argparse.Namespace(sync=False, export=True, update=False, format="csv", file="out.csv")
     validate_args(args)
 
 

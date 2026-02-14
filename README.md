@@ -1,6 +1,6 @@
-# KARDS Card Collection
+# KARDS Manager
 
-Sync the official KARDS card catalog (Russian) into SQLite and export it to XLSX, CSV, or JSON.
+Manager for [KARDS](https://www.kards.com/) card game player collection and decks. Syncs the official card catalog (Russian) into SQLite and exports to XLSX, CSV, or JSON.
 
 ## Features
 

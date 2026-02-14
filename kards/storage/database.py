@@ -6,6 +6,8 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
+from kards.helpers import parse_int, to_text
+
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS cards (
     card_id TEXT PRIMARY KEY,
@@ -91,10 +93,10 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[dict[str, str]]) -> N
                 card.get("Rarity"),
                 card.get("Abilities") or None,
                 card.get("Set"),
-                _parse_int(card.get("Quantity")),
-                _parse_int(card.get("Credits")),
-                _parse_int(card.get("Attack")),
-                _parse_int(card.get("Defense")),
+                parse_int(card.get("Quantity")),
+                parse_int(card.get("Credits")),
+                parse_int(card.get("Attack")),
+                parse_int(card.get("Defense")),
                 card.get("Description"),
             )
         )
@@ -136,18 +138,6 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[dict[str, str]]) -> N
     conn.commit()
 
 
-def _parse_int(value: str | None) -> int | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    if not text:
-        return None
-    try:
-        return int(text)
-    except ValueError:
-        return None
-
-
 def fetch_cards(conn: sqlite3.Connection) -> list[dict[str, str]]:
     """Fetch all cards from the database.
 
@@ -180,24 +170,57 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict[str, str]]:
     return [_row_to_card(row) for row in rows]
 
 
+def update_quantity_by_nation_name(
+    conn: sqlite3.Connection,
+    updates: Iterable[tuple[str, str, int | None]],
+) -> tuple[int, list[str]]:
+    """Update card quantities by nation and name.
+
+    Args:
+        conn: SQLite connection instance.
+        updates: Iterable of (nation, name, quantity) tuples.
+
+    Returns:
+        Tuple of (updated_count, not_found_list).
+    """
+    updated = 0
+    not_found = []
+
+    for nation, name, qty in updates:
+        if not nation or not name:
+            continue
+        if qty is None:
+            continue
+
+        cursor = conn.execute(
+            "UPDATE cards SET quantity = ? WHERE nation = ? AND name = ?",
+            (qty, nation, name),
+        )
+
+        if cursor.rowcount > 0:
+            updated += 1
+        else:
+            not_found.append(f"{nation} / {name}")
+
+    conn.commit()
+    return updated, not_found
+
+
+_CARD_FIELDS = (
+    "CardId",
+    "Name",
+    "Nation",
+    "Type",
+    "Rarity",
+    "Abilities",
+    "Set",
+    "Quantity",
+    "Credits",
+    "Attack",
+    "Defense",
+    "Description",
+)
+
+
 def _row_to_card(row: tuple) -> dict[str, str]:
-    return {
-        "CardId": _to_text(row[0]),
-        "Name": _to_text(row[1]),
-        "Nation": _to_text(row[2]),
-        "Type": _to_text(row[3]),
-        "Rarity": _to_text(row[4]),
-        "Abilities": _to_text(row[5]),
-        "Set": _to_text(row[6]),
-        "Quantity": _to_text(row[7]),
-        "Credits": _to_text(row[8]),
-        "Attack": _to_text(row[9]),
-        "Defense": _to_text(row[10]),
-        "Description": _to_text(row[11]),
-    }
-
-
-def _to_text(value: object | None) -> str:
-    if value is None:
-        return ""
-    return str(value)
+    return {field: to_text(val) for field, val in zip(_CARD_FIELDS, row)}

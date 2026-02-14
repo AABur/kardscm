@@ -1,4 +1,4 @@
-.PHONY: help install sync test lint format check run run-export-json run-export-csv run-export-xlsx clean
+.PHONY: help install sync test lint format check run-sync run-update run-export-json run-export-csv run-export-xlsx clean
 
 .DEFAULT_GOAL := help
 
@@ -27,7 +27,7 @@ sync-dev: ## Sync all dependencies including dev tools
 install: sync ## Alias for sync (deprecated, use 'make sync')
 
 test: ## Run tests with pytest
-	@$(UV) run pytest tests/ -v --cov=. --cov-report=term-missing
+	@$(UV) run pytest tests/ -v --cov=kards --cov-report=term-missing
 
 lint: ## Run ruff linter
 	@$(UV) run ruff check .
@@ -36,21 +36,24 @@ format: ## Format code with ruff
 	@$(UV) run ruff format .
 
 typecheck: ## Run mypy type checker
-	@$(UV) run mypy collection.py scrape.py storage.py exporters.py
+	@$(UV) run mypy kards/
 
 check: format lint typecheck test ## Run all checks (requires sync first!)
 
-run: ## Sync cards into SQLite
-	@$(UV) run python collection.py --sync
+run-sync: ## Sync cards into SQLite
+	@$(UV) run python -m kards --sync
+
+run-update: ## Update card quantities from XLSX file
+	@$(UV) run python -m kards --update --file kards_cards_ru.xlsx
 
 run-export-xlsx: ## Export cards to XLSX
-	@$(UV) run python collection.py --export --format xlsx --file kards_cards_ru.xlsx
+	@$(UV) run python -m kards --export --format xlsx --file kards_cards_ru.xlsx
 
 run-export-csv: ## Export cards to CSV
-	@$(UV) run python collection.py --export --format csv --file kards_cards_ru.csv
+	@$(UV) run python -m kards --export --format csv --file kards_cards_ru.csv
 
 run-export-json: ## Export cards to JSON
-	@$(UV) run python collection.py --export --format json --file kards_cards_ru.json
+	@$(UV) run python -m kards --export --format json --file kards_cards_ru.json
 
 clean: ## Clean cache and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

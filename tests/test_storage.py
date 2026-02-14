@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from storage import fetch_cards, get_connection, initialize_schema, upsert_cards
+from kards.storage import fetch_cards, get_connection, initialize_schema, upsert_cards
 
 
 def test_initialize_schema_creates_tables(tmp_path: Path) -> None:

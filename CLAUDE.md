@@ -2,28 +2,64 @@
 
 ## Environment
 - Python managed via `uv` (not pip directly)
-- Sync: `uv run python collection.py --sync`
-- Export: `uv run python collection.py --export --format xlsx --file cards.xlsx`
+- Package name: `kards-manager` (version 0.2.0)
+- Entry points: `python -m kards` or `kards` (console script)
 - Tests: `uv run pytest` or `make test`
+
+## Usage Commands
+- Sync: `uv run python -m kards --sync`
+- Export: `uv run python -m kards --export --format xlsx --file cards.xlsx`
+- Update: `uv run python -m kards --update --file cards.xlsx`
+- Short form: `uv run kards --sync`
 
 ## Useful Commands
 - `make help` — list available commands
 - `make lint` — check code (ruff, mypy)
 - `make format` — format code
+- `make run` — run the application
 
 ## Project Structure
-- `collection.py` — CLI entrypoint (sync/export)
-- `scrape.py` — scraping and translation helpers
-- `storage.py` — SQLite storage helpers
-- `exporters.py` — export helpers
-- `tests/` — pytest tests
+```
+kards/
+├── __init__.py         # Package initialization (__version__)
+├── __main__.py         # Entry point for python -m kards
+├── cli.py              # CLI implementation (sync/export/update)
+├── constants.py        # All constants (URLs, mappings, defaults)
+├── models.py           # TypedDict definitions (CardDict)
+├── helpers.py          # Utility functions (parse_int, to_text)
+├── scraping/           # Scraping functionality
+│   ├── __init__.py     # Exports scrape_cards
+│   ├── scraper.py      # Main orchestration (parse_api_data, build_card)
+│   ├── localization.py # Translation and text processing
+│   └── browser.py      # Playwright automation
+├── storage/            # Database layer
+│   ├── __init__.py     # Exports all database functions
+│   └── database.py     # SQLite operations
+└── export/             # Export functionality
+    ├── __init__.py     # Exports export functions
+    └── exporters.py    # CSV/XLSX/JSON exporters
+tests/                  # pytest tests
+```
 
 ## Architecture
-- `scrape.py` collects GraphQL responses from the collection page
-- `storage.py` stores cards in SQLite with upsert
-- `exporters.py` writes CSV/XLSX/JSON with Russian headers
+- **Scraping**: `kards.scraping` collects GraphQL responses using Playwright
+  - `browser.py`: Page automation and API data collection
+  - `localization.py`: Translation loading and text sanitization
+  - `scraper.py`: Parses API responses into card dictionaries
+- **Storage**: `kards.storage` manages SQLite database
+  - CRUD operations with upsert logic
+  - Quantity updates by nation/name
+- **Export**: `kards.export` writes formatted files
+  - Excel (XLSX) with styling and filters
+  - CSV with UTF-8 BOM for Windows Excel
+  - JSON with metadata
+- **CLI**: `kards.cli` provides command-line interface
+  - Console script: `kards`
+  - Module entry: `python -m kards`
 
 ## Code Patterns
-- Use module-level constants for shared data (avoid duplication)
+- Use module-level constants from `kards.constants` (avoid duplication)
 - No emojis in log messages
 - Imports at top of file (not inline in exception handlers)
+- Import from package: `from kards.constants import ...`
+- Type hints using TypedDict from `kards.models`

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from collection import export_collection
+from kards.cli import export_collection
 
 
 def test_export_requires_data(tmp_path: Path) -> None:
