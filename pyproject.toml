@@ -26,6 +26,7 @@ dependencies = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/AABur/kardscm"
 Repository = "https://github.com/AABur/kardscm"
 Issues = "https://github.com/AABur/kardscm/issues"
 
@@ -41,8 +42,8 @@ dev = [
     "mypy>=1.8.0",
 ]
 
-[tool.setuptools]
-packages = ["kardscm"]
+[tool.setuptools.packages.find]
+where = ["."]
 
 [tool.ruff]
 line-length = 100

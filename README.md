@@ -20,6 +20,8 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 ## Installation
 
 ```bash
+git clone git@github.com:AABur/kardscm.git
+cd kardscm
 make sync
 ```
 
