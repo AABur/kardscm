@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from kards.cli import export_collection
+from kards.commands import export_collection
 from kards.export import add_deck_sheet, export_deck_to_json
 
 
@@ -13,7 +13,7 @@ def test_export_requires_data(tmp_path: Path) -> None:
     db_path = tmp_path / "collection.db"
     output_path = tmp_path / "out.csv"
 
-    with pytest.raises(SystemExit, match="Run --sync first"):
+    with pytest.raises(SystemExit, match="Run 'kards sync' first"):
         export_collection("csv", str(output_path), db_path=str(db_path))
 
 

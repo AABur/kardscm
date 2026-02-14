@@ -28,54 +28,54 @@ uv run python -m playwright install chromium
 ### 2. Sync catalog into SQLite
 
 ```bash
-uv run kards --sync
+uv run kards sync
 ```
 
 ### 3. Export collection
 
 ```bash
 # XLSX
-uv run kards --export --format xlsx --file kards_cards_ru.xlsx
+uv run kards export --format xlsx --file kards_cards_ru.xlsx
 
 # CSV
-uv run kards --export --format csv --file kards_cards_ru.csv
+uv run kards export --format csv --file kards_cards_ru.csv
 
 # JSON
-uv run kards --export --format json --file kards_cards_ru.json
+uv run kards export --format json --file kards_cards_ru.json
 ```
 
 ### 4. Update quantities from XLSX
 
 ```bash
-uv run kards --update --file kards_cards_ru.xlsx
+uv run kards update --file kards_cards_ru.xlsx
 ```
 
 ### 5. Import a deck
 
 ```bash
-uv run kards --import-deck --file deck.txt
+uv run kards deck import --file deck.txt
 ```
 
 ### 6. Export a deck
 
 ```bash
 # Add deck sheet to existing XLSX
-uv run kards --export-deck --file kards_cards_ru.xlsx
+uv run kards deck export --format xlsx --file kards_cards_ru.xlsx
 
 # Export deck to JSON
-uv run kards --export-deck --format json --file deck.json
+uv run kards deck export --format json --file deck.json
 ```
 
 ## CLI
 
 | Command | Description |
 |---------|-------------|
-| `--sync` | Fetch cards from the website and update `collection.db` |
-| `--export --format <csv\|json\|xlsx> --file <path>` | Export collection from SQLite |
-| `--update --file <path>` | Update card quantities from XLSX file |
-| `--import-deck --file <path>` | Import deck from TXT file into database |
-| `--export-deck --file <path>` | Export deck to XLSX sheet (interactive selection) |
-| `--export-deck --format json --file <path>` | Export deck to JSON (interactive selection) |
+| `kards sync` | Fetch cards from the website and update `collection.db` |
+| `kards export --format <csv\|json\|xlsx> --file <path>` | Export collection from SQLite |
+| `kards update --file <path>` | Update card quantities from XLSX file |
+| `kards deck import --file <path>` | Import deck from TXT file into database |
+| `kards deck export --format xlsx --file <path>` | Export deck to XLSX sheet (interactive selection) |
+| `kards deck export --format json --file <path>` | Export deck to JSON (interactive selection) |
 
 ## Deck TXT Format
 
@@ -108,7 +108,8 @@ usa:
 kards/
 ├── __init__.py         # Package initialization
 ├── __main__.py         # Entry point (python -m kards)
-├── cli.py              # CLI (sync/export/update/import-deck/export-deck)
+├── cli.py              # Typer CLI declarations
+├── commands.py         # Business logic (sync, export, import, deck)
 ├── constants.py        # Constants (URLs, mappings, defaults)
 ├── models.py           # TypedDict definitions
 ├── helpers.py          # Utility functions

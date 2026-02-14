@@ -7,12 +7,12 @@
 - Tests: `uv run pytest` or `make test`
 
 ## Usage Commands
-- Sync: `uv run python -m kards --sync`
-- Export: `uv run python -m kards --export --format xlsx --file cards.xlsx`
-- Update: `uv run python -m kards --update --file cards.xlsx`
-- Import deck: `uv run python -m kards --import-deck --file deck.txt`
-- Export deck: `uv run python -m kards --export-deck --file deck.xlsx`
-- Short form: `uv run kards --sync`
+- Sync: `uv run kards sync`
+- Export: `uv run kards export --format xlsx --file cards.xlsx`
+- Update: `uv run kards update --file cards.xlsx`
+- Import deck: `uv run kards deck import --file deck.txt`
+- Export deck: `uv run kards deck export --format xlsx --file deck.xlsx`
+- Short form: `uv run python -m kards sync`
 
 ## Useful Commands
 - `make help` — list available commands
@@ -25,7 +25,8 @@
 kards/
 ├── __init__.py         # Package initialization (__version__)
 ├── __main__.py         # Entry point for python -m kards
-├── cli.py              # CLI implementation (sync/export/update/deck)
+├── cli.py              # Typer CLI declarations
+├── commands.py         # Business logic (sync, export, import, deck)
 ├── constants.py        # All constants (URLs, mappings, defaults)
 ├── models.py           # TypedDict definitions (CardDict)
 ├── helpers.py          # Utility functions (parse_int, to_text)
@@ -62,10 +63,13 @@ tests/                  # pytest tests
   - Deck export to XLSX sheet and JSON
 - **Import**: `kards.importing` parses deck files
   - TXT deck file parser
-- **CLI**: `kards.cli` provides command-line interface
+- **CLI**: `kards.cli` provides Typer-based command-line interface
   - Console script: `kards`
   - Module entry: `python -m kards`
-  - Deck commands: `--import-deck`, `--export-deck`
+  - Commands: `sync`, `export`, `update`, `deck import`, `deck export`
+- **Commands**: `kards.commands` contains business logic
+  - Extracted from cli.py for separation of concerns
+  - Functions: `sync_collection`, `export_collection`, `update_collection`, `import_deck`, `export_deck`
 
 ## Code Patterns
 - Use module-level constants from `kards.constants` (avoid duplication)

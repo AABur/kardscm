@@ -9,6 +9,7 @@ from kards.storage import (
     fetch_cards,
     fetch_deck_cards,
     find_card_id_by_nation_name,
+    find_deck_by_name,
     get_connection,
     initialize_schema,
     insert_deck,
@@ -145,6 +146,22 @@ def test_insert_and_fetch_deck(tmp_path: Path) -> None:
         assert cards[0]["name"] == "16-й СТРЕЛКОВЫЙ ПОЛК"
         assert cards[0]["deck_quantity"] == 2
         assert cards[0]["deck_cost"] == 1
+
+
+def test_find_deck_by_name(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        insert_deck(conn, _SAMPLE_DECK)
+        conn.commit()
+
+        found = find_deck_by_name(conn, "Test Deck")
+        assert found is not None
+        assert found["name"] == "Test Deck"
+        assert found["major_power"] == "soviet"
+
+        not_found = find_deck_by_name(conn, "Nonexistent Deck")
+        assert not_found is None
 
 
 def test_deck_card_not_found(tmp_path: Path) -> None:

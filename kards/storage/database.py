@@ -335,6 +335,28 @@ def fetch_all_decks(conn: sqlite3.Connection) -> list[dict]:
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
 
+def find_deck_by_name(conn: sqlite3.Connection, name: str) -> dict | None:
+    """Find a deck by name.
+
+    Args:
+        conn: SQLite connection instance.
+        name: Deck name to search for.
+
+    Returns:
+        Deck metadata dict or None if not found.
+    """
+    cursor = conn.execute(
+        "SELECT deck_id, name, major_power, ally, hq, deck_code, imported_at "
+        "FROM decks WHERE name = ?",
+        (name,),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+    columns = [desc[0] for desc in cursor.description]
+    return dict(zip(columns, row))
+
+
 def fetch_deck_cards(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
     """Fetch deck cards with full card info from the collection.
 

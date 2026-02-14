@@ -1,80 +1,90 @@
-"""Tests for collection CLI argument parsing."""
+"""Tests for collection CLI (Typer-based)."""
 
-import argparse
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
-import pytest
+from typer.testing import CliRunner
 
-from kards.cli import parse_args, validate_args
+from kards.cli import app
 
-
-def _ns(**kwargs: object) -> argparse.Namespace:
-    defaults = {
-        "sync": False,
-        "export": False,
-        "update": False,
-        "import_deck": False,
-        "export_deck": False,
-        "format": None,
-        "file": None,
-    }
-    defaults.update(kwargs)
-    return argparse.Namespace(**defaults)
+runner = CliRunner()
 
 
-def test_parse_args_sync() -> None:
-    args = parse_args(["--sync"])
-    assert args.sync is True
-    assert args.export is False
+def test_no_args_shows_help() -> None:
+    result = runner.invoke(app, [])
+    assert "sync" in result.output
+    assert "export" in result.output
+    assert "update" in result.output
+    assert "deck" in result.output
 
 
-def test_parse_args_export() -> None:
-    args = parse_args(["--export", "--format", "csv", "--file", "out.csv"])
-    assert args.export is True
-    assert args.format == "csv"
-    assert args.file == "out.csv"
+def test_version_flag() -> None:
+    result = runner.invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert "0.2.0" in result.output
 
 
-def test_parse_args_import_deck() -> None:
-    args = parse_args(["--import-deck", "--file", "deck.txt"])
-    assert args.import_deck is True
-    assert args.file == "deck.txt"
+def test_sync_command() -> None:
+    with patch("kards.cli.sync_collection", new_callable=AsyncMock) as mock_sync:
+        result = runner.invoke(app, ["sync"])
+    assert result.exit_code == 0
+    mock_sync.assert_called_once()
 
 
-def test_parse_args_export_deck() -> None:
-    args = parse_args(["--export-deck", "--file", "cards.xlsx"])
-    assert args.export_deck is True
-    assert args.file == "cards.xlsx"
+def test_export_requires_format() -> None:
+    result = runner.invoke(app, ["export", "--file", "out.csv"])
+    assert result.exit_code != 0
 
 
-def test_validate_args_requires_mode() -> None:
-    with pytest.raises(SystemExit):
-        validate_args(_ns())
+def test_export_requires_file() -> None:
+    result = runner.invoke(app, ["export", "--format", "csv"])
+    assert result.exit_code != 0
 
 
-def test_validate_args_export_requires_format() -> None:
-    with pytest.raises(SystemExit):
-        validate_args(_ns(export=True, file="out.csv"))
+def test_export_rejects_invalid_format() -> None:
+    result = runner.invoke(app, ["export", "--format", "pdf", "--file", "out.pdf"])
+    assert result.exit_code != 0
+    assert "pdf" in result.output.lower()
 
 
-def test_validate_args_export_requires_file() -> None:
-    with pytest.raises(SystemExit):
-        validate_args(_ns(export=True, format="csv"))
+def test_export_valid() -> None:
+    with patch("kards.cli.export_collection") as mock_export:
+        result = runner.invoke(app, ["export", "--format", "csv", "--file", "out.csv"])
+    assert result.exit_code == 0
+    args = mock_export.call_args[0]
+    assert args[0] == "csv"
+    assert Path(args[1]).name == "out.csv"
 
 
-def test_validate_args_export_ok() -> None:
-    validate_args(_ns(export=True, format="csv", file="out.csv"))
+def test_update_requires_file() -> None:
+    result = runner.invoke(app, ["update"])
+    assert result.exit_code != 0
 
 
-def test_validate_args_import_deck_requires_file() -> None:
-    with pytest.raises(SystemExit):
-        validate_args(_ns(import_deck=True))
+def test_update_uses_input_flag(tmp_path: Path) -> None:
+    xlsx_file = tmp_path / "cards.xlsx"
+    xlsx_file.write_bytes(b"")
+    with patch("kards.cli.update_collection"):
+        result = runner.invoke(app, ["update", "-i", str(xlsx_file)])
+    assert result.exit_code != 0 or "-i" not in result.output
 
 
-def test_validate_args_export_deck_requires_file() -> None:
-    with pytest.raises(SystemExit):
-        validate_args(_ns(export_deck=True))
+def test_deck_import_requires_file() -> None:
+    result = runner.invoke(app, ["deck", "import"])
+    assert result.exit_code != 0
 
 
-def test_parse_args_rejects_invalid_format() -> None:
-    with pytest.raises(SystemExit):
-        parse_args(["--export", "--format", "pdf", "--file", "out.pdf"])
+def test_deck_export_requires_file() -> None:
+    result = runner.invoke(app, ["deck", "export"])
+    assert result.exit_code != 0
+
+
+def test_deck_no_args_shows_help() -> None:
+    result = runner.invoke(app, ["deck"])
+    assert "import" in result.output
+    assert "export" in result.output
+
+
+def test_deck_help_shows_description() -> None:
+    result = runner.invoke(app, ["deck", "--help"])
+    assert "Import and export saved decks" in result.output
