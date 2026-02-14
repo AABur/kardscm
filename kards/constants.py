@@ -91,3 +91,43 @@ RUSSIAN_HEADERS: list[str] = [
 
 # === Database ===
 DEFAULT_DB_PATH = "collection.db"
+
+# === Deck Import ===
+DECK_CARD_PATTERN = r"^(\d+)x\s+\((\d+)K\)\s+(.+)$"
+DECK_METADATA_KEYS: dict[str, str] = {
+    "Major power": "major_power",
+    "Ally": "ally",
+    "HQ": "hq",
+}
+
+DECK_NATION_TO_DB: dict[str, str] = {
+    "soviet": "Soviet",
+    "usa": "USA",
+    "britain": "Britain",
+    "germany": "Germany",
+    "japan": "Japan",
+    "france": "France",
+    "italy": "Italy",
+    "poland": "Poland",
+}
+
+NATION_DISPLAY_NAMES: dict[str, str] = {
+    "soviet": "Советские",
+    "usa": "Американские",
+    "britain": "Британские",
+    "germany": "Германские",
+    "japan": "Японские",
+    "france": "Французские",
+    "italy": "Итальянские",
+    "poland": "Польские",
+}
+
+DECK_HEADERS_RU: list[str] = ["Карта", "Тип", "Кол-во", "Стоим.", "Атака", "Защита"]
+DECK_METADATA_LABELS: list[str] = [
+    "Название",
+    "Основная нация",
+    "Союзная нация",
+    "Штаб",
+    "Код",
+]
+DECK_COLUMN_WIDTHS: list[int] = [30, 18, 10, 10, 10, 10]

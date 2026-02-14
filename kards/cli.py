@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import sqlite3
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,19 +15,32 @@ from openpyxl import load_workbook
 
 from kards import __version__
 from kards.constants import (
+    DECK_NATION_TO_DB,
     DEFAULT_DB_PATH,
     LANGUAGE_CODE,
     LANGUAGE_NAME,
     RUSSIAN_HEADERS,
     SUPPORTED_EXPORT_FORMATS,
 )
-from kards.export import export_to_csv, export_to_json, export_to_xlsx
+from kards.export import (
+    add_deck_sheet,
+    export_deck_to_json,
+    export_to_csv,
+    export_to_json,
+    export_to_xlsx,
+)
 from kards.helpers import parse_int
+from kards.importing import parse_deck_file
 from kards.scraping import scrape_cards
 from kards.storage import (
+    fetch_all_decks,
     fetch_cards,
+    fetch_deck_cards,
+    find_card_id_by_nation_name,
     get_connection,
     initialize_schema,
+    insert_deck,
+    insert_deck_cards,
     set_metadata,
     update_quantity_by_nation_name,
     upsert_cards,
@@ -87,6 +101,99 @@ def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
         results.append((str(nation).strip(), str(name).strip(), qty))
 
     return results
+
+
+def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
+    """Import a deck from TXT file into the database.
+
+    Args:
+        filename: Path to deck TXT file.
+        db_path: SQLite database path.
+    """
+    logger.info("Importing deck from file: %s", filename)
+
+    try:
+        deck = parse_deck_file(filename)
+    except (FileNotFoundError, ValueError) as e:
+        raise SystemExit(f"Failed to parse deck file: {e}") from e
+
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+
+        not_found = []
+        for card in deck["cards"]:
+            db_nation = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
+            card_id = find_card_id_by_nation_name(conn, db_nation, card["name"])
+            if card_id is None:
+                not_found.append(f"{db_nation} / {card['name']}")
+
+        if not_found:
+            lines = "\n".join(f"  - {entry}" for entry in not_found)
+            raise SystemExit(f"Cards not found in collection:\n{lines}")
+
+        deck_id = insert_deck(conn, deck)
+        insert_deck_cards(conn, deck_id, deck["cards"], DECK_NATION_TO_DB)
+        conn.commit()
+
+    logger.info("Deck '%s' imported (%d cards)", deck["name"], len(deck["cards"]))
+
+
+def _select_deck(conn: sqlite3.Connection) -> dict:
+    """Interactively select a deck from the database.
+
+    Args:
+        conn: SQLite connection instance.
+
+    Returns:
+        Selected deck metadata dict.
+    """
+    decks = fetch_all_decks(conn)
+    if not decks:
+        raise SystemExit("No decks in database. Run --import-deck first.")
+
+    print("Available decks:")
+    for i, deck in enumerate(decks, 1):
+        print(f"  {i}. {deck['name']}")
+
+    try:
+        choice = int(input("Enter deck number: "))
+    except (ValueError, EOFError) as e:
+        raise SystemExit("Invalid input") from e
+
+    if choice < 1 or choice > len(decks):
+        raise SystemExit(f"Invalid choice: {choice}")
+
+    return decks[choice - 1]
+
+
+def export_deck(
+    fmt: str | None,
+    filename: str,
+    db_path: str = DEFAULT_DB_PATH,
+) -> None:
+    """Export a deck to XLSX sheet or JSON file.
+
+    Args:
+        fmt: Export format ('json' or None for xlsx).
+        filename: Output file path.
+        db_path: SQLite database path.
+    """
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        deck_meta = _select_deck(conn)
+        deck_cards = fetch_deck_cards(conn, deck_meta["deck_id"])
+
+    if not deck_cards:
+        raise SystemExit("Deck has no cards")
+
+    if fmt == "json":
+        export_deck_to_json(deck_meta, deck_cards, filename)
+    else:
+        wb = load_workbook(filename)
+        add_deck_sheet(wb, deck_meta, deck_cards)
+        wb.save(filename)
+
+    logger.info("Deck exported: %s", filename)
 
 
 async def sync_collection(db_path: str = DEFAULT_DB_PATH) -> None:
@@ -207,6 +314,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Update card quantities from XLSX file",
     )
+    mode_group.add_argument(
+        "--import-deck",
+        action="store_true",
+        help="Import deck from TXT file",
+    )
+    mode_group.add_argument(
+        "--export-deck",
+        action="store_true",
+        help="Export deck to XLSX sheet or JSON",
+    )
 
     parser.add_argument(
         "--format",
@@ -233,13 +350,18 @@ def validate_args(args: argparse.Namespace) -> None:
     Args:
         args: Parsed argument namespace.
     """
-    if not any([args.sync, args.export, args.update]):
-        raise SystemExit("Specify --sync, --export, or --update")
+    modes = [args.sync, args.export, args.update, args.import_deck, args.export_deck]
+    if not any(modes):
+        raise SystemExit("Specify --sync, --export, --update, --import-deck, or --export-deck")
     if args.export and not args.format:
         raise SystemExit("--export requires --format")
     if (args.export or args.update) and not args.file:
         mode = "export" if args.export else "update"
         raise SystemExit(f"--{mode} requires --file")
+    if args.import_deck and not args.file:
+        raise SystemExit("--import-deck requires --file")
+    if args.export_deck and not args.file:
+        raise SystemExit("--export-deck requires --file")
 
 
 def _utc_timestamp() -> str:
@@ -257,6 +379,14 @@ async def main() -> None:
 
     if args.update:
         update_collection(args.file)
+        sys.exit(0)
+
+    if args.import_deck:
+        import_deck(args.file)
+        sys.exit(0)
+
+    if args.export_deck:
+        export_deck(args.format, args.file)
         sys.exit(0)
 
     if args.export:

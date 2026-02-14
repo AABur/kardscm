@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from kards.helpers import parse_int, to_text
+from kards.models import ParsedDeck
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS cards (
@@ -28,6 +29,27 @@ CREATE TABLE IF NOT EXISTS cards (
 CREATE TABLE IF NOT EXISTS metadata (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS decks (
+    deck_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    major_power TEXT NOT NULL,
+    ally TEXT,
+    hq TEXT,
+    deck_code TEXT,
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS deck_cards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    deck_id INTEGER NOT NULL,
+    card_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    cost INTEGER NOT NULL,
+    FOREIGN KEY (deck_id) REFERENCES decks(deck_id) ON DELETE CASCADE,
+    FOREIGN KEY (card_id) REFERENCES cards(card_id),
+    UNIQUE(deck_id, card_id)
 );
 """
 
@@ -224,3 +246,117 @@ _CARD_FIELDS = (
 
 def _row_to_card(row: tuple) -> dict[str, str]:
     return {field: to_text(val) for field, val in zip(_CARD_FIELDS, row)}
+
+
+def find_card_id_by_nation_name(
+    conn: sqlite3.Connection, nation: str, name: str
+) -> str | None:
+    """Find card_id by nation and name.
+
+    Args:
+        conn: SQLite connection instance.
+        nation: Card nation (e.g. 'Soviet').
+        name: Card name.
+
+    Returns:
+        card_id string or None if not found.
+    """
+    row = conn.execute(
+        "SELECT card_id FROM cards WHERE nation = ? AND name = ?",
+        (nation, name),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def insert_deck(conn: sqlite3.Connection, deck: ParsedDeck) -> int:
+    """Insert deck metadata into the database.
+
+    Args:
+        conn: SQLite connection instance.
+        deck: Parsed deck data.
+
+    Returns:
+        The new deck_id.
+    """
+    cursor = conn.execute(
+        "INSERT INTO decks (name, major_power, ally, hq, deck_code) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (deck["name"], deck["major_power"], deck["ally"], deck["hq"], deck["deck_code"]),
+    )
+    return cursor.lastrowid  # type: ignore[return-value]
+
+
+def insert_deck_cards(
+    conn: sqlite3.Connection,
+    deck_id: int,
+    cards: list[dict],
+    nation_map: dict[str, str],
+) -> None:
+    """Insert deck cards, linking each to its card_id.
+
+    Args:
+        conn: SQLite connection instance.
+        deck_id: ID of the deck.
+        cards: List of DeckCardEntry dicts.
+        nation_map: Mapping from deck nation key to DB nation name.
+
+    Raises:
+        ValueError: If a card is not found in the collection.
+    """
+    for card in cards:
+        db_nation = nation_map.get(card["nation"], card["nation"])
+        card_id = find_card_id_by_nation_name(conn, db_nation, card["name"])
+        if card_id is None:
+            msg = f"Card not found: {db_nation} / {card['name']}"
+            raise ValueError(msg)
+        conn.execute(
+            "INSERT INTO deck_cards (deck_id, card_id, quantity, cost) "
+            "VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(deck_id, card_id) DO UPDATE SET "
+            "quantity = excluded.quantity, cost = excluded.cost",
+            (deck_id, card_id, card["quantity"], card["cost"]),
+        )
+
+
+def fetch_all_decks(conn: sqlite3.Connection) -> list[dict]:
+    """Fetch all decks from the database.
+
+    Args:
+        conn: SQLite connection instance.
+
+    Returns:
+        List of deck metadata dicts.
+    """
+    cursor = conn.execute(
+        "SELECT deck_id, name, major_power, ally, hq, deck_code, imported_at "
+        "FROM decks ORDER BY deck_id"
+    )
+    columns = [desc[0] for desc in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def fetch_deck_cards(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
+    """Fetch deck cards with full card info from the collection.
+
+    Args:
+        conn: SQLite connection instance.
+        deck_id: ID of the deck.
+
+    Returns:
+        List of card dicts with deck_quantity and deck_cost added.
+    """
+    cursor = conn.execute(
+        """
+        SELECT
+            c.nation, c.name, c.type, c.rarity, c.abilities,
+            c.set_name, c.credits, c.attack, c.defense, c.description,
+            dc.quantity AS deck_quantity, dc.cost AS deck_cost
+        FROM deck_cards dc
+        JOIN cards c ON dc.card_id = c.card_id
+        WHERE dc.deck_id = ?
+        ORDER BY c.nation, dc.cost, c.name
+        """,
+        (deck_id,),
+    )
+    columns = [desc[0] for desc in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]

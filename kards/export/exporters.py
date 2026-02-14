@@ -10,8 +10,16 @@ from collections.abc import Iterable
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.workbook import Workbook as WorkbookType
 
-from kards.constants import EXPORT_FIELD_NAMES
+from kards.constants import (
+    DECK_COLUMN_WIDTHS,
+    DECK_HEADERS_RU,
+    DECK_METADATA_LABELS,
+    DECK_NATION_TO_DB,
+    EXPORT_FIELD_NAMES,
+    NATION_DISPLAY_NAMES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +43,7 @@ def export_to_xlsx(
     if not ws:
         msg = "Failed to create worksheet"
         raise RuntimeError(msg)
-    ws.title = "Cards"
+    ws.title = "Коллекция"
 
     header_row = list(headers)
     ws.append(header_row)
@@ -121,3 +129,114 @@ def export_to_json(
         json.dump(output_data, jsonfile, ensure_ascii=False, indent=2)
 
     logger.info("JSON file created: %s (%s cards)", filename, len(cards))
+
+
+def add_deck_sheet(
+    wb: WorkbookType,
+    deck_meta: dict,
+    deck_cards: list[dict],
+) -> None:
+    """Add a deck sheet to an existing workbook.
+
+    Args:
+        wb: openpyxl Workbook instance.
+        deck_meta: Deck metadata dict.
+        deck_cards: List of card dicts with deck_quantity and deck_cost.
+    """
+    sheet_name = deck_meta["name"][:31]  # Excel sheet name limit
+    ws = wb.create_sheet(title=sheet_name)
+
+    bold_font = Font(bold=True)
+
+    major = deck_meta.get("major_power", "")
+    ally = deck_meta.get("ally", "")
+    meta_values = [
+        deck_meta.get("name", ""),
+        DECK_NATION_TO_DB.get(major, major),
+        DECK_NATION_TO_DB.get(ally, ally),
+        deck_meta.get("hq", ""),
+        deck_meta.get("deck_code", ""),
+    ]
+    for row_idx, (label, value) in enumerate(
+        zip(DECK_METADATA_LABELS, meta_values), 1
+    ):
+        ws.cell(row=row_idx, column=1, value=label).font = bold_font
+        ws.cell(row=row_idx, column=2, value=value or "")
+
+    header_row = 7
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    for col_idx, header in enumerate(DECK_HEADERS_RU, 1):
+        cell = ws.cell(row=header_row, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    current_row = header_row + 1
+    cards_by_nation: dict[str, list[dict]] = {}
+    for card in deck_cards:
+        nation = card.get("nation", "")
+        cards_by_nation.setdefault(nation, []).append(card)
+
+    for nation, nation_cards in cards_by_nation.items():
+        nation_lower = nation.lower()
+        display_name = NATION_DISPLAY_NAMES.get(nation_lower, nation)
+        ws.cell(row=current_row, column=1, value=display_name).font = bold_font
+        current_row += 1
+
+        for card in nation_cards:
+            ws.cell(row=current_row, column=1, value=card.get("name", ""))
+            ws.cell(row=current_row, column=2, value=card.get("type", ""))
+            ws.cell(row=current_row, column=3, value=card.get("deck_quantity"))
+            ws.cell(row=current_row, column=4, value=card.get("deck_cost"))
+            ws.cell(row=current_row, column=5, value=card.get("attack"))
+            ws.cell(row=current_row, column=6, value=card.get("defense"))
+            current_row += 1
+
+    for col_idx, width in enumerate(DECK_COLUMN_WIDTHS, 1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+    logger.info("Deck sheet '%s' added (%d cards)", sheet_name, len(deck_cards))
+
+
+def export_deck_to_json(
+    deck_meta: dict,
+    deck_cards: list[dict],
+    filename: str,
+) -> None:
+    """Export a deck to JSON format.
+
+    Args:
+        deck_meta: Deck metadata dict.
+        deck_cards: List of card dicts with deck_quantity and deck_cost.
+        filename: Output file path.
+    """
+    output = {
+        "deck": {
+            "name": deck_meta.get("name", ""),
+            "major_power": deck_meta.get("major_power", ""),
+            "ally": deck_meta.get("ally"),
+            "hq": deck_meta.get("hq"),
+        },
+        "cards": [
+            {
+                "nation": card.get("nation", ""),
+                "name": card.get("name", ""),
+                "type": card.get("type", ""),
+                "rarity": card.get("rarity", ""),
+                "set": card.get("set_name", ""),
+                "credits": card.get("credits"),
+                "attack": card.get("attack"),
+                "defense": card.get("defense"),
+                "description": card.get("description", ""),
+                "deck_quantity": card.get("deck_quantity"),
+                "deck_cost": card.get("deck_cost"),
+            }
+            for card in deck_cards
+        ],
+    }
+
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+
+    logger.info("Deck JSON exported: %s (%d cards)", filename, len(deck_cards))

@@ -1,4 +1,4 @@
-.PHONY: help install sync test lint format check run-sync run-update run-export-json run-export-csv run-export-xlsx clean
+.PHONY: help install sync test lint format check run-sync run-update run-export-json run-export-csv run-export-xlsx run-import-deck run-export-deck-xlsx run-export-deck-json clean
 
 .DEFAULT_GOAL := help
 
@@ -54,6 +54,15 @@ run-export-csv: ## Export cards to CSV
 
 run-export-json: ## Export cards to JSON
 	@$(UV) run python -m kards --export --format json --file kards_cards_ru.json
+
+run-import-deck: ## Import deck from TXT file
+	@$(UV) run python -m kards --import-deck --file $(FILE)
+
+run-export-deck-xlsx: ## Export deck as sheet in existing XLSX
+	@$(UV) run python -m kards --export-deck --file kards_cards_ru.xlsx
+
+run-export-deck-json: ## Export deck to JSON file
+	@$(UV) run python -m kards --export-deck --format json --file deck.json
 
 clean: ## Clean cache and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
