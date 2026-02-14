@@ -20,6 +20,9 @@
 - `make format` — format code
 - `make run` — run the application
 
+## Gotchas
+- `uv sync` alone skips dev deps; use `uv sync --dev` before running tests
+
 ## Project Structure
 ```
 kardscm/
