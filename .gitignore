@@ -50,8 +50,5 @@ collection.db
 # Playwright MCP
 .playwright-mcp/
 
-# Claude Code
+# Claude Code (local only)
 .claude/settings.local.json
-.claude/agents/
-.claude/skills/
-.serena/

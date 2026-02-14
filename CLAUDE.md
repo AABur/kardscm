@@ -16,6 +16,7 @@
 
 ## Useful Commands
 - `make help` — list available commands
+- `make check` — full check (ruff format, ruff check, mypy, pytest)
 - `make lint` — check code (ruff, mypy)
 - `make format` — format code
 - `make run` — run the application
@@ -55,6 +56,7 @@ tests/                  # pytest tests
 - **Config**: `kardscm.config` — `LanguageConfig` frozen dataclass with all language-specific data
   - Registry: `LANGUAGES` dict (`"en"` → `LANGUAGE_EN`, `"ru"` → `LANGUAGE_RU`)
   - `get_language_config()` reads `config.ini` and returns the active `LanguageConfig`
+  - `ability_names` dict maps API attribute keys to localized display names (EN/RU)
   - Commands call `get_language_config()` internally — no language threading through CLI
 - **Scraping**: `kardscm.scraping` collects GraphQL responses using Playwright
   - `browser.py`: Page automation and API data collection
@@ -87,3 +89,4 @@ tests/                  # pytest tests
 - Imports at top of file (not inline in exception handlers)
 - Import from package: `from kardscm.config import ...`, `from kardscm.constants import ...`
 - Type hints using TypedDict from `kardscm.models`
+- Card abilities translated via `LanguageConfig.ability_names`; unknown/internal attributes (e.g. `BecomesVeteran:*`) are filtered out
