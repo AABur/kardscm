@@ -46,7 +46,3 @@ htmlcov/
 # Claude Code
 .claude/settings.local.json
 .serena/
-
-# Local artifacts
-collection.db
-tmp/

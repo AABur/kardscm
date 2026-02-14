@@ -7,18 +7,14 @@ import re
 
 import httpx
 
-from kards.constants import (
-    BASE_URL,
-    COLLECTION_URL,
-    EN_KEYS,
-    KNOWN_MAPPINGS,
-    RU_KEYS,
-    RU_LANG_INDEX,
-)
+from kards.config import LanguageConfig
+from kards.constants import BASE_URL, KNOWN_MAPPINGS
 
 logger = logging.getLogger(__name__)
 
 ESCAPE_RE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|r|n|t|\\|\"|')")
+
+EN_FALLBACK_KEYS = ("en", "en-EN")
 
 
 def decode_escapes(text: str) -> str:
@@ -46,38 +42,19 @@ def decode_escapes(text: str) -> str:
     return ESCAPE_RE.sub(replace_match, text)
 
 
-def strip_quotes(text: str) -> str:
-    """Remove surrounding quotes from text.
-
-    Args:
-        text: Text possibly wrapped in quotes.
-
-    Returns:
-        Text with surrounding quotes removed.
-    """
-    if not text:
-        return text
-    quote_pairs = [("«", "»"), ('"', '"'), ("'", "'")]
-    for open_q, close_q in quote_pairs:
-        if text.startswith(open_q) and text.endswith(close_q):
-            text = text[len(open_q) : -len(close_q)]
-    return text
-
-
 def sanitize_text(text: str) -> str:
-    """Sanitize text by removing quotes, newlines, and decoding escapes.
+    """Sanitize text by decoding escapes and normalizing whitespace.
 
     Args:
         text: Text to sanitize.
 
     Returns:
-        Sanitized text with quotes removed, newlines replaced with spaces,
-        escape sequences decoded, and duplicate spaces removed.
+        Sanitized text with escape sequences decoded, newlines replaced
+        with spaces, and duplicate spaces removed.
     """
     if not text:
         return text
     text = decode_escapes(text)
-    text = strip_quotes(text)
     text = text.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
     text = " ".join(text.split())
     return text
@@ -85,14 +62,16 @@ def sanitize_text(text: str) -> str:
 
 def extract_localized_field(
     field_data: dict[str, str] | str,
+    lang_config: LanguageConfig,
     field_name: str = "",
 ) -> str:
     """Extract localized field value with fallback logic.
 
-    Priority: Russian -> English -> empty string.
+    Priority: configured language -> English -> empty string.
 
     Args:
         field_data: Dictionary with language codes as keys or string value.
+        lang_config: Language configuration.
         field_name: Field name for debug logging.
 
     Returns:
@@ -101,13 +80,17 @@ def extract_localized_field(
     if not isinstance(field_data, dict):
         return str(field_data) if field_data else ""
 
-    for key in RU_KEYS:
+    for key in lang_config.keys:
         if key in field_data:
             return field_data[key]
 
-    for key in EN_KEYS:
+    for key in EN_FALLBACK_KEYS:
         if key in field_data:
-            logger.debug("%s not available in Russian, using English fallback", field_name)
+            logger.debug(
+                "%s not available in %s, using English fallback",
+                field_name,
+                lang_config.name,
+            )
             return field_data[key]
 
     return ""
@@ -143,23 +126,26 @@ def translate_value(
 
     if trans_id and trans_id in translations:
         translated = decode_escapes(translations[trans_id])
-        return strip_quotes(translated)
+        return translated
 
     return normalized
 
 
-async def load_translations() -> dict[str, str]:
-    """Load translations for Russian from website JS files.
+async def load_translations(lang_config: LanguageConfig) -> dict[str, str]:
+    """Load translations from website JS files.
+
+    Args:
+        lang_config: Language configuration.
 
     Returns:
-        Translation dictionary for Russian.
+        Translation dictionary for the configured language.
     """
-    logger.info("Loading translations for Russian...")
+    logger.info("Loading translations for %s...", lang_config.name)
     translations: dict[str, str] = {}
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(COLLECTION_URL)
+            response = await client.get(lang_config.collection_url)
             html = response.text
 
             js_urls = re.findall(r'/_next/static/chunks/[^"\']+\.js', html)
@@ -171,7 +157,9 @@ async def load_translations() -> dict[str, str]:
                     break
 
             if translation_content:
-                translations = _parse_translations(translation_content)
+                translations = _parse_translations(
+                    translation_content, lang_config.lang_index
+                )
                 logger.info("Loaded %s translation keys", len(translations))
             else:
                 logger.warning("Translation JS file not found, using fallback")
@@ -183,14 +171,15 @@ async def load_translations() -> dict[str, str]:
     return translations
 
 
-def _parse_translations(js_content: str) -> dict[str, str]:
+def _parse_translations(js_content: str, lang_index: int) -> dict[str, str]:
     """Parse translations from JS content.
 
     Args:
         js_content: JavaScript file content.
+        lang_index: Index of target language in translations array.
 
     Returns:
-        Mapping from translation ID to Russian text.
+        Mapping from translation ID to localized text.
     """
     translations: dict[str, str] = {}
 
@@ -202,8 +191,8 @@ def _parse_translations(js_content: str) -> dict[str, str]:
         pattern = re.compile(rf'"{re.escape(trans_id)}":"([^"]*)"')
         matches = pattern.findall(js_content)
 
-        if matches and RU_LANG_INDEX < len(matches):
-            translations[trans_id] = matches[RU_LANG_INDEX]
+        if matches and lang_index < len(matches):
+            translations[trans_id] = matches[lang_index]
         elif matches:
             translations[trans_id] = matches[-1]
 

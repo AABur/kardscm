@@ -128,8 +128,9 @@ def update(
 ) -> None:
     """Update card quantities from an XLSX file.
 
-    Reads the **Количество** column from the spreadsheet and
+    Reads the **Quantity** column from the spreadsheet and
     updates matching cards in the local database.
+    Column names depend on the language setting in config.ini.
     """
     validate_file(str(file), ".xlsx", must_exist=True)
     update_collection(str(file))

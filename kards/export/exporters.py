@@ -5,21 +5,14 @@ from __future__ import annotations
 import csv
 import json
 import logging
-from collections.abc import Iterable
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
-from kards.constants import (
-    DECK_COLUMN_WIDTHS,
-    DECK_HEADERS_RU,
-    DECK_METADATA_LABELS,
-    DECK_NATION_TO_DB,
-    EXPORT_FIELD_NAMES,
-    NATION_DISPLAY_NAMES,
-)
+from kards.constants import DECK_COLUMN_WIDTHS, EXPORT_FIELD_NAMES
+from kards.helpers import parse_int
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +20,16 @@ logger = logging.getLogger(__name__)
 def export_to_xlsx(
     cards: list[dict[str, str]],
     filename: str,
-    headers: Iterable[str] = EXPORT_FIELD_NAMES,
+    headers: list[str],
+    sheet_name: str = "Collection",
 ) -> None:
     """Export cards to Excel format with formatting.
 
     Args:
         cards: List of card dictionaries.
         filename: Output filename.
-        headers: Headers to use for the file.
+        headers: Display headers for columns.
+        sheet_name: Name of the worksheet.
     """
     logger.info("Exporting %s cards to Excel: %s", len(cards), filename)
 
@@ -43,7 +38,7 @@ def export_to_xlsx(
     if not ws:
         msg = "Failed to create worksheet"
         raise RuntimeError(msg)
-    ws.title = "Коллекция"
+    ws.title = sheet_name
 
     header_row = list(headers)
     ws.append(header_row)
@@ -56,8 +51,13 @@ def export_to_xlsx(
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
+    numeric_fields = {"Quantity", "Credits", "Attack", "Defense"}
     for card in cards:
-        row = [card.get(field, "") for field in EXPORT_FIELD_NAMES]
+        row = [
+            parse_int(card.get(field, "")) if field in numeric_fields
+            else card.get(field, "")
+            for field in EXPORT_FIELD_NAMES
+        ]
         ws.append(row)
 
     column_widths = [15, 35, 18, 15, 12, 20, 10, 10, 8, 8, 60]
@@ -74,7 +74,7 @@ def export_to_xlsx(
 def export_to_csv(
     cards: list[dict[str, str]],
     filename: str,
-    headers: Iterable[str] = EXPORT_FIELD_NAMES,
+    headers: list[str],
 ) -> None:
     """Export cards to CSV format.
 
@@ -83,7 +83,7 @@ def export_to_csv(
     Args:
         cards: List of card dictionaries.
         filename: Output filename.
-        headers: Headers to use for the file.
+        headers: Display headers for columns.
     """
     logger.info("Exporting %s cards to CSV: %s", len(cards), filename)
 
@@ -135,6 +135,10 @@ def add_deck_sheet(
     wb: WorkbookType,
     deck_meta: dict,
     deck_cards: list[dict],
+    deck_headers: list[str],
+    metadata_labels: list[str],
+    deck_nation_to_db: dict[str, str],
+    nation_display_names: dict[str, str],
 ) -> None:
     """Add a deck sheet to an existing workbook.
 
@@ -142,6 +146,10 @@ def add_deck_sheet(
         wb: openpyxl Workbook instance.
         deck_meta: Deck metadata dict.
         deck_cards: List of card dicts with deck_quantity and deck_cost.
+        deck_headers: Headers for deck card table.
+        metadata_labels: Labels for deck metadata section.
+        deck_nation_to_db: Mapping from deck nation keys to DB names.
+        nation_display_names: Display names for nation sections.
     """
     sheet_name = deck_meta["name"][:31]  # Excel sheet name limit
     ws = wb.create_sheet(title=sheet_name)
@@ -152,13 +160,13 @@ def add_deck_sheet(
     ally = deck_meta.get("ally", "")
     meta_values = [
         deck_meta.get("name", ""),
-        DECK_NATION_TO_DB.get(major, major),
-        DECK_NATION_TO_DB.get(ally, ally),
+        deck_nation_to_db.get(major, major),
+        deck_nation_to_db.get(ally, ally),
         deck_meta.get("hq", ""),
         deck_meta.get("deck_code", ""),
     ]
     for row_idx, (label, value) in enumerate(
-        zip(DECK_METADATA_LABELS, meta_values), 1
+        zip(metadata_labels, meta_values), 1
     ):
         ws.cell(row=row_idx, column=1, value=label).font = bold_font
         ws.cell(row=row_idx, column=2, value=value or "")
@@ -166,7 +174,7 @@ def add_deck_sheet(
     header_row = 7
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
-    for col_idx, header in enumerate(DECK_HEADERS_RU, 1):
+    for col_idx, header in enumerate(deck_headers, 1):
         cell = ws.cell(row=header_row, column=col_idx, value=header)
         cell.fill = header_fill
         cell.font = header_font
@@ -180,7 +188,7 @@ def add_deck_sheet(
 
     for nation, nation_cards in cards_by_nation.items():
         nation_lower = nation.lower()
-        display_name = NATION_DISPLAY_NAMES.get(nation_lower, nation)
+        display_name = nation_display_names.get(nation_lower, nation)
         ws.cell(row=current_row, column=1, value=display_name).font = bold_font
         current_row += 1
 

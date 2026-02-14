@@ -6,6 +6,7 @@ import pytest
 from openpyxl import Workbook
 
 from kards.commands import export_collection
+from kards.config import LANGUAGE_RU
 from kards.export import add_deck_sheet, export_deck_to_json
 
 
@@ -44,7 +45,14 @@ _DECK_CARDS = [
 
 def test_add_deck_sheet() -> None:
     wb = Workbook()
-    add_deck_sheet(wb, _DECK_META, _DECK_CARDS)
+    lang = LANGUAGE_RU
+    add_deck_sheet(
+        wb, _DECK_META, _DECK_CARDS,
+        lang.deck_headers,
+        lang.deck_metadata_labels,
+        lang.deck_nation_to_db,
+        lang.nation_display_names,
+    )
 
     assert "Test Deck" in wb.sheetnames
     ws = wb["Test Deck"]

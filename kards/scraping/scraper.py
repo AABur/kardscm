@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from kards.constants import COLLECTION_URL
+from kards.config import LanguageConfig, get_language_config
 from kards.scraping.browser import collect_api_data
 from kards.scraping.localization import (
     extract_localized_field,
@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 def parse_api_data(
     api_data: list[dict[str, Any]],
     translations: dict[str, str],
+    lang_config: LanguageConfig,
 ) -> list[dict[str, str]]:
     """Parse API data to extract cards.
 
     Args:
         api_data: Collected API responses.
         translations: Translation dictionary.
+        lang_config: Language configuration.
 
     Returns:
         List of card dictionaries.
@@ -50,7 +52,7 @@ def parse_api_data(
                         card_id = node.get("cardId", "")
                         if not card_id or card_id in card_ids:
                             continue
-                        card_info = build_card(node, card_id, translations)
+                        card_info = build_card(node, card_id, translations, lang_config)
                         if card_info:
                             cards.append(card_info)
                             card_ids.add(card_id)
@@ -65,6 +67,7 @@ def build_card(
     card_node: dict[str, Any],
     card_id: str,
     translations: dict[str, str],
+    lang_config: LanguageConfig,
 ) -> dict[str, str] | None:
     """Build a card dictionary from API node data.
 
@@ -72,13 +75,14 @@ def build_card(
         card_node: Card node data from API.
         card_id: Card identifier from API.
         translations: Translation dictionary.
+        lang_config: Language configuration.
 
     Returns:
         Card dictionary or None if required fields are missing.
     """
     json_data = card_node.get("json", {})
 
-    title = extract_localized_field(json_data.get("title", {}), "title")
+    title = extract_localized_field(json_data.get("title", {}), lang_config, "title")
     if not title:
         return None
 
@@ -86,11 +90,20 @@ def build_card(
     type_raw = json_data.get("type") or ""
     rarity_raw = json_data.get("rarity") or ""
     set_raw = json_data.get("set") or ""
-    description = extract_localized_field(json_data.get("text", {}), "description")
+    description = extract_localized_field(
+        json_data.get("text", {}), lang_config, "description"
+    )
+
+    faction_str = str(faction_raw)
+    faction_translated = translate_value("faction", faction_str, translations)
+    if faction_translated == faction_str.strip():
+        faction_translated = lang_config.faction_names.get(
+            faction_translated, faction_translated
+        )
 
     card_info: dict[str, str] = {
         "CardId": card_id,
-        "Nation": sanitize_text(translate_value("faction", str(faction_raw), translations)),
+        "Nation": sanitize_text(faction_translated),
         "Name": sanitize_text(title),
         "Type": sanitize_text(translate_value("type", str(type_raw), translations)),
         "Rarity": sanitize_text(translate_value("rarity", str(rarity_raw), translations)),
@@ -107,11 +120,14 @@ def build_card(
 
 
 async def scrape_cards() -> list[dict[str, str]]:
-    """Scrape cards from the Russian collection page.
+    """Scrape cards from the collection page.
+
+    Language is determined by config.ini.
 
     Returns:
         List of card dictionaries.
     """
-    translations = await load_translations()
-    api_data = await collect_api_data(COLLECTION_URL)
-    return parse_api_data(api_data, translations)
+    lang_config = get_language_config()
+    translations = await load_translations(lang_config)
+    api_data = await collect_api_data(lang_config.collection_url)
+    return parse_api_data(api_data, translations, lang_config)

@@ -5,7 +5,7 @@ from kards.scraping.localization import sanitize_text
 
 def test_sanitize_decodes_hex_quotes() -> None:
     value = r"\xabСоюз\xbb"
-    assert sanitize_text(value) == "Союз"
+    assert sanitize_text(value) == "«Союз»"
 
 
 def test_sanitize_decodes_newlines() -> None:

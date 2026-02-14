@@ -9,13 +9,8 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from kards.constants import (
-    DECK_NATION_TO_DB,
-    DEFAULT_DB_PATH,
-    LANGUAGE_CODE,
-    LANGUAGE_NAME,
-    RUSSIAN_HEADERS,
-)
+from kards.config import get_language_config
+from kards.constants import DEFAULT_DB_PATH
 from kards.export import (
     add_deck_sheet,
     export_deck_to_json,
@@ -73,6 +68,8 @@ def validate_file(path: str, expected_ext: str, must_exist: bool = False) -> Pat
 def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
     """Read nation, name, quantity from XLSX file.
 
+    Column names are determined by the configured language.
+
     Args:
         filename: Path to XLSX file.
 
@@ -86,19 +83,27 @@ def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
     if not Path(filename).exists():
         raise FileNotFoundError(f"File not found: {filename}")
 
+    lang_config = get_language_config()
+    headers_list = lang_config.export_headers
+    header_map = {
+        headers_list[0]: "nation",
+        headers_list[1]: "name",
+        headers_list[6]: "quantity",
+    }
+
     wb = load_workbook(filename)
     ws = wb.active
     if not ws:
         raise ValueError("No active worksheet found")
 
-    header_map = {"Нация": "nation", "Название": "name", "Количество": "quantity"}
     headers = {
         header_map[cell.value]: col_idx
         for col_idx, cell in enumerate(ws[1], 1)
         if cell.value in header_map
     }
     if len(headers) != len(header_map):
-        raise ValueError("Missing required columns: Нация, Название, Количество")
+        expected = ", ".join(header_map.keys())
+        raise ValueError(f"Missing required columns: {expected}")
 
     results = []
     for row in ws.iter_rows(min_row=2, values_only=False):
@@ -126,13 +131,15 @@ async def sync_collection(db_path: str = DEFAULT_DB_PATH) -> None:
     Args:
         db_path: SQLite database path.
     """
-    logger.info("Starting sync from website...")
+    lang_config = get_language_config()
+    logger.info("Starting sync from website (language: %s)...", lang_config.name)
     cards = await scrape_cards()
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         upsert_cards(conn, cards)
         set_metadata(conn, "last_sync", _utc_timestamp())
+        set_metadata(conn, "language", lang_config.code)
 
     logger.info("Sync completed. Stored %s cards.", len(cards))
 
@@ -149,6 +156,8 @@ def export_collection(
         filename: Output file path.
         db_path: SQLite database path.
     """
+    lang_config = get_language_config()
+
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         cards = fetch_cards(conn)
@@ -157,11 +166,14 @@ def export_collection(
         raise SystemExit("No cards in database. Run 'kards sync' first.")
 
     if export_format == "xlsx":
-        export_to_xlsx(cards, filename, RUSSIAN_HEADERS)
+        export_to_xlsx(
+            cards, filename, lang_config.export_headers,
+            lang_config.collection_sheet_name,
+        )
     elif export_format == "csv":
-        export_to_csv(cards, filename, RUSSIAN_HEADERS)
+        export_to_csv(cards, filename, lang_config.export_headers)
     elif export_format == "json":
-        export_to_json(cards, filename, LANGUAGE_CODE, LANGUAGE_NAME)
+        export_to_json(cards, filename, lang_config.code, lang_config.name)
     else:
         msg = f"Unsupported format: {export_format}"
         raise ValueError(msg)
@@ -209,6 +221,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
         filename: Path to deck TXT file.
         db_path: SQLite database path.
     """
+    lang_config = get_language_config()
     logger.info("Importing deck from file: %s", filename)
 
     try:
@@ -225,7 +238,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
 
         not_found = []
         for card in deck["cards"]:
-            db_nation = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
+            db_nation = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
             card_id = find_card_id_by_nation_name(conn, db_nation, card["name"])
             if card_id is None:
                 not_found.append(f"{db_nation} / {card['name']}")
@@ -235,7 +248,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
             raise SystemExit(f"Cards not found in collection:\n{lines}")
 
         deck_id = insert_deck(conn, deck)
-        insert_deck_cards(conn, deck_id, deck["cards"], DECK_NATION_TO_DB)
+        insert_deck_cards(conn, deck_id, deck["cards"], lang_config.deck_nation_to_db)
         conn.commit()
 
     logger.info("Deck '%s' imported (%d cards)", deck["name"], len(deck["cards"]))
@@ -281,6 +294,8 @@ def export_deck(
         filename: Output file path.
         db_path: SQLite database path.
     """
+    lang_config = get_language_config()
+
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         deck_meta = _select_deck(conn)
@@ -293,7 +308,13 @@ def export_deck(
         export_deck_to_json(deck_meta, deck_cards, filename)
     else:
         wb = load_workbook(filename)
-        add_deck_sheet(wb, deck_meta, deck_cards)
+        add_deck_sheet(
+            wb, deck_meta, deck_cards,
+            lang_config.deck_headers,
+            lang_config.deck_metadata_labels,
+            lang_config.deck_nation_to_db,
+            lang_config.nation_display_names,
+        )
         wb.save(filename)
 
     logger.info("Deck exported: %s", filename)

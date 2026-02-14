@@ -27,7 +27,8 @@ kards/
 ├── __main__.py         # Entry point for python -m kards
 ├── cli.py              # Typer CLI declarations
 ├── commands.py         # Business logic (sync, export, import, deck)
-├── constants.py        # All constants (URLs, mappings, defaults)
+├── config.py           # Language configuration (LanguageConfig dataclass)
+├── constants.py        # Language-agnostic constants (URLs, mappings, defaults)
 ├── models.py           # TypedDict definitions (CardDict)
 ├── helpers.py          # Utility functions (parse_int, to_text)
 ├── scraping/           # Scraping functionality
@@ -48,10 +49,14 @@ tests/                  # pytest tests
 ```
 
 ## Architecture
+- **Config**: `kards.config` — `LanguageConfig` frozen dataclass with all language-specific data
+  - Registry: `LANGUAGES` dict (`"en"` → `LANGUAGE_EN`, `"ru"` → `LANGUAGE_RU`)
+  - `get_language_config()` reads `config.ini` and returns the active `LanguageConfig`
+  - Commands call `get_language_config()` internally — no language threading through CLI
 - **Scraping**: `kards.scraping` collects GraphQL responses using Playwright
   - `browser.py`: Page automation and API data collection
-  - `localization.py`: Translation loading and text sanitization
-  - `scraper.py`: Parses API responses into card dictionaries
+  - `localization.py`: Translation loading and text sanitization (takes `LanguageConfig`)
+  - `scraper.py`: Parses API responses into card dictionaries (takes `LanguageConfig`)
 - **Storage**: `kards.storage` manages SQLite database
   - CRUD operations with upsert logic
   - Quantity updates by nation/name
@@ -61,6 +66,7 @@ tests/                  # pytest tests
   - CSV with UTF-8 BOM for Windows Excel
   - JSON with metadata
   - Deck export to XLSX sheet and JSON
+  - All headers and labels come from `LanguageConfig`
 - **Import**: `kards.importing` parses deck files
   - TXT deck file parser
 - **CLI**: `kards.cli` provides Typer-based command-line interface
@@ -70,10 +76,11 @@ tests/                  # pytest tests
 - **Commands**: `kards.commands` contains business logic
   - Extracted from cli.py for separation of concerns
   - Functions: `sync_collection`, `export_collection`, `update_collection`, `import_deck`, `export_deck`
+  - Each command loads `LanguageConfig` via `get_language_config()`
 
 ## Code Patterns
-- Use module-level constants from `kards.constants` (avoid duplication)
+- Language-specific data from `kards.config` (`LanguageConfig`), language-agnostic constants from `kards.constants`
 - No emojis in log messages
 - Imports at top of file (not inline in exception handlers)
-- Import from package: `from kards.constants import ...`
+- Import from package: `from kards.config import ...`, `from kards.constants import ...`
 - Type hints using TypedDict from `kards.models`

@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from kards.helpers import parse_int, to_text
-from kards.models import ParsedDeck
+from kards.models import DeckCardEntry, ParsedDeck
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS cards (
@@ -289,7 +289,7 @@ def insert_deck(conn: sqlite3.Connection, deck: ParsedDeck) -> int:
 def insert_deck_cards(
     conn: sqlite3.Connection,
     deck_id: int,
-    cards: list[dict],
+    cards: list[DeckCardEntry],
     nation_map: dict[str, str],
 ) -> None:
     """Insert deck cards, linking each to its card_id.
