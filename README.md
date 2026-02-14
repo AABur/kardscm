@@ -94,7 +94,7 @@ make run-export-deck-json
 - Data is obtained from the official KARDS website.
 - The scrape targets the collection page in the configured language and falls back to English when needed.
 - Deck import requires a synced collection (cards must exist in the database).
-- The "Abilities" field is currently empty — the KARDS API does not expose this data.
+- Card abilities (Blitz, Guard, Fury, etc.) are translated according to the configured language.
 
 ## License
 
