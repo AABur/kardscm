@@ -148,6 +148,7 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[dict[str, str]]) -> N
             nation = excluded.nation,
             type = excluded.type,
             rarity = excluded.rarity,
+            abilities = excluded.abilities,
             set_name = excluded.set_name,
             credits = excluded.credits,
             attack = excluded.attack,

@@ -107,7 +107,11 @@ def build_card(
         "Name": sanitize_text(title),
         "Type": sanitize_text(translate_value("type", str(type_raw), translations)),
         "Rarity": sanitize_text(translate_value("rarity", str(rarity_raw), translations)),
-        "Abilities": "",
+        "Abilities": ", ".join(
+            lang_config.ability_names.get(a, a)
+            for a in json_data.get("attributes", [])
+            if a in lang_config.ability_names
+        ),
         "Set": sanitize_text(translate_value("set", str(set_raw), translations)),
         "Quantity": "",
         "Credits": str(json_data.get("kredits", "")),

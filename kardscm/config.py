@@ -30,6 +30,7 @@ class LanguageConfig:
     deck_headers: list[str] = field(default_factory=list)
     deck_metadata_labels: list[str] = field(default_factory=list)
     collection_sheet_name: str = "Collection"
+    ability_names: dict[str, str] = field(default_factory=dict)
 
 
 LANGUAGE_EN = LanguageConfig(
@@ -87,6 +88,25 @@ LANGUAGE_EN = LanguageConfig(
     deck_headers=["Card", "Type", "Quantity", "Credits", "Attack", "Defense"],
     deck_metadata_labels=["Name", "Major power", "Ally", "HQ", "Code"],
     collection_sheet_name="Collection",
+    ability_names={
+        "alpine": "Alpine",
+        "ambush": "Ambush",
+        "blitz": "Blitz",
+        "bond": "Bond",
+        "covert": "Covert",
+        "fury": "Fury",
+        "guard": "Guard",
+        "heavyArmor1": "Heavy Armor 1",
+        "heavyArmor2": "Heavy Armor 2",
+        "heavyArmor3": "Heavy Armor 3",
+        "intel1": "Intel 1",
+        "intel2": "Intel 2",
+        "intel3": "Intel 3",
+        "mobilize": "Mobilize",
+        "salvage": "Salvage",
+        "shock": "Shock",
+        "smokescreen": "Smokescreen",
+    },
 )
 
 
@@ -150,6 +170,25 @@ LANGUAGE_RU = LanguageConfig(
         "Код",
     ],
     collection_sheet_name="Коллекция",
+    ability_names={
+        "alpine": "Альпийский",
+        "ambush": "Засада",
+        "blitz": "Блиц",
+        "bond": "Узы",
+        "covert": "Скрытность",
+        "fury": "Ярость",
+        "guard": "Охрана",
+        "heavyArmor1": "Тяжёлая броня 1",
+        "heavyArmor2": "Тяжёлая броня 2",
+        "heavyArmor3": "Тяжёлая броня 3",
+        "intel1": "Разведка 1",
+        "intel2": "Разведка 2",
+        "intel3": "Разведка 3",
+        "mobilize": "Моблизация",
+        "salvage": "Утилизауия",
+        "shock": "Штурм",
+        "smokescreen": "Дымовая завеса",
+    },
 )
 
 
