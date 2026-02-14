@@ -84,26 +84,6 @@ make run-export-deck-xlsx
 make run-export-deck-json
 ```
 
-## Deck TXT Format
-
-The input format matches the KARDS client deck export:
-
-```
-Deck Name
-Major power: soviet
-Ally: usa
-HQ: СТАЛИНГРАД
-
-soviet:
-1x (1K) 16-й СТРЕЛКОВЫЙ ПОЛК
-2x (3K) ОТ НАРОДА
-
-usa:
-3x (4K) M4 SHERMAN
-
-%%45|7E8B...
-```
-
 ## Output
 
 - Database: `collection.db` (created on first sync)
@@ -114,7 +94,7 @@ usa:
 - Data is obtained from the official KARDS website.
 - The scrape targets the collection page in the configured language and falls back to English when needed.
 - Deck import requires a synced collection (cards must exist in the database).
-- The "Abilities" / "Способности" field is currently empty — the KARDS API does not expose this data.
+- The "Abilities" field is currently empty — the KARDS API does not expose this data.
 
 ## License
 
