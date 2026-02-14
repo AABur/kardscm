@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kards Scraper - Concept Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #canvas {
+            background: #16213e;
+            cursor: grab;
+            width: 100%;
+            height: 100%;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #1a1a2e;
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            background: #0f3460;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .sidebar-section {
+            padding: 12px 16px;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-section h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.know { background: #4ade80; }
+        .legend-dot.fuzzy { background: #fbbf24; }
+        .legend-dot.unknown { background: #f87171; }
+
+        .presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 6px 12px;
+            background: #0f3460;
+            border: 1px solid #1e5185;
+            border-radius: 4px;
+            color: #eee;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #1e5185;
+        }
+
+        .preset-btn.active {
+            background: #1e5185;
+            border-color: #3b82f6;
+        }
+
+        .nodes-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+
+        .nodes-list h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        .node-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            margin-bottom: 4px;
+            background: #16213e;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .node-item:hover {
+            background: #1e3a5f;
+        }
+
+        .node-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .node-status.know { background: #4ade80; }
+        .node-status.fuzzy { background: #fbbf24; }
+        .node-status.unknown { background: #f87171; }
+
+        .node-name {
+            flex: 1;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .node-category {
+            font-size: 10px;
+            color: #666;
+            padding: 2px 6px;
+            background: #0f3460;
+            border-radius: 3px;
+        }
+
+        .prompt-section {
+            border-top: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            max-height: 40%;
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #0f3460;
+        }
+
+        .prompt-header h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #888;
+        }
+
+        .copy-btn {
+            padding: 4px 10px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #2563eb;
+        }
+
+        .copy-btn.copied {
+            background: #4ade80;
+        }
+
+        #promptOutput {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 12px;
+            line-height: 1.5;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            color: #ccc;
+            background: #16213e;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 8px 12px;
+            background: #0f3460;
+            border: 1px solid #1e5185;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 100;
+            max-width: 200px;
+        }
+
+        .context-menu {
+            position: absolute;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 4px 0;
+            z-index: 200;
+            min-width: 120px;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .context-menu-item:hover {
+            background: #0f3460;
+        }
+
+        .context-menu-item .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .instructions {
+            padding: 8px 16px;
+            background: #0f3460;
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="canvas"></canvas>
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>Kards Scraper</h1>
+                <p>Concept Map - Карта понимания проекта</p>
+            </div>
+
+            <div class="instructions">
+                ПКМ на узле - изменить уровень знания | Перетаскивание - переместить
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Уровни знания</h3>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot know"></div>
+                        <span>Понимаю</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot fuzzy"></div>
+                        <span>Частично</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot unknown"></div>
+                        <span>Не понимаю</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Пресеты</h3>
+                <div class="presets">
+                    <button class="preset-btn active" data-preset="all">Все</button>
+                    <button class="preset-btn" data-preset="overview">Обзор</button>
+                    <button class="preset-btn" data-preset="dataflow">Data Flow</button>
+                    <button class="preset-btn" data-preset="export">Экспорт</button>
+                    <button class="preset-btn" data-preset="browser">Браузер</button>
+                </div>
+            </div>
+
+            <div class="nodes-list">
+                <h3>Компоненты</h3>
+                <div id="nodesList"></div>
+            </div>
+
+            <div class="prompt-section">
+                <div class="prompt-header">
+                    <h3>Промпт для изучения</h3>
+                    <button class="copy-btn" id="copyBtn">Копировать</button>
+                </div>
+                <div id="promptOutput">Отметьте компоненты, которые не понимаете, чтобы сгенерировать промпт.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+    <div class="context-menu" id="contextMenu" style="display: none;">
+        <div class="context-menu-item" data-level="know">
+            <div class="dot" style="background: #4ade80;"></div>
+            Понимаю
+        </div>
+        <div class="context-menu-item" data-level="fuzzy">
+            <div class="dot" style="background: #fbbf24;"></div>
+            Частично
+        </div>
+        <div class="context-menu-item" data-level="unknown">
+            <div class="dot" style="background: #f87171;"></div>
+            Не понимаю
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements - cached for performance
+        const elements = {
+            canvas: document.getElementById('canvas'),
+            tooltip: document.getElementById('tooltip'),
+            contextMenu: document.getElementById('contextMenu'),
+            nodesList: document.getElementById('nodesList'),
+            promptOutput: document.getElementById('promptOutput'),
+            copyBtn: document.getElementById('copyBtn')
+        };
+
+        // Application State
+        const state = {
+            nodes: [],
+            edges: [],
+            visibleNodes: new Set(),
+            dragging: null,
+            dragOffset: { x: 0, y: 0 },
+            contextNode: null,
+            activePreset: 'all'
+        };
+
+        // Knowledge levels in cycle order
+        const KNOWLEDGE_LEVELS = ['unknown', 'fuzzy', 'know'];
+
+        // Node definitions
+        const nodeDefinitions = [
+            // Core modules
+            { id: 'cli', label: 'CLI (main)', category: 'core', description: 'Точка входа, argparse парсер аргументов', level: 'unknown' },
+            { id: 'scraper', label: 'KardsFinalScraper', category: 'core', description: 'Главный класс-оркестратор всей логики', level: 'unknown' },
+            { id: 'translation', label: 'TranslationLoader', category: 'core', description: 'Управление загрузкой переводов с сайта', level: 'unknown' },
+            { id: 'extract', label: 'extract_localized_field', category: 'core', description: 'Извлечение локализованных значений полей', level: 'unknown' },
+
+            // Export functions
+            { id: 'xlsx', label: 'export_to_xlsx', category: 'export', description: 'Экспорт в Excel формат', level: 'unknown' },
+            { id: 'csv', label: 'export_to_csv', category: 'export', description: 'Экспорт в CSV формат', level: 'unknown' },
+            { id: 'json', label: 'export_to_json', category: 'export', description: 'Экспорт в JSON формат', level: 'unknown' },
+
+            // Browser automation
+            { id: 'playwright', label: 'Playwright Browser', category: 'browser', description: 'Автоматизация браузера для загрузки', level: 'unknown' },
+            { id: 'graphql', label: 'GraphQL API', category: 'browser', description: 'Перехват ответов GraphQL API', level: 'unknown' },
+            { id: 'loadcards', label: 'load_all_cards', category: 'browser', description: 'Метод загрузки всех карт через скролл', level: 'unknown' },
+
+            // Data & constants
+            { id: 'languages', label: 'SUPPORTED_LANGUAGES', category: 'data', description: '12 поддерживаемых языков (en, ru, de...)', level: 'unknown' },
+            { id: 'formats', label: 'SUPPORTED_FORMATS', category: 'data', description: 'Форматы экспорта: xlsx, csv, json', level: 'unknown' },
+            { id: 'mappings', label: 'KNOWN_MAPPINGS', category: 'data', description: 'Fallback переводы для полей карт', level: 'unknown' },
+
+            // External dependencies
+            { id: 'website', label: 'KARDS Website', category: 'external', description: 'Источник данных - kards.com', level: 'unknown' },
+            { id: 'openpyxl', label: 'openpyxl', category: 'external', description: 'Библиотека для работы с Excel', level: 'unknown' },
+            { id: 'httpx', label: 'httpx', category: 'external', description: 'HTTP клиент для запросов переводов', level: 'unknown' }
+        ];
+
+        // Edge definitions
+        const edgeDefinitions = [
+            { from: 'cli', to: 'scraper', type: 'creates', label: 'создаёт' },
+            { from: 'scraper', to: 'translation', type: 'uses', label: 'использует' },
+            { from: 'scraper', to: 'playwright', type: 'manages', label: 'управляет' },
+            { from: 'scraper', to: 'xlsx', type: 'calls', label: 'вызывает' },
+            { from: 'scraper', to: 'csv', type: 'calls', label: 'вызывает' },
+            { from: 'scraper', to: 'json', type: 'calls', label: 'вызывает' },
+            { from: 'translation', to: 'httpx', type: 'uses', label: 'использует' },
+            { from: 'translation', to: 'mappings', type: 'uses', label: 'fallback' },
+            { from: 'playwright', to: 'website', type: 'uses', label: 'загружает' },
+            { from: 'playwright', to: 'graphql', type: 'intercepts', label: 'перехватывает' },
+            { from: 'loadcards', to: 'playwright', type: 'uses', label: 'использует' },
+            { from: 'scraper', to: 'extract', type: 'calls', label: 'вызывает' },
+            { from: 'extract', to: 'translation', type: 'uses', label: 'переводит' },
+            { from: 'xlsx', to: 'openpyxl', type: 'uses', label: 'использует' },
+            { from: 'scraper', to: 'languages', type: 'uses', label: 'проверяет' },
+            { from: 'scraper', to: 'formats', type: 'uses', label: 'проверяет' }
+        ];
+
+        // Presets
+        const presets = {
+            all: nodeDefinitions.map(n => n.id),
+            overview: ['cli', 'scraper', 'translation', 'playwright', 'website'],
+            dataflow: ['scraper', 'graphql', 'translation', 'extract', 'mappings', 'website'],
+            export: ['scraper', 'xlsx', 'csv', 'json', 'openpyxl', 'formats'],
+            browser: ['scraper', 'playwright', 'graphql', 'loadcards', 'website']
+        };
+
+        // Colors
+        const levelColors = {
+            know: '#4ade80',
+            fuzzy: '#fbbf24',
+            unknown: '#f87171'
+        };
+
+        const categoryColors = {
+            core: '#3b82f6',
+            export: '#8b5cf6',
+            browser: '#06b6d4',
+            data: '#f59e0b',
+            external: '#6b7280'
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            draw();
+        }
+
+        // Initialize nodes with positions
+        function initNodes() {
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            // Position nodes in logical groups
+            const positions = {
+                cli: { x: centerX - 200, y: 80 },
+                scraper: { x: centerX, y: 150 },
+
+                translation: { x: centerX - 250, y: 280 },
+                extract: { x: centerX - 80, y: 280 },
+
+                playwright: { x: centerX + 150, y: 280 },
+                graphql: { x: centerX + 300, y: 200 },
+                loadcards: { x: centerX + 300, y: 360 },
+
+                xlsx: { x: centerX - 180, y: 420 },
+                csv: { x: centerX, y: 420 },
+                json: { x: centerX + 180, y: 420 },
+
+                languages: { x: 100, y: 150 },
+                formats: { x: 100, y: 220 },
+                mappings: { x: centerX - 350, y: 360 },
+
+                website: { x: centerX + 400, y: 280 },
+                openpyxl: { x: centerX - 280, y: 500 },
+                httpx: { x: centerX - 380, y: 280 }
+            };
+
+            state.nodes = nodeDefinitions.map(def => ({
+                ...def,
+                x: positions[def.id]?.x || centerX,
+                y: positions[def.id]?.y || centerY,
+                width: 140,
+                height: 50
+            }));
+
+            state.edges = edgeDefinitions;
+            state.visibleNodes = new Set(presets.all);
+        }
+
+        // Drawing functions
+        function draw() {
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw edges
+            state.edges.forEach(edge => {
+                if (state.visibleNodes.has(edge.from) && state.visibleNodes.has(edge.to)) {
+                    drawEdge(edge);
+                }
+            });
+
+            // Draw nodes
+            state.nodes.forEach(node => {
+                if (state.visibleNodes.has(node.id)) {
+                    drawNode(node);
+                }
+            });
+        }
+
+        function drawNode(node) {
+            const { x, y, width, height, label, level, category } = node;
+
+            // Shadow
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            // Background
+            ctx.fillStyle = '#1e3a5f';
+            ctx.beginPath();
+            ctx.roundRect(x - width/2, y - height/2, width, height, 8);
+            ctx.fill();
+
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+
+            // Border with level color
+            ctx.strokeStyle = levelColors[level];
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Category indicator
+            ctx.fillStyle = categoryColors[category];
+            ctx.beginPath();
+            ctx.arc(x - width/2 + 12, y - height/2 + 12, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Label
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // Wrap text if needed
+            const words = label.split(' ');
+            if (words.length > 1 && ctx.measureText(label).width > width - 20) {
+                ctx.fillText(words[0], x, y - 8);
+                ctx.fillText(words.slice(1).join(' '), x, y + 8);
+            } else {
+                ctx.fillText(label, x, y);
+            }
+        }
+
+        function drawEdge(edge) {
+            const fromNode = state.nodes.find(n => n.id === edge.from);
+            const toNode = state.nodes.find(n => n.id === edge.to);
+            if (!fromNode || !toNode) return;
+
+            // Calculate edge points
+            const dx = toNode.x - fromNode.x;
+            const dy = toNode.y - fromNode.y;
+            const angle = Math.atan2(dy, dx);
+
+            const startX = fromNode.x + Math.cos(angle) * (fromNode.width / 2);
+            const startY = fromNode.y + Math.sin(angle) * (fromNode.height / 2);
+            const endX = toNode.x - Math.cos(angle) * (toNode.width / 2 + 10);
+            const endY = toNode.y - Math.sin(angle) * (toNode.height / 2 + 10);
+
+            // Draw line
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Draw arrow
+            const arrowSize = 8;
+            ctx.fillStyle = '#4a5568';
+            ctx.beginPath();
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+                endX - arrowSize * Math.cos(angle - Math.PI / 6),
+                endY - arrowSize * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.lineTo(
+                endX - arrowSize * Math.cos(angle + Math.PI / 6),
+                endY - arrowSize * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Interaction handlers
+        function getNodeAt(x, y) {
+            return state.nodes.find(node => {
+                if (!state.visibleNodes.has(node.id)) return false;
+                return x >= node.x - node.width/2 &&
+                       x <= node.x + node.width/2 &&
+                       y >= node.y - node.height/2 &&
+                       y <= node.y + node.height/2;
+            });
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const node = getNodeAt(x, y);
+            if (node && e.button === 0) {
+                state.dragging = node;
+                state.offset = { x: x - node.x, y: y - node.y };
+                canvas.style.cursor = 'grabbing';
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (state.dragging) {
+                state.dragging.x = x - state.offset.x;
+                state.dragging.y = y - state.offset.y;
+                draw();
+            } else {
+                const node = getNodeAt(x, y);
+                if (node) {
+                    showTooltip(e.clientX, e.clientY, node.description);
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    hideTooltip();
+                    canvas.style.cursor = 'grab';
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            state.dragging = null;
+            canvas.style.cursor = 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            state.dragging = null;
+            hideTooltip();
+        });
+
+        // Context menu
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const node = getNodeAt(x, y);
+            if (node) {
+                state.contextNode = node;
+                showContextMenu(e.clientX, e.clientY);
+            }
+        });
+
+        function showContextMenu(x, y) {
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'block';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        }
+
+        function hideContextMenu() {
+            document.getElementById('contextMenu').style.display = 'none';
+            state.contextNode = null;
+        }
+
+        document.querySelectorAll('.context-menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (state.contextNode) {
+                    state.contextNode.level = item.dataset.level;
+                    draw();
+                    updateNodesList();
+                    updatePrompt();
+                }
+                hideContextMenu();
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                hideContextMenu();
+            }
+        });
+
+        // Tooltip
+        function showTooltip(x, y, text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (x + 15) + 'px';
+            tooltip.style.top = (y + 15) + 'px';
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        // Sidebar functionality - using safe DOM methods
+        function updateNodesList() {
+            const container = document.getElementById('nodesList');
+            // Clear container safely
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            const categories = {
+                core: 'Основные модули',
+                export: 'Экспорт',
+                browser: 'Браузер',
+                data: 'Данные',
+                external: 'Внешние'
+            };
+
+            Object.entries(categories).forEach(([cat, label]) => {
+                const catNodes = state.nodes.filter(n => n.category === cat && state.visibleNodes.has(n.id));
+                if (catNodes.length === 0) return;
+
+                const header = document.createElement('div');
+                header.style.cssText = 'font-size: 11px; color: #666; margin: 12px 0 6px; text-transform: uppercase;';
+                header.textContent = label;
+                container.appendChild(header);
+
+                catNodes.forEach(node => {
+                    const item = document.createElement('div');
+                    item.className = 'node-item';
+
+                    const status = document.createElement('div');
+                    status.className = 'node-status ' + node.level;
+
+                    const name = document.createElement('div');
+                    name.className = 'node-name';
+                    name.textContent = node.label;
+
+                    item.appendChild(status);
+                    item.appendChild(name);
+
+                    item.addEventListener('click', () => {
+                        // Cycle through levels
+                        const levels = ['unknown', 'fuzzy', 'know'];
+                        const idx = levels.indexOf(node.level);
+                        node.level = levels[(idx + 1) % 3];
+                        draw();
+                        updateNodesList();
+                        updatePrompt();
+                    });
+                    container.appendChild(item);
+                });
+            });
+        }
+
+        // Presets
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const preset = btn.dataset.preset;
+                state.activePreset = preset;
+                state.visibleNodes = new Set(presets[preset]);
+                draw();
+                updateNodesList();
+                updatePrompt();
+            });
+        });
+
+        // Prompt generation
+        function updatePrompt() {
+            const know = [];
+            const fuzzy = [];
+            const unknown = [];
+
+            state.nodes.forEach(node => {
+                if (!state.visibleNodes.has(node.id)) return;
+                if (node.level === 'know') know.push(node.label);
+                else if (node.level === 'fuzzy') fuzzy.push(node.label);
+                else unknown.push(node.label);
+            });
+
+            // Find relevant edges
+            const relevantEdges = state.edges.filter(edge => {
+                if (!state.visibleNodes.has(edge.from) || !state.visibleNodes.has(edge.to)) return false;
+                const fromNode = state.nodes.find(n => n.id === edge.from);
+                const toNode = state.nodes.find(n => n.id === edge.to);
+                return fromNode.level !== 'know' || toNode.level !== 'know';
+            });
+
+            if (unknown.length === 0 && fuzzy.length === 0) {
+                document.getElementById('promptOutput').textContent =
+                    'Вы отметили все компоненты как понятные. Отлично!\n\nКликните на компонент в списке или ПКМ на узле, чтобы изменить уровень понимания.';
+                return;
+            }
+
+            let prompt = 'Я изучаю проект Kards Scraper.\n\n';
+
+            if (know.length > 0) {
+                prompt += 'Понимаю:\n' + know.map(n => '- ' + n).join('\n') + '\n\n';
+            }
+
+            if (fuzzy.length > 0) {
+                prompt += 'Частично понимаю:\n' + fuzzy.map(n => '- ' + n).join('\n') + '\n\n';
+            }
+
+            if (unknown.length > 0) {
+                prompt += 'Не понимаю:\n' + unknown.map(n => '- ' + n).join('\n') + '\n\n';
+            }
+
+            if (relevantEdges.length > 0) {
+                prompt += 'Связи для изучения:\n';
+                relevantEdges.forEach(edge => {
+                    const from = state.nodes.find(n => n.id === edge.from).label;
+                    const to = state.nodes.find(n => n.id === edge.to).label;
+                    prompt += '- ' + from + ' → ' + to + ' (' + edge.label + ')\n';
+                });
+                prompt += '\n';
+            }
+
+            prompt += 'Объясни непонятные компоненты, опираясь на то, что я уже знаю.\n';
+            prompt += 'Используй конкретные ссылки на код (файлы, строки).';
+
+            document.getElementById('promptOutput').textContent = prompt;
+        }
+
+        // Copy button
+        document.getElementById('copyBtn').addEventListener('click', async () => {
+            const text = document.getElementById('promptOutput').textContent;
+            try {
+                await navigator.clipboard.writeText(text);
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = 'Скопировано!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Копировать';
+                    btn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        initNodes();
+        resizeCanvas();
+        updateNodesList();
+        updatePrompt();
+    </script>
+</body>
+</html>

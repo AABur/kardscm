@@ -1,165 +1,83 @@
-# KARDS Card Scraper
+# KARDS Card Collection
 
-Скрейпер для извлечения списка всех карт из [KARDS](https://www.kards.com/ru/decks/collection) и экспорта в Excel формат для импорта в Google Sheets.
+Sync the official KARDS card catalog (Russian) into SQLite and export it to XLSX, CSV, or JSON.
 
-## 📋 Возможности
+## Features
 
-- ✅ Автоматическая загрузка всех 860+ карт с сайта KARDS
-- ✅ Извлечение полной информации о каждой карте:
-  - Название карты (на русском языке)
-  - Страна/Фракция
-  - Тип карты (Unit, Order, Countermeasure)
-  - Стоимость в кредитах
-  - Редкость (Standard, Limited, Special, Elite, Rare)
-  - Атака и Защита (для юнитов)
-  - Набор (Set)
-  - Описание эффекта
-- ✅ Экспорт в формат Excel (.xlsx)
-- ✅ Готовый для импорта в Google Sheets
+- Russian-only scrape with English fallback when Russian text is missing.
+- SQLite storage with upsert on sync (`collection.db`).
+- Export to `xlsx`, `csv`, `json` with Russian headers.
+- Stable, reproducible exports.
 
-## 🛠️ Требования
+## Requirements
 
-- Python 3.9+
-- pip
+- Python 3.12+
+- uv
 
-## 📦 Установка
+## Quick Start
 
-### 1. Создание виртуального окружения
+### 1. Install dependencies
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # macOS/Linux
-# или
-venv\Scripts\activate  # Windows
+uv sync
+uv run python -m playwright install chromium
 ```
 
-### 2. Установка зависимостей
+### 2. Sync catalog into SQLite
 
 ```bash
-pip install -r requirements.txt
-playwright install chromium
+uv run python collection.py --sync
 ```
 
-## 🚀 Использование
-
-Запуск скрейпера (основная версия - рекомендуется):
+### 3. Export from SQLite
 
 ```bash
-source venv/bin/activate
-python kards_final_scraper.py
+# XLSX
+uv run python collection.py --export --format xlsx --file kards_cards_ru.xlsx
+
+# CSV
+uv run python collection.py --export --format csv --file kards_cards_ru.csv
+
+# JSON
+uv run python collection.py --export --format json --file kards_cards_ru.json
 ```
 
-После завершения работы скрипта будет создан файл `kards_cards.xlsx` со всеми картами.
+## CLI
 
-### Другие версии скрейпера
+- `--sync` — fetch cards from the website and update `collection.db`.
+- `--export --format <csv|json|xlsx> --file <path>` — export data from SQLite.
 
-Существует несколько версий скрейпера для разных подходов:
+## Output
 
-- **`kards_final_scraper.py`** (РЕКОМЕНДУЕТСЯ) - Использует GraphQL API для получения данных, наиболее надёжная версия
-- `kards_scraper.py` - Первая версия, парсит DOM элементы
-- `kards_scraper_v2.py` - Вторая версия, извлекает карты по мере загрузки
-- `kards_api_scraper.py` - Версия с перехватом API запросов
+- Database: `collection.db` (created on first sync)
+- Exports: file specified via `--file`
 
-## 📥 Импорт в Google Sheets
+Note: `Quantity` and `Abilities` are kept empty for now.
 
-### Способ 1: Прямой импорт
-
-1. Откройте [Google Drive](https://drive.google.com)
-2. Нажмите "Создать" → "Загрузить файл"
-3. Выберите файл `kards_cards.xlsx`
-4. Откройте файл с помощью Google Sheets
-5. Google автоматически преобразует Excel в таблицу Sheets
-
-### Способ 2: Открыть как Google Sheets
-
-1. Откройте файл `kards_cards.xlsx` на компьютере
-2. Перетащите его в [Google Drive](https://drive.google.com)
-3. Дважды нажмите на файл → "Открыть"
-4. Выберите "Google Sheets" из меню
-
-## 📊 Структура Excel файла
-
-Файл `kards_cards.xlsx` содержит следующие колонки:
-
-| Колонка | Описание |
-|---------|---------|
-| Название | Название карты (на русском) |
-| Страна | Фракция/Страна (Germany, Britain, Soviet Union, Japan, USA) |
-| Тип | Тип карты (Infantry, Armor, Aviation, Support, Order) |
-| Стоимость | Стоимость в кредитах (kredits) |
-| Редкость | Редкость карты (Standard, Limited, Special, Elite, Rare) |
-| Атака | Значение атаки (для юнитов) |
-| Защита | Значение защиты (для юнитов) |
-| Набор | Набор, к которому принадлежит карта |
-| Описание | Полное описание эффекта карты на русском языке |
-
-## 🔍 Особенности
-
-### Обработка данных
-
-- ✅ Автоматическое устранение дубликатов
-- ✅ Сортировка карт по названию
-- ✅ Форматирование Excel:
-  - Заголовки выделены синим цветом
-  - Первая строка зафиксирована (freeze panes)
-  - Применены фильтры к колонкам
-  - Автоматическое выравнивание ширины колонок
-
-### Браузер
-
-- Использует Chromium (автоматически загружается при первом запуске)
-- Работает в headless режиме (без интерфейса)
-- Автоматически перехватывает API запросы
-
-## ⚙️ Требования файлов
+## Project Structure
 
 ```
-requirements.txt          - Список зависимостей Python
-kards_final_scraper.py   - Основной скрейпер (рекомендуется)
-kards_scraper.py         - Альтернативная версия 1
-kards_scraper_v2.py      - Альтернативная версия 2
-kards_api_scraper.py     - Альтернативная версия 3 (с перехватом API)
+collection.py   - CLI entrypoint (sync/export)
+scrape.py       - scraping and translation helpers
+storage.py      - SQLite schema and queries
+exporters.py    - export helpers (xlsx/csv/json)
+tests/          - pytest suites
 ```
 
-## 📈 Статус выполнения
-
-- ✅ Все 860 карт извлечены из API
-- ✅ Данные экспортированы в Excel
-- ✅ Файл готов для импорта в Google Sheets
-
-## 🐛 Решение проблем
-
-### Ошибка: "Cannot find module './yoga.wasm'"
-
-Переустановите Playwright:
+## Development
 
 ```bash
-pip uninstall playwright
-pip install playwright
-playwright install chromium
+# Install dev tools
+uv sync --all-extras
+
+# Code quality
+make format
+make lint
+make typecheck
+make test
 ```
 
-### Браузер не загружается
+## Notes
 
-Проверьте, что у вас достаточно места на диске и работает интернет соединение.
-
-### Скрейпер зависает
-
-Вы можете остановить его с помощью `Ctrl+C`. Частично загруженные данные не будут сохранены.
-
-## 📝 Примечания
-
-- Скрейпер уважает ограничения сервера и использует стандартные задержки между запросами
-- Используется GraphQL API для получения наиболее надежных данных
-- Все данные получены с официального сайта KARDS
-
-## 📄 Лицензия
-
-Этот проект создан для личного использования в образовательных целях.
-
-## 🔗 Ссылки
-
-- [KARDS - Официальный сайт](https://www.kards.com)
-- [KARDS Коллекция карт](https://www.kards.com/ru/decks/collection)
-- [Документация Playwright](https://playwright.dev/)
-- [Документация openpyxl](https://openpyxl.readthedocs.io/)
+- Data is obtained from the official KARDS website.
+- The scrape targets the Russian collection page and falls back to English when needed.

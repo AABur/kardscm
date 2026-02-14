@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATHS\" | grep -E '\\.py$' && uv run ruff check --fix $CLAUDE_FILE_PATHS && uv run ruff format $CLAUDE_FILE_PATHS || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATHS\" | grep -qE '\\.env' && echo 'BLOCKED: Cannot edit .env files' && exit 1 || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

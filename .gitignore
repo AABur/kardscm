@@ -47,3 +47,24 @@ api_responses.txt
 debug_page_structure.py
 inspect_page.py
 inspect_after_load.py
+
+# Output files
+kards_cards*.xlsx
+kards_cards*.csv
+kards_cards*.json
+kards_collection*.xlsx
+~$*.xlsx
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Claude Code
+.claude/settings.local.json
+.serena/
+
+# Local artifacts
+collection.db
