@@ -3,7 +3,7 @@ requires = ["setuptools>=45"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kards-manager"
+name = "kardscm"
 version = "0.2.0"
 description = "KARDS Manager for player collection and decks with multi-format export"
 readme = "README.md"
@@ -26,11 +26,11 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/AABur/Kards"
-Issues = "https://github.com/AABur/Kards/issues"
+Repository = "https://github.com/AABur/kardscm"
+Issues = "https://github.com/AABur/kardscm/issues"
 
 [project.scripts]
-kards = "kards.cli:run"
+kardscm = "kardscm.cli:run"
 
 [project.optional-dependencies]
 dev = [
@@ -42,7 +42,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["kards"]
+packages = ["kardscm"]
 
 [tool.ruff]
 line-length = 100
@@ -53,7 +53,7 @@ select = ["E", "F", "I", "N", "W", "UP"]
 ignore = []
 
 [tool.ruff.lint.isort]
-known-first-party = ["kards"]
+known-first-party = ["kardscm"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -65,4 +65,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-v --cov=kards --cov-report=term-missing"
+addopts = "-v --cov=kardscm --cov-report=term-missing"

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from kards.storage import (
+from kardscm.storage import (
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,

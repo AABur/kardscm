@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from kards.constants import DECK_CARD_PATTERN, DECK_METADATA_KEYS
-from kards.models import DeckCardEntry, ParsedDeck
+from kardscm.constants import DECK_CARD_PATTERN, DECK_METADATA_KEYS
+from kardscm.models import DeckCardEntry, ParsedDeck
 
 _CARD_RE = re.compile(DECK_CARD_PATTERN)
 

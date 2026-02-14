@@ -1,4 +1,4 @@
-# KARDS Manager
+# KARDS Collection Manager
 
 Manager for [KARDS](https://www.kards.com/) card game player collection and decks.
 Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.

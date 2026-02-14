@@ -11,8 +11,8 @@ from typing import Annotated
 
 import typer
 
-from kards import __version__
-from kards.commands import (
+from kardscm import __version__
+from kardscm.commands import (
     export_collection,
     export_deck,
     import_deck,

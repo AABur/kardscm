@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from typer.testing import CliRunner
 
-from kards.cli import app
+from kardscm.cli import app
 
 runner = CliRunner()
 
@@ -25,7 +25,7 @@ def test_version_flag() -> None:
 
 
 def test_sync_command() -> None:
-    with patch("kards.cli.sync_collection", new_callable=AsyncMock) as mock_sync:
+    with patch("kardscm.cli.sync_collection", new_callable=AsyncMock) as mock_sync:
         result = runner.invoke(app, ["sync"])
     assert result.exit_code == 0
     mock_sync.assert_called_once()
@@ -48,7 +48,7 @@ def test_export_rejects_invalid_format() -> None:
 
 
 def test_export_valid() -> None:
-    with patch("kards.cli.export_collection") as mock_export:
+    with patch("kardscm.cli.export_collection") as mock_export:
         result = runner.invoke(app, ["export", "--format", "csv", "--file", "out.csv"])
     assert result.exit_code == 0
     args = mock_export.call_args[0]
@@ -64,7 +64,7 @@ def test_update_requires_file() -> None:
 def test_update_uses_input_flag(tmp_path: Path) -> None:
     xlsx_file = tmp_path / "cards.xlsx"
     xlsx_file.write_bytes(b"")
-    with patch("kards.cli.update_collection"):
+    with patch("kardscm.cli.update_collection"):
         result = runner.invoke(app, ["update", "-i", str(xlsx_file)])
     assert result.exit_code != 0 or "-i" not in result.output
 

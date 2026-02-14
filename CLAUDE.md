@@ -2,17 +2,17 @@
 
 ## Environment
 - Python managed via `uv` (not pip directly)
-- Package name: `kards-manager` (version 0.2.0)
-- Entry points: `python -m kards` or `kards` (console script)
+- Package name: `kardscm` (version 0.2.0)
+- Entry points: `python -m kardscm` or `kardscm` (console script)
 - Tests: `uv run pytest` or `make test`
 
 ## Usage Commands
-- Sync: `uv run kards sync`
-- Export: `uv run kards export --format xlsx --file cards.xlsx`
-- Update: `uv run kards update --file cards.xlsx`
-- Import deck: `uv run kards deck import --file deck.txt`
-- Export deck: `uv run kards deck export --format xlsx --file deck.xlsx`
-- Short form: `uv run python -m kards sync`
+- Sync: `uv run kardscm sync`
+- Export: `uv run kardscm export --format xlsx --file cards.xlsx`
+- Update: `uv run kardscm update --file cards.xlsx`
+- Import deck: `uv run kardscm deck import --file deck.txt`
+- Export deck: `uv run kardscm deck export --format xlsx --file deck.xlsx`
+- Short form: `uv run python -m kardscm sync`
 
 ## Useful Commands
 - `make help` — list available commands
@@ -22,9 +22,9 @@
 
 ## Project Structure
 ```
-kards/
+kardscm/
 ├── __init__.py         # Package initialization (__version__)
-├── __main__.py         # Entry point for python -m kards
+├── __main__.py         # Entry point for python -m kardscm
 ├── cli.py              # Typer CLI declarations
 ├── commands.py         # Business logic (sync, export, import, deck)
 ├── config.py           # Language configuration (LanguageConfig dataclass)
@@ -49,38 +49,38 @@ tests/                  # pytest tests
 ```
 
 ## Architecture
-- **Config**: `kards.config` — `LanguageConfig` frozen dataclass with all language-specific data
+- **Config**: `kardscm.config` — `LanguageConfig` frozen dataclass with all language-specific data
   - Registry: `LANGUAGES` dict (`"en"` → `LANGUAGE_EN`, `"ru"` → `LANGUAGE_RU`)
   - `get_language_config()` reads `config.ini` and returns the active `LanguageConfig`
   - Commands call `get_language_config()` internally — no language threading through CLI
-- **Scraping**: `kards.scraping` collects GraphQL responses using Playwright
+- **Scraping**: `kardscm.scraping` collects GraphQL responses using Playwright
   - `browser.py`: Page automation and API data collection
   - `localization.py`: Translation loading and text sanitization (takes `LanguageConfig`)
   - `scraper.py`: Parses API responses into card dictionaries (takes `LanguageConfig`)
-- **Storage**: `kards.storage` manages SQLite database
+- **Storage**: `kardscm.storage` manages SQLite database
   - CRUD operations with upsert logic
   - Quantity updates by nation/name
   - Deck storage (schema, insert/fetch for decks and deck cards)
-- **Export**: `kards.export` writes formatted files
+- **Export**: `kardscm.export` writes formatted files
   - Excel (XLSX) with styling and filters
   - CSV with UTF-8 BOM for Windows Excel
   - JSON with metadata
   - Deck export to XLSX sheet and JSON
   - All headers and labels come from `LanguageConfig`
-- **Import**: `kards.importing` parses deck files
+- **Import**: `kardscm.importing` parses deck files
   - TXT deck file parser
-- **CLI**: `kards.cli` provides Typer-based command-line interface
-  - Console script: `kards`
-  - Module entry: `python -m kards`
+- **CLI**: `kardscm.cli` provides Typer-based command-line interface
+  - Console script: `kardscm`
+  - Module entry: `python -m kardscm`
   - Commands: `sync`, `export`, `update`, `deck import`, `deck export`
-- **Commands**: `kards.commands` contains business logic
+- **Commands**: `kardscm.commands` contains business logic
   - Extracted from cli.py for separation of concerns
   - Functions: `sync_collection`, `export_collection`, `update_collection`, `import_deck`, `export_deck`
   - Each command loads `LanguageConfig` via `get_language_config()`
 
 ## Code Patterns
-- Language-specific data from `kards.config` (`LanguageConfig`), language-agnostic constants from `kards.constants`
+- Language-specific data from `kardscm.config` (`LanguageConfig`), language-agnostic constants from `kardscm.constants`
 - No emojis in log messages
 - Imports at top of file (not inline in exception handlers)
-- Import from package: `from kards.config import ...`, `from kards.constants import ...`
-- Type hints using TypedDict from `kards.models`
+- Import from package: `from kardscm.config import ...`, `from kardscm.constants import ...`
+- Type hints using TypedDict from `kardscm.models`

@@ -6,8 +6,8 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from kards.helpers import parse_int, to_text
-from kards.models import DeckCardEntry, ParsedDeck
+from kardscm.helpers import parse_int, to_text
+from kardscm.models import DeckCardEntry, ParsedDeck
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS cards (

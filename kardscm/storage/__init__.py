@@ -1,6 +1,6 @@
 """Storage subpackage for card database management."""
 
-from kards.storage.database import (
+from kardscm.storage.database import (
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,

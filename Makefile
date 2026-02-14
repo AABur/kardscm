@@ -25,7 +25,7 @@ sync-dev: ## Sync all dependencies including dev tools
 	@echo "All dependencies synced successfully!"
 
 test: ## Run tests with pytest
-	@$(UV) run pytest tests/ -v --cov=kards --cov-report=term-missing
+	@$(UV) run pytest tests/ -v --cov=kardscm --cov-report=term-missing
 
 lint: ## Run ruff linter
 	@$(UV) run ruff check .
@@ -34,33 +34,33 @@ format: ## Format code with ruff
 	@$(UV) run ruff format .
 
 typecheck: ## Run mypy type checker
-	@$(UV) run mypy kards/
+	@$(UV) run mypy kardscm/
 
 check: format lint typecheck test ## Run all checks (requires sync first!)
 
 run-sync: ## Sync cards into SQLite
-	@$(UV) run python -m kards sync
+	@$(UV) run python -m kardscm sync
 
 run-update: ## Update card quantities from XLSX file
-	@$(UV) run python -m kards update --file kards_cards_ru.xlsx
+	@$(UV) run python -m kardscm update --file kards_cards_ru.xlsx
 
 run-export-xlsx: ## Export cards to XLSX
-	@$(UV) run python -m kards export --format xlsx --file kards_cards_ru.xlsx
+	@$(UV) run python -m kardscm export --format xlsx --file kards_cards_ru.xlsx
 
 run-export-csv: ## Export cards to CSV
-	@$(UV) run python -m kards export --format csv --file kards_cards_ru.csv
+	@$(UV) run python -m kardscm export --format csv --file kards_cards_ru.csv
 
 run-export-json: ## Export cards to JSON
-	@$(UV) run python -m kards export --format json --file kards_cards_ru.json
+	@$(UV) run python -m kardscm export --format json --file kards_cards_ru.json
 
 run-import-deck: ## Import deck from TXT file
-	@$(UV) run python -m kards deck import --file $(FILE)
+	@$(UV) run python -m kardscm deck import --file $(FILE)
 
 run-export-deck-xlsx: ## Export deck as sheet in existing XLSX
-	@$(UV) run python -m kards deck export --format xlsx --file kards_cards_ru.xlsx
+	@$(UV) run python -m kardscm deck export --format xlsx --file kards_cards_ru.xlsx
 
 run-export-deck-json: ## Export deck to JSON file
-	@$(UV) run python -m kards deck export --format json --file deck.json
+	@$(UV) run python -m kardscm deck export --format json --file deck.json
 
 clean: ## Clean cache and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

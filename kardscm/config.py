@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from kards.constants import BASE_URL
+from kardscm.constants import BASE_URL
 
 logger = logging.getLogger(__name__)
 

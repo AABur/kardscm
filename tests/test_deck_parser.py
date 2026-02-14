@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from kards.importing.parser import parse_deck_file
+from kardscm.importing.parser import parse_deck_file
 
 EXAMPLE_DECK_CONTENT = """\
 Советская колода

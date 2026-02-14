@@ -7,8 +7,8 @@ import re
 
 import httpx
 
-from kards.config import LanguageConfig
-from kards.constants import BASE_URL, KNOWN_MAPPINGS
+from kardscm.config import LanguageConfig
+from kardscm.constants import BASE_URL, KNOWN_MAPPINGS
 
 logger = logging.getLogger(__name__)
 

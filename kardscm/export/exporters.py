@@ -11,8 +11,8 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
-from kards.constants import DECK_COLUMN_WIDTHS, EXPORT_FIELD_NAMES
-from kards.helpers import parse_int
+from kardscm.constants import DECK_COLUMN_WIDTHS, EXPORT_FIELD_NAMES
+from kardscm.helpers import parse_int
 
 logger = logging.getLogger(__name__)
 

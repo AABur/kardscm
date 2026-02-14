@@ -9,19 +9,19 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from kards.config import get_language_config
-from kards.constants import DEFAULT_DB_PATH
-from kards.export import (
+from kardscm.config import get_language_config
+from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.export import (
     add_deck_sheet,
     export_deck_to_json,
     export_to_csv,
     export_to_json,
     export_to_xlsx,
 )
-from kards.helpers import parse_int
-from kards.importing import parse_deck_file
-from kards.scraping import scrape_cards
-from kards.storage import (
+from kardscm.helpers import parse_int
+from kardscm.importing import parse_deck_file
+from kardscm.scraping import scrape_cards
+from kardscm.storage import (
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,

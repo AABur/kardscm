@@ -223,7 +223,7 @@ wheels = [
 ]
 
 [[package]]
-name = "kards-manager"
+name = "kardscm"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

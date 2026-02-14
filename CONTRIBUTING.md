@@ -20,23 +20,23 @@ make check        # all of the above
 
 ## CLI Reference
 
-The CLI is built with [Typer](https://typer.tiangolo.com/). Entry points: `kards` (console script) or `python -m kards`.
+The CLI is built with [Typer](https://typer.tiangolo.com/). Entry points: `kardscm` (console script) or `python -m kardscm`.
 
 | Command | Description |
 |---------|-------------|
-| `kards sync` | Fetch cards from the website and update `collection.db` |
-| `kards export --format <csv\|json\|xlsx> --file <path>` | Export collection from SQLite |
-| `kards update --file <path>` | Update card quantities from XLSX file |
-| `kards deck import --file <path>` | Import deck from TXT file into database |
-| `kards deck export --format xlsx --file <path>` | Export deck to XLSX sheet (interactive selection) |
-| `kards deck export --format json --file <path>` | Export deck to JSON (interactive selection) |
+| `kardscm sync` | Fetch cards from the website and update `collection.db` |
+| `kardscm export --format <csv\|json\|xlsx> --file <path>` | Export collection from SQLite |
+| `kardscm update --file <path>` | Update card quantities from XLSX file |
+| `kardscm deck import --file <path>` | Import deck from TXT file into database |
+| `kardscm deck export --format xlsx --file <path>` | Export deck to XLSX sheet (interactive selection) |
+| `kardscm deck export --format json --file <path>` | Export deck to JSON (interactive selection) |
 
 ## Project Structure
 
 ```
-kards/
+kardscm/
 ├── __init__.py         # Package initialization
-├── __main__.py         # Entry point (python -m kards)
+├── __main__.py         # Entry point (python -m kardscm)
 ├── config.py           # Language configuration (LanguageConfig dataclass)
 ├── cli.py              # Typer CLI declarations
 ├── commands.py         # Business logic (sync, export, import, deck)
@@ -69,7 +69,7 @@ config.ini.example      # Language configuration template
 
 ## Language System
 
-All language-specific data lives in `kards/config.py` as `LanguageConfig` instances.
+All language-specific data lives in `kardscm/config.py` as `LanguageConfig` instances.
 
 Each `LanguageConfig` contains:
 - `code` / `name` — language identifier and display name
@@ -83,13 +83,13 @@ Each `LanguageConfig` contains:
 - `deck_headers` / `deck_metadata_labels` — deck export labels
 - `collection_sheet_name` — XLSX worksheet title
 
-Language-agnostic constants (KNOWN_MAPPINGS, EXPORT_FIELD_NAMES, DECK_CARD_PATTERN, etc.) remain in `kards/constants.py`.
+Language-agnostic constants (KNOWN_MAPPINGS, EXPORT_FIELD_NAMES, DECK_CARD_PATTERN, etc.) remain in `kardscm/constants.py`.
 
 ### Adding a New Language
 
 To add support for a new language (e.g. German):
 
-1. Open `kards/config.py`
+1. Open `kardscm/config.py`
 2. Create a new `LanguageConfig` instance:
 
 ```python

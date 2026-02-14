@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from kards.commands import export_collection
-from kards.config import LANGUAGE_RU
-from kards.export import add_deck_sheet, export_deck_to_json
+from kardscm.commands import export_collection
+from kardscm.config import LANGUAGE_RU
+from kardscm.export import add_deck_sheet, export_deck_to_json
 
 
 def test_export_requires_data(tmp_path: Path) -> None:

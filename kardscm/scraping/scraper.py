@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from kards.config import LanguageConfig, get_language_config
-from kards.scraping.browser import collect_api_data
-from kards.scraping.localization import (
+from kardscm.config import LanguageConfig, get_language_config
+from kardscm.scraping.browser import collect_api_data
+from kardscm.scraping.localization import (
     extract_localized_field,
     load_translations,
     sanitize_text,
