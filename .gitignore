@@ -43,6 +43,16 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Local artifacts
+config.ini
+collection.db
+tmp/
+
+# Playwright MCP
+.playwright-mcp/
+
 # Claude Code
 .claude/settings.local.json
+.claude/agents/
+.claude/skills/
 .serena/

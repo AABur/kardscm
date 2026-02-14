@@ -112,6 +112,7 @@ usa:
 - Data is obtained from the official KARDS website.
 - The scrape targets the collection page in the configured language and falls back to English when needed.
 - Deck import requires a synced collection (cards must exist in the database).
+- The "Abilities" / "Способности" field is currently empty — the KARDS API does not expose this data.
 
 ## License
 

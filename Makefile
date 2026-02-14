@@ -1,4 +1,4 @@
-.PHONY: help install sync test lint format check run-sync run-update run-export-json run-export-csv run-export-xlsx run-import-deck run-export-deck-xlsx run-export-deck-json clean
+.PHONY: help sync test lint format check run-sync run-update run-export-json run-export-csv run-export-xlsx run-import-deck run-export-deck-xlsx run-export-deck-json clean
 
 .DEFAULT_GOAL := help
 
@@ -23,8 +23,6 @@ sync-dev: ## Sync all dependencies including dev tools
 	@echo "Installing Chromium for Playwright..."
 	@$(UV) run python -m playwright install chromium
 	@echo "All dependencies synced successfully!"
-
-install: sync ## Alias for sync (deprecated, use 'make sync')
 
 test: ## Run tests with pytest
 	@$(UV) run pytest tests/ -v --cov=kards --cov-report=term-missing
