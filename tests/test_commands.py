@@ -1,0 +1,497 @@
+"""Tests for kardscm.commands business logic."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from kardscm.commands import (
+    _read_xlsx_quantities,
+    _select_deck,
+    export_collection,
+    export_deck,
+    import_deck,
+    sync_collection,
+    update_collection,
+    validate_file,
+)
+
+
+class TestValidateFile:
+    def test_correct_ext(self):
+        result = validate_file("cards.xlsx", ".xlsx")
+        assert isinstance(result, Path)
+        assert result.suffix == ".xlsx"
+
+    def test_wrong_ext(self):
+        with pytest.raises(SystemExit, match="Expected .xlsx"):
+            validate_file("cards.csv", ".xlsx")
+
+    def test_no_extension(self):
+        with pytest.raises(SystemExit, match="no extension"):
+            validate_file("cards", ".xlsx")
+
+    def test_must_exist_missing(self, tmp_path):
+        missing = tmp_path / "missing.xlsx"
+        with pytest.raises(SystemExit, match="File not found"):
+            validate_file(str(missing), ".xlsx", must_exist=True)
+
+    def test_must_exist_present(self, tmp_path):
+        existing = tmp_path / "cards.xlsx"
+        existing.write_bytes(b"")
+        result = validate_file(str(existing), ".xlsx", must_exist=True)
+        assert result.exists()
+
+    def test_must_exist_false_missing(self, tmp_path):
+        missing = tmp_path / "output.xlsx"
+        result = validate_file(str(missing), ".xlsx", must_exist=False)
+        assert result.suffix == ".xlsx"
+
+
+class TestExportCollection:
+    def _setup_db_with_cards(self, tmp_path):
+        """Create a DB with one card and return db_path."""
+        from kardscm.storage import get_connection, initialize_schema, upsert_cards
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(
+                conn,
+                [
+                    {
+                        "CardId": "c1",
+                        "Name": "Test",
+                        "Nation": "USA",
+                        "Type": "Infantry",
+                        "Rarity": "Standard",
+                        "Set": "Base",
+                        "Credits": "1",
+                        "Attack": "1",
+                        "Defense": "1",
+                        "Description": "Test",
+                    }
+                ],
+            )
+        return db_path
+
+    @patch("kardscm.commands.get_language_config")
+    def test_no_cards_raises(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = str(tmp_path / "empty.db")
+        with pytest.raises(SystemExit, match="No cards"):
+            export_collection("csv", str(tmp_path / "out.csv"), db_path=db_path)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_xlsx(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db_with_cards(tmp_path)
+        out = tmp_path / "out.xlsx"
+        export_collection("xlsx", str(out), db_path=db_path)
+        assert out.exists()
+
+    @patch("kardscm.commands.get_language_config")
+    def test_csv(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db_with_cards(tmp_path)
+        out = tmp_path / "out.csv"
+        export_collection("csv", str(out), db_path=db_path)
+        assert out.exists()
+
+    @patch("kardscm.commands.get_language_config")
+    def test_json(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db_with_cards(tmp_path)
+        out = tmp_path / "out.json"
+        export_collection("json", str(out), db_path=db_path)
+        assert out.exists()
+
+    @patch("kardscm.commands.get_language_config")
+    def test_unsupported_format(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db_with_cards(tmp_path)
+        with pytest.raises(ValueError, match="Unsupported format"):
+            export_collection("pdf", str(tmp_path / "out.pdf"), db_path=db_path)
+
+
+class TestUpdateCollection:
+    @patch("kardscm.commands.get_language_config")
+    def test_file_not_found(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = str(tmp_path / "test.db")
+        missing = str(tmp_path / "missing.xlsx")
+        with pytest.raises(SystemExit, match="Failed to read file"):
+            update_collection(missing, db_path=db_path)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_success(self, mock_config, tmp_path):
+        from openpyxl import Workbook
+
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import get_connection, initialize_schema, upsert_cards
+
+        mock_config.return_value = LANGUAGE_EN
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(
+                conn,
+                [
+                    {
+                        "CardId": "c1",
+                        "Name": "Alpha",
+                        "Nation": "USA",
+                        "Type": "Infantry",
+                        "Rarity": "Standard",
+                        "Set": "Base",
+                        "Credits": "1",
+                        "Attack": "1",
+                        "Defense": "1",
+                        "Description": "Test",
+                    }
+                ],
+            )
+
+        xlsx_path = tmp_path / "update.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.append(LANGUAGE_EN.export_headers)
+        ws.append(["USA", "Alpha", "Infantry", "Standard", "", "Base", 3, "1", "1", "1", ""])
+        wb.save(str(xlsx_path))
+
+        update_collection(str(xlsx_path), db_path=db_path)
+
+        from kardscm.storage import fetch_cards
+
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert cards[0]["Quantity"] == "3"
+
+
+class TestImportDeck:
+    @patch("kardscm.commands.get_language_config")
+    def test_file_not_found(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        with pytest.raises(SystemExit, match="Failed to parse deck"):
+            import_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
+
+    @patch("kardscm.commands.get_language_config")
+    def test_duplicate_deck(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import get_connection, initialize_schema, insert_deck
+
+        mock_config.return_value = LANGUAGE_EN
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            insert_deck(
+                conn,
+                {
+                    "name": "My Deck",
+                    "major_power": "soviet",
+                    "ally": None,
+                    "hq": None,
+                    "deck_code": None,
+                    "cards": [],
+                },
+            )
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "My Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) Card\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(SystemExit, match="already exists"):
+            import_deck(str(deck_file), db_path=db_path)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_card_not_found(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import get_connection, initialize_schema
+
+        mock_config.return_value = LANGUAGE_EN
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "New Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) MISSING\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(SystemExit, match="Cards not found"):
+            import_deck(str(deck_file), db_path=db_path)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_success(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import (
+            fetch_all_decks,
+            get_connection,
+            initialize_schema,
+            upsert_cards,
+        )
+
+        mock_config.return_value = LANGUAGE_EN
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(
+                conn,
+                [
+                    {
+                        "CardId": "c1",
+                        "Name": "Alpha",
+                        "Nation": "USA",
+                        "Type": "Infantry",
+                        "Rarity": "Standard",
+                        "Set": "Base",
+                        "Credits": "1",
+                        "Attack": "1",
+                        "Defense": "1",
+                        "Description": "",
+                    }
+                ],
+            )
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "My Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        import_deck(str(deck_file), db_path=db_path)
+
+        with get_connection(db_path) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 1
+        assert decks[0]["name"] == "My Deck"
+
+
+class TestSyncCollection:
+    @pytest.mark.asyncio
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.scrape_cards", new_callable=AsyncMock)
+    async def test_success(self, mock_scrape, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        mock_scrape.return_value = [
+            {
+                "CardId": "c1",
+                "Name": "Alpha",
+                "Nation": "USA",
+                "Type": "Infantry",
+                "Rarity": "Standard",
+                "Set": "Base",
+                "Credits": "1",
+                "Attack": "1",
+                "Defense": "1",
+                "Description": "Test",
+            }
+        ]
+
+        db_path = str(tmp_path / "sync.db")
+        await sync_collection(db_path=db_path)
+
+        from kardscm.storage import fetch_cards, get_connection
+
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert len(cards) == 1
+        assert cards[0]["Name"] == "Alpha"
+
+    @pytest.mark.asyncio
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.scrape_cards", new_callable=AsyncMock)
+    async def test_empty_scrape(self, mock_scrape, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        mock_scrape.return_value = []
+
+        db_path = str(tmp_path / "empty.db")
+        await sync_collection(db_path=db_path)
+
+        from kardscm.storage import fetch_cards, get_connection
+
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert cards == []
+
+
+class TestExportDeck:
+    def _setup_db_with_deck(self, tmp_path):
+        from kardscm.storage import (
+            get_connection,
+            initialize_schema,
+            insert_deck,
+            insert_deck_cards,
+            upsert_cards,
+        )
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(
+                conn,
+                [
+                    {
+                        "CardId": "c1",
+                        "Name": "Alpha",
+                        "Nation": "USA",
+                        "Type": "Infantry",
+                        "Rarity": "Standard",
+                        "Set": "Base",
+                        "Credits": "1",
+                        "Attack": "1",
+                        "Defense": "1",
+                        "Description": "Test",
+                    }
+                ],
+            )
+            deck_id = insert_deck(
+                conn,
+                {
+                    "name": "Test Deck",
+                    "major_power": "usa",
+                    "ally": None,
+                    "hq": None,
+                    "deck_code": None,
+                    "cards": [],
+                },
+            )
+            insert_deck_cards(
+                conn, deck_id, [{"nation": "usa", "name": "Alpha", "quantity": 2, "cost": 1}],
+                {"usa": "USA"},
+            )
+            conn.commit()
+        return db_path
+
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands._select_deck")
+    def test_export_json(self, mock_select, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db_with_deck(tmp_path)
+        mock_select.return_value = {"deck_id": 1, "name": "Test Deck", "major_power": "usa", "ally": None, "hq": None}
+
+        out = tmp_path / "deck.json"
+        export_deck("json", str(out), db_path=db_path)
+        assert out.exists()
+
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands._select_deck")
+    def test_no_cards_raises(self, mock_select, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import get_connection, initialize_schema, insert_deck
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            insert_deck(
+                conn,
+                {"name": "Empty", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+            )
+            conn.commit()
+
+        mock_select.return_value = {"deck_id": 1, "name": "Empty"}
+        with pytest.raises(SystemExit, match="no cards"):
+            export_deck("json", str(tmp_path / "out.json"), db_path=db_path)
+
+
+class TestSelectDeck:
+    def test_no_decks(self, db_connection):
+        with pytest.raises(SystemExit, match="No decks"):
+            _select_deck(db_connection)
+
+    def test_valid_choice(self, db_connection):
+        from kardscm.storage import insert_deck
+
+        insert_deck(
+            db_connection,
+            {"name": "Deck A", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+        )
+        db_connection.commit()
+
+        with patch("builtins.input", return_value="1"):
+            result = _select_deck(db_connection)
+        assert result["name"] == "Deck A"
+
+    def test_invalid_input(self, db_connection):
+        from kardscm.storage import insert_deck
+
+        insert_deck(
+            db_connection,
+            {"name": "Deck A", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+        )
+        db_connection.commit()
+
+        with patch("builtins.input", return_value="abc"):
+            with pytest.raises(SystemExit, match="Invalid input"):
+                _select_deck(db_connection)
+
+    def test_out_of_range(self, db_connection):
+        from kardscm.storage import insert_deck
+
+        insert_deck(
+            db_connection,
+            {"name": "Deck A", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+        )
+        db_connection.commit()
+
+        with patch("builtins.input", return_value="5"):
+            with pytest.raises(SystemExit, match="Invalid choice"):
+                _select_deck(db_connection)
+
+
+class TestReadXlsxQuantities:
+    @patch("kardscm.commands.get_language_config")
+    def test_file_not_found(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        with pytest.raises(FileNotFoundError):
+            _read_xlsx_quantities(str(tmp_path / "missing.xlsx"))
+
+    @patch("kardscm.commands.get_language_config")
+    def test_missing_columns(self, mock_config, tmp_path):
+        from openpyxl import Workbook
+
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+
+        xlsx = tmp_path / "bad.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Wrong", "Headers"])
+        wb.save(str(xlsx))
+
+        with pytest.raises(ValueError, match="Missing required columns"):
+            _read_xlsx_quantities(str(xlsx))

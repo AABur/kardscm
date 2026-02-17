@@ -64,9 +64,10 @@ def test_update_requires_file() -> None:
 def test_update_uses_input_flag(tmp_path: Path) -> None:
     xlsx_file = tmp_path / "cards.xlsx"
     xlsx_file.write_bytes(b"")
-    with patch("kardscm.cli.update_collection"):
+    with patch("kardscm.cli.update_collection") as mock_update:
         result = runner.invoke(app, ["update", "-i", str(xlsx_file)])
-    assert result.exit_code != 0 or "-i" not in result.output
+    assert result.exit_code == 0
+    mock_update.assert_called_once()
 
 
 def test_deck_import_requires_file() -> None:

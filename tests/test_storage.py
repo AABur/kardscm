@@ -14,6 +14,8 @@ from kardscm.storage import (
     initialize_schema,
     insert_deck,
     insert_deck_cards,
+    set_metadata,
+    update_quantity_by_nation_name,
     upsert_cards,
 )
 
@@ -177,3 +179,106 @@ def test_deck_card_not_found(tmp_path: Path) -> None:
                 [{"nation": "soviet", "name": "MISSING", "quantity": 1, "cost": 1}],
                 {"soviet": "Soviet"},
             )
+
+
+def test_update_quantity_by_nation_name(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_SAMPLE_CARD])
+
+        updated, not_found = update_quantity_by_nation_name(
+            conn,
+            [
+                ("Soviet", "16-й СТРЕЛКОВЫЙ ПОЛК", 5),
+                ("USA", "NonExistent", 3),
+            ],
+        )
+
+    assert updated == 1
+    assert len(not_found) == 1
+    assert "USA / NonExistent" in not_found
+
+
+def test_update_quantity_skips_none_qty(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_SAMPLE_CARD])
+
+        updated, not_found = update_quantity_by_nation_name(
+            conn,
+            [("Soviet", "16-й СТРЕЛКОВЫЙ ПОЛК", None)],
+        )
+
+    assert updated == 0
+    assert not_found == []
+
+
+def test_update_quantity_skips_empty_nation_name(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+
+        updated, not_found = update_quantity_by_nation_name(
+            conn,
+            [("", "Card", 1), ("USA", "", 1)],
+        )
+
+    assert updated == 0
+    assert not_found == []
+
+
+def test_fetch_all_decks_empty(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        decks = fetch_all_decks(conn)
+
+    assert decks == []
+
+
+def test_fetch_all_decks_multiple(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        insert_deck(conn, _SAMPLE_DECK)
+        insert_deck(
+            conn,
+            {
+                "name": "Deck B",
+                "major_power": "usa",
+                "ally": None,
+                "hq": None,
+                "deck_code": None,
+                "cards": [],
+            },
+        )
+        conn.commit()
+        decks = fetch_all_decks(conn)
+
+    assert len(decks) == 2
+    assert decks[0]["name"] == "Test Deck"
+    assert decks[1]["name"] == "Deck B"
+
+
+def test_set_metadata(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        set_metadata(conn, "test_key", "test_value")
+
+        row = conn.execute("SELECT value FROM metadata WHERE key = ?", ("test_key",)).fetchone()
+        assert row[0] == "test_value"
+
+        # Update existing key
+        set_metadata(conn, "test_key", "new_value")
+        row = conn.execute("SELECT value FROM metadata WHERE key = ?", ("test_key",)).fetchone()
+        assert row[0] == "new_value"
+
+
+def test_get_connection_enables_foreign_keys(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        fk = conn.execute("PRAGMA foreign_keys").fetchone()
+        assert fk[0] == 1
