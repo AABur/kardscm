@@ -54,8 +54,7 @@ def export_to_xlsx(
     numeric_fields = {"Quantity", "Credits", "Attack", "Defense"}
     for card in cards:
         row = [
-            parse_int(card.get(field, "")) if field in numeric_fields
-            else card.get(field, "")
+            parse_int(card.get(field, "")) if field in numeric_fields else card.get(field, "")
             for field in EXPORT_FIELD_NAMES
         ]
         ws.append(row)
@@ -165,9 +164,7 @@ def add_deck_sheet(
         deck_meta.get("hq", ""),
         deck_meta.get("deck_code", ""),
     ]
-    for row_idx, (label, value) in enumerate(
-        zip(metadata_labels, meta_values), 1
-    ):
+    for row_idx, (label, value) in enumerate(zip(metadata_labels, meta_values), 1):
         ws.cell(row=row_idx, column=1, value=label).font = bold_font
         ws.cell(row=row_idx, column=2, value=value or "")
 

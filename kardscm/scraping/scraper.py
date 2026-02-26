@@ -90,16 +90,12 @@ def build_card(
     type_raw = json_data.get("type") or ""
     rarity_raw = json_data.get("rarity") or ""
     set_raw = json_data.get("set") or ""
-    description = extract_localized_field(
-        json_data.get("text", {}), lang_config, "description"
-    )
+    description = extract_localized_field(json_data.get("text", {}), lang_config, "description")
 
     faction_str = str(faction_raw)
     faction_translated = translate_value("faction", faction_str, translations)
     if faction_translated == faction_str.strip():
-        faction_translated = lang_config.faction_names.get(
-            faction_translated, faction_translated
-        )
+        faction_translated = lang_config.faction_names.get(faction_translated, faction_translated)
 
     card_info: dict[str, str] = {
         "CardId": card_id,

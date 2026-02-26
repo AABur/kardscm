@@ -62,7 +62,8 @@ def main_callback(
     version: Annotated[
         bool | None,
         typer.Option(
-            "--version", "-v",
+            "--version",
+            "-v",
             help="Show version and exit",
             callback=_version_callback,
             is_eager=True,
@@ -73,8 +74,7 @@ def main_callback(
 
 
 @app.command(
-    epilog="Examples:\n\n"
-    "* `kards sync`",
+    epilog="Examples:\n\n* `kards sync`",
 )
 def sync() -> None:
     """Sync card collection from the website.
@@ -111,14 +111,14 @@ def export(
 
 
 @app.command(
-    epilog="Examples:\n\n"
-    "* `kards update -i cards.xlsx`",
+    epilog="Examples:\n\n* `kards update -i cards.xlsx`",
 )
 def update(
     file: Annotated[
         Path,
         typer.Option(
-            "--file", "-i",
+            "--file",
+            "-i",
             help="XLSX file with card quantities",
             exists=True,
             readable=True,
@@ -138,14 +138,14 @@ def update(
 
 @deck_app.command(
     "import",
-    epilog="Examples:\n\n"
-    "* `kards deck import -i deck.txt`",
+    epilog="Examples:\n\n* `kards deck import -i deck.txt`",
 )
 def deck_import(
     file: Annotated[
         Path,
         typer.Option(
-            "--file", "-i",
+            "--file",
+            "-i",
             help="Deck TXT file to import",
             exists=True,
             readable=True,

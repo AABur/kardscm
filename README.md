@@ -52,27 +52,27 @@ Changing the language requires deleting `collection.db` and re-running sync.
 ### Sync card catalog
 
 ```bash
-make run-sync
+kardscm sync
 ```
 
 ### Export collection
 
 ```bash
-make run-export-xlsx
-make run-export-csv
-make run-export-json
+kardscm export -f xlsx -o cards.xlsx
+kardscm export -f csv -o cards.csv
+kardscm export -f json -o cards.json
 ```
 
 ### Update card quantities from XLSX
 
 ```bash
-make run-update
+kardscm update -i cards.xlsx
 ```
 
 ### Import a deck
 
 ```bash
-make run-import-deck FILE=deck.txt
+kardscm deck import -i deck.txt
 ```
 
 The deck TXT file must use card names matching the configured language.
@@ -80,14 +80,52 @@ The deck TXT file must use card names matching the configured language.
 ### Export a deck
 
 ```bash
-make run-export-deck-xlsx
-make run-export-deck-json
+kardscm deck export -f xlsx -o cards.xlsx
+kardscm deck export -f json -o deck.json
+```
+
+## Deck file format
+
+The deck TXT file exported from the KARDS client looks like this:
+
+```
+My Deck Name
+Major power: soviet
+Ally: germany
+HQ: some_hq_name
+
+soviet:
+4x (1K) Card Name One
+2x (3K) Card Name Two
+
+germany:
+3x (2K) Card Name Three
+
+%%DECKCODE...
+```
+
+- First non-empty line is the deck name
+- `Major power:` (required), `Ally:`, `HQ:` are metadata lines
+- Nation sections start with `nation:` header
+- Cards follow the format: `<qty>x (<cost>K) <name>`
+- Deck code line (starting with `%%`) is optional
+
+## Development
+
+```bash
+make sync-dev   # install all dependencies including dev tools
+make check      # run all checks (format, lint, typecheck, test)
+make test       # run tests only
+make lint       # run ruff linter
+make format     # format code with ruff
+make typecheck  # run mypy
+make clean      # clean cache files
 ```
 
 ## Output
 
 - Database: `collection.db` (created on first sync)
-- Exports: default filenames defined in Makefile
+- Exports: filenames specified via `-o` option
 
 ## Notes
 

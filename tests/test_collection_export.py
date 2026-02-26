@@ -47,7 +47,9 @@ def test_add_deck_sheet() -> None:
     wb = Workbook()
     lang = LANGUAGE_RU
     add_deck_sheet(
-        wb, _DECK_META, _DECK_CARDS,
+        wb,
+        _DECK_META,
+        _DECK_CARDS,
         lang.deck_headers,
         lang.deck_metadata_labels,
         lang.deck_nation_to_db,

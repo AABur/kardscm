@@ -167,7 +167,9 @@ def export_collection(
 
     if export_format == "xlsx":
         export_to_xlsx(
-            cards, filename, lang_config.export_headers,
+            cards,
+            filename,
+            lang_config.export_headers,
             lang_config.collection_sheet_name,
         )
     elif export_format == "csv":
@@ -274,10 +276,10 @@ def _select_deck(conn: sqlite3.Connection) -> dict:
     try:
         choice = int(input("Enter deck number: "))
     except (ValueError, EOFError) as e:
-        raise SystemExit("Invalid input") from e
+        raise SystemExit(f"Expected a deck number (1-{len(decks)})") from e
 
     if choice < 1 or choice > len(decks):
-        raise SystemExit(f"Invalid choice: {choice}")
+        raise SystemExit(f"Invalid choice: {choice}. Enter a number from 1 to {len(decks)}")
 
     return decks[choice - 1]
 
@@ -309,7 +311,9 @@ def export_deck(
     else:
         wb = load_workbook(filename)
         add_deck_sheet(
-            wb, deck_meta, deck_cards,
+            wb,
+            deck_meta,
+            deck_cards,
             lang_config.deck_headers,
             lang_config.deck_metadata_labels,
             lang_config.deck_nation_to_db,
