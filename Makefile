@@ -1,4 +1,4 @@
-.PHONY: help sync test lint format check run-sync run-update run-export-json run-export-csv run-export-xlsx run-import-deck run-export-deck-xlsx run-export-deck-json clean
+.PHONY: help sync sync-dev test lint format typecheck check clean
 
 .DEFAULT_GOAL := help
 
@@ -37,30 +37,6 @@ typecheck: ## Run mypy type checker
 	@$(UV) run mypy kardscm/
 
 check: format lint typecheck test ## Run all checks (requires sync first!)
-
-run-sync: ## Sync cards into SQLite
-	@$(UV) run python -m kardscm sync
-
-run-update: ## Update card quantities from XLSX file
-	@$(UV) run python -m kardscm update --file kards_cards_ru.xlsx
-
-run-export-xlsx: ## Export cards to XLSX
-	@$(UV) run python -m kardscm export --format xlsx --file kards_cards_ru.xlsx
-
-run-export-csv: ## Export cards to CSV
-	@$(UV) run python -m kardscm export --format csv --file kards_cards_ru.csv
-
-run-export-json: ## Export cards to JSON
-	@$(UV) run python -m kardscm export --format json --file kards_cards_ru.json
-
-run-import-deck: ## Import deck from TXT file
-	@$(UV) run python -m kardscm deck import --file $(FILE)
-
-run-export-deck-xlsx: ## Export deck as sheet in existing XLSX
-	@$(UV) run python -m kardscm deck export --format xlsx --file kards_cards_ru.xlsx
-
-run-export-deck-json: ## Export deck to JSON file
-	@$(UV) run python -m kardscm deck export --format json --file deck.json
 
 clean: ## Clean cache and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

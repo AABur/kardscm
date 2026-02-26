@@ -249,9 +249,7 @@ def _row_to_card(row: tuple) -> dict[str, str]:
     return {field: to_text(val) for field, val in zip(_CARD_FIELDS, row)}
 
 
-def find_card_id_by_nation_name(
-    conn: sqlite3.Connection, nation: str, name: str
-) -> str | None:
+def find_card_id_by_nation_name(conn: sqlite3.Connection, nation: str, name: str) -> str | None:
     """Find card_id by nation and name.
 
     Args:
@@ -280,8 +278,7 @@ def insert_deck(conn: sqlite3.Connection, deck: ParsedDeck) -> int:
         The new deck_id.
     """
     cursor = conn.execute(
-        "INSERT INTO decks (name, major_power, ally, hq, deck_code) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO decks (name, major_power, ally, hq, deck_code) VALUES (?, ?, ?, ?, ?)",
         (deck["name"], deck["major_power"], deck["ally"], deck["hq"], deck["deck_code"]),
     )
     return cursor.lastrowid  # type: ignore[return-value]

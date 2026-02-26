@@ -133,9 +133,7 @@ def test_insert_and_fetch_deck(tmp_path: Path) -> None:
         upsert_cards(conn, [_SAMPLE_CARD])
 
         deck_id = insert_deck(conn, _SAMPLE_DECK)
-        insert_deck_cards(
-            conn, deck_id, _SAMPLE_DECK["cards"], {"soviet": "Soviet"}
-        )
+        insert_deck_cards(conn, deck_id, _SAMPLE_DECK["cards"], {"soviet": "Soviet"})
         conn.commit()
 
         decks = fetch_all_decks(conn)

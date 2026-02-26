@@ -157,9 +157,7 @@ async def load_translations(lang_config: LanguageConfig) -> dict[str, str]:
                     break
 
             if translation_content:
-                translations = _parse_translations(
-                    translation_content, lang_config.lang_index
-                )
+                translations = _parse_translations(translation_content, lang_config.lang_index)
                 logger.info("Loaded %s translation keys", len(translations))
             else:
                 logger.warning("Translation JS file not found, using fallback")
