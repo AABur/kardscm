@@ -67,3 +67,8 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --cov=kardscm --cov-report=term-missing"
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.0.0",
+]

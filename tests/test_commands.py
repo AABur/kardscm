@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -17,6 +18,32 @@ from kardscm.commands import (
     update_collection,
     validate_file,
 )
+
+
+def _make_card(**overrides) -> dict:
+    card = {
+        "cardId": "c1",
+        "importId": "imp-1",
+        "imageUrl": "",
+        "thumbUrl": "",
+        "faction": "USA",
+        "type": "infantry",
+        "rarity": "Standard",
+        "set": "Base",
+        "title": json.dumps({"en-EN": "Alpha", "ru-RU": "Альфа"}),
+        "text": json.dumps({"en-EN": "Test", "ru-RU": "Тест"}),
+        "kredits": 1,
+        "attack": 1,
+        "defense": 1,
+        "attributes": "[]",
+        "operationCost": None,
+        "reserved": 0,
+        "image": "",
+        "can_create": None,
+        "exile": None,
+    }
+    card.update(overrides)
+    return card
 
 
 class TestValidateFile:
@@ -52,29 +79,12 @@ class TestValidateFile:
 
 class TestExportCollection:
     def _setup_db_with_cards(self, tmp_path):
-        """Create a DB with one card and return db_path."""
         from kardscm.storage import get_connection, initialize_schema, upsert_cards
 
         db_path = str(tmp_path / "test.db")
         with get_connection(db_path) as conn:
             initialize_schema(conn)
-            upsert_cards(
-                conn,
-                [
-                    {
-                        "CardId": "c1",
-                        "Name": "Test",
-                        "Nation": "USA",
-                        "Type": "Infantry",
-                        "Rarity": "Standard",
-                        "Set": "Base",
-                        "Credits": "1",
-                        "Attack": "1",
-                        "Defense": "1",
-                        "Description": "Test",
-                    }
-                ],
-            )
+            upsert_cards(conn, [_make_card()])
         return db_path
 
     @patch("kardscm.commands.get_language_config")
@@ -149,23 +159,7 @@ class TestUpdateCollection:
         db_path = str(tmp_path / "test.db")
         with get_connection(db_path) as conn:
             initialize_schema(conn)
-            upsert_cards(
-                conn,
-                [
-                    {
-                        "CardId": "c1",
-                        "Name": "Alpha",
-                        "Nation": "USA",
-                        "Type": "Infantry",
-                        "Rarity": "Standard",
-                        "Set": "Base",
-                        "Credits": "1",
-                        "Attack": "1",
-                        "Defense": "1",
-                        "Description": "Test",
-                    }
-                ],
-            )
+            upsert_cards(conn, [_make_card()])
 
         xlsx_path = tmp_path / "update.xlsx"
         wb = Workbook()
@@ -180,7 +174,7 @@ class TestUpdateCollection:
 
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
-        assert cards[0]["Quantity"] == "3"
+        assert cards[0]["quantity"] == 3
 
 
 class TestImportDeck:
@@ -262,18 +256,9 @@ class TestImportDeck:
             upsert_cards(
                 conn,
                 [
-                    {
-                        "CardId": "c1",
-                        "Name": "Alpha",
-                        "Nation": "USA",
-                        "Type": "Infantry",
-                        "Rarity": "Standard",
-                        "Set": "Base",
-                        "Credits": "1",
-                        "Attack": "1",
-                        "Defense": "1",
-                        "Description": "",
-                    }
+                    _make_card(
+                        title=json.dumps({"en-EN": "Alpha"}),
+                    )
                 ],
             )
 
@@ -292,49 +277,35 @@ class TestImportDeck:
 
 
 class TestSyncCollection:
-    @pytest.mark.asyncio
     @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards", new_callable=AsyncMock)
-    async def test_success(self, mock_scrape, mock_config, tmp_path):
+    @patch("kardscm.commands.scrape_cards")
+    def test_success(self, mock_scrape, mock_config, tmp_path):
         from kardscm.config import LANGUAGE_EN
 
         mock_config.return_value = LANGUAGE_EN
-        mock_scrape.return_value = [
-            {
-                "CardId": "c1",
-                "Name": "Alpha",
-                "Nation": "USA",
-                "Type": "Infantry",
-                "Rarity": "Standard",
-                "Set": "Base",
-                "Credits": "1",
-                "Attack": "1",
-                "Defense": "1",
-                "Description": "Test",
-            }
-        ]
+        mock_scrape.return_value = [_make_card()]
 
         db_path = str(tmp_path / "sync.db")
-        await sync_collection(db_path=db_path)
+        sync_collection(db_path=db_path)
 
         from kardscm.storage import fetch_cards, get_connection
 
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert len(cards) == 1
-        assert cards[0]["Name"] == "Alpha"
+        title = json.loads(cards[0]["title"])
+        assert title["en-EN"] == "Alpha"
 
-    @pytest.mark.asyncio
     @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards", new_callable=AsyncMock)
-    async def test_empty_scrape(self, mock_scrape, mock_config, tmp_path):
+    @patch("kardscm.commands.scrape_cards")
+    def test_empty_scrape(self, mock_scrape, mock_config, tmp_path):
         from kardscm.config import LANGUAGE_EN
 
         mock_config.return_value = LANGUAGE_EN
         mock_scrape.return_value = []
 
         db_path = str(tmp_path / "empty.db")
-        await sync_collection(db_path=db_path)
+        sync_collection(db_path=db_path)
 
         from kardscm.storage import fetch_cards, get_connection
 
@@ -359,18 +330,9 @@ class TestExportDeck:
             upsert_cards(
                 conn,
                 [
-                    {
-                        "CardId": "c1",
-                        "Name": "Alpha",
-                        "Nation": "USA",
-                        "Type": "Infantry",
-                        "Rarity": "Standard",
-                        "Set": "Base",
-                        "Credits": "1",
-                        "Attack": "1",
-                        "Defense": "1",
-                        "Description": "Test",
-                    }
+                    _make_card(
+                        title=json.dumps({"en-EN": "Alpha"}),
+                    )
                 ],
             )
             deck_id = insert_deck(
@@ -385,8 +347,11 @@ class TestExportDeck:
                 },
             )
             insert_deck_cards(
-                conn, deck_id, [{"nation": "usa", "name": "Alpha", "quantity": 2, "cost": 1}],
+                conn,
+                deck_id,
+                [{"nation": "usa", "name": "Alpha", "quantity": 2, "cost": 1}],
                 {"usa": "USA"},
+                "en-EN",
             )
             conn.commit()
         return db_path
@@ -398,7 +363,13 @@ class TestExportDeck:
 
         mock_config.return_value = LANGUAGE_EN
         db_path = self._setup_db_with_deck(tmp_path)
-        mock_select.return_value = {"deck_id": 1, "name": "Test Deck", "major_power": "usa", "ally": None, "hq": None}
+        mock_select.return_value = {
+            "deck_id": 1,
+            "name": "Test Deck",
+            "major_power": "usa",
+            "ally": None,
+            "hq": None,
+        }
 
         out = tmp_path / "deck.json"
         export_deck("json", str(out), db_path=db_path)
@@ -416,7 +387,14 @@ class TestExportDeck:
             initialize_schema(conn)
             insert_deck(
                 conn,
-                {"name": "Empty", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+                {
+                    "name": "Empty",
+                    "major_power": "usa",
+                    "ally": None,
+                    "hq": None,
+                    "deck_code": None,
+                    "cards": [],
+                },
             )
             conn.commit()
 
@@ -435,7 +413,14 @@ class TestSelectDeck:
 
         insert_deck(
             db_connection,
-            {"name": "Deck A", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+            {
+                "name": "Deck A",
+                "major_power": "usa",
+                "ally": None,
+                "hq": None,
+                "deck_code": None,
+                "cards": [],
+            },
         )
         db_connection.commit()
 
@@ -448,7 +433,14 @@ class TestSelectDeck:
 
         insert_deck(
             db_connection,
-            {"name": "Deck A", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+            {
+                "name": "Deck A",
+                "major_power": "usa",
+                "ally": None,
+                "hq": None,
+                "deck_code": None,
+                "cards": [],
+            },
         )
         db_connection.commit()
 
@@ -461,7 +453,14 @@ class TestSelectDeck:
 
         insert_deck(
             db_connection,
-            {"name": "Deck A", "major_power": "usa", "ally": None, "hq": None, "deck_code": None, "cards": []},
+            {
+                "name": "Deck A",
+                "major_power": "usa",
+                "ally": None,
+                "hq": None,
+                "deck_code": None,
+                "cards": [],
+            },
         )
         db_connection.commit()
 

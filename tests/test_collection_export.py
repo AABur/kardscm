@@ -1,5 +1,8 @@
 """Tests for collection export behavior."""
 
+from __future__ import annotations
+
+import json
 from pathlib import Path
 
 import pytest
@@ -22,21 +25,22 @@ _DECK_META = {
     "name": "Test Deck",
     "major_power": "soviet",
     "ally": "usa",
-    "hq": "СТАЛИНГРАД",
+    "hq": "STALINGRAD",
     "deck_code": "%%CODE",
 }
 
 _DECK_CARDS = [
     {
-        "nation": "Soviet",
-        "name": "16-й СТРЕЛКОВЫЙ ПОЛК",
-        "type": "Пехота",
-        "rarity": "Стандартная",
-        "set_name": "Базовый",
-        "credits": 1,
+        "faction": "Soviet",
+        "title": json.dumps({"en-EN": "16th Rifle Regiment", "ru-RU": "16-й СТРЕЛКОВЫЙ ПОЛК"}),
+        "type": "infantry",
+        "rarity": "Standard",
+        "attributes": json.dumps(["guard"]),
+        "set": "Base",
+        "kredits": 1,
         "attack": 1,
         "defense": 2,
-        "description": "Test",
+        "text": json.dumps({"en-EN": "Test", "ru-RU": "Тест"}),
         "deck_quantity": 2,
         "deck_cost": 1,
     },
@@ -54,6 +58,7 @@ def test_add_deck_sheet() -> None:
         lang.deck_metadata_labels,
         lang.deck_nation_to_db,
         lang.nation_display_names,
+        lang,
     )
 
     assert "Test Deck" in wb.sheetnames
@@ -68,10 +73,9 @@ def test_add_deck_sheet() -> None:
 
 
 def test_export_deck_to_json(tmp_path: Path) -> None:
-    import json
-
     output = tmp_path / "deck.json"
-    export_deck_to_json(_DECK_META, _DECK_CARDS, str(output))
+    lang = LANGUAGE_RU
+    export_deck_to_json(_DECK_META, _DECK_CARDS, str(output), lang)
 
     data = json.loads(output.read_text(encoding="utf-8"))
     assert data["deck"]["name"] == "Test Deck"

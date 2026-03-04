@@ -3,9 +3,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -39,13 +38,13 @@ deck_app = typer.Typer(
 app.add_typer(deck_app, name="deck")
 
 
-class ExportFormat(str, Enum):
+class ExportFormat(StrEnum):
     xlsx = "xlsx"
     csv = "csv"
     json = "json"
 
 
-class DeckExportFormat(str, Enum):
+class DeckExportFormat(StrEnum):
     xlsx = "xlsx"
     json = "json"
 
@@ -79,10 +78,10 @@ def main_callback(
 def sync() -> None:
     """Sync card collection from the website.
 
-    Launches a browser, fetches all cards from **kards.com**,
+    Intercepts GraphQL API, fetches all cards via direct HTTP,
     and stores them in the local SQLite database.
     """
-    asyncio.run(sync_collection())
+    sync_collection()
 
 
 @app.command(

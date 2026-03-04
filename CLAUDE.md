@@ -32,20 +32,20 @@ kardscm/
 ├── cli.py              # Typer CLI declarations
 ├── commands.py         # Business logic (sync, export, import, deck)
 ├── config.py           # Language configuration (LanguageConfig dataclass)
-├── constants.py        # Language-agnostic constants (URLs, mappings, defaults)
-├── models.py           # TypedDict definitions (CardDict)
-├── helpers.py          # Utility functions (parse_int, to_text)
+├── constants.py        # Language-agnostic constants (URLs, defaults)
+├── models.py           # TypedDict definitions (CardDict, ProbeData)
+├── helpers.py          # Utility functions (parse_int, to_text, sanitize_text)
 ├── scraping/           # Scraping functionality
-│   ├── __init__.py     # Exports scrape_cards
-│   ├── scraper.py      # Main orchestration (parse_api_data, build_card)
-│   ├── localization.py # Translation and text processing
-│   └── browser.py      # Playwright automation
+│   ├── __init__.py     # Exports scrape_cards (sync orchestration)
+│   ├── probe.py        # Playwright one-shot GraphQL interceptor
+│   ├── fetcher.py      # httpx GraphQL paginator
+│   └── normalizer.py   # API node → CardDict transformer
 ├── storage/            # Database layer
 │   ├── __init__.py     # Exports all database functions
-│   └── database.py     # SQLite operations
+│   └── database.py     # SQLite operations (new schema with API field names)
 ├── export/             # Export functionality
 │   ├── __init__.py     # Exports export functions
-│   └── exporters.py    # CSV/XLSX/JSON exporters
+│   └── exporters.py    # CSV/XLSX/JSON exporters with translate_card_for_export
 └── importing/          # Import functionality
     ├── __init__.py     # Exports parse_deck_file
     └── parser.py       # Deck TXT file parser
@@ -56,17 +56,24 @@ tests/                  # pytest tests
 - **Config**: `kardscm.config` — `LanguageConfig` frozen dataclass with all language-specific data
   - Registry: `LANGUAGES` dict (`"en"` → `LANGUAGE_EN`, `"ru"` → `LANGUAGE_RU`)
   - `get_language_config()` reads `config.ini` and returns the active `LanguageConfig`
-  - `ability_names` dict maps API attribute keys to localized display names (EN/RU)
+  - `locale_key` field (`"en-EN"` / `"ru-RU"`) for extracting from JSON title/text dicts
+  - Static translation mappings: `faction_names`, `type_names`, `rarity_names`, `set_names`, `ability_names`
+  - `deck_nation_to_db` maps deck nation keys to API faction names (e.g. `"soviet"` → `"Soviet"`)
   - Commands call `get_language_config()` internally — no language threading through CLI
-- **Scraping**: `kardscm.scraping` collects GraphQL responses using Playwright
-  - `browser.py`: Page automation and API data collection
-  - `localization.py`: Translation loading and text sanitization (takes `LanguageConfig`)
-  - `scraper.py`: Parses API responses into card dictionaries (takes `LanguageConfig`)
+- **Scraping**: `kardscm.scraping` fetches cards via direct GraphQL (synchronous)
+  - `probe.py`: One-shot Playwright intercept — opens browser, captures first GraphQL POST
+  - `fetcher.py`: httpx paginator — uses probe data to fetch all cards via offset/cursor pagination
+  - `normalizer.py`: Transforms raw API nodes into CardDict (title/text/attributes as JSON strings)
+  - `scrape_cards()`: Orchestrates probe → fetch → normalize pipeline
 - **Storage**: `kardscm.storage` manages SQLite database
-  - CRUD operations with upsert logic
-  - Quantity updates by nation/name
-  - Deck storage (schema, insert/fetch for decks and deck cards)
+  - DB columns use API field names (camelCase): `cardId`, `faction`, `title`, `kredits`, etc.
+  - `title` and `text` stored as JSON strings with locale keys
+  - `attributes` stored as JSON array string
+  - `quantity` is user-managed, preserved on upsert
+  - Schema version check: detects old `nation` column → error with migration instructions
+  - Card lookup by faction + `json_extract(title, ...)` for localized name matching
 - **Export**: `kardscm.export` writes formatted files
+  - `translate_card_for_export()`: Converts raw DB card to localized export dict at export time
   - Excel (XLSX) with styling and filters
   - CSV with UTF-8 BOM for Windows Excel
   - JSON with metadata
@@ -78,12 +85,16 @@ tests/                  # pytest tests
   - Console script: `kardscm`
   - Module entry: `python -m kardscm`
   - Commands: `sync`, `export`, `update`, `deck import`, `deck export`
+  - `sync` is synchronous (no asyncio)
 - **Commands**: `kardscm.commands` contains business logic
   - Extracted from cli.py for separation of concerns
   - Functions: `sync_collection`, `export_collection`, `update_collection`, `import_deck`, `export_deck`
+  - `export_collection` fetches raw DB cards, translates each via `translate_card_for_export`, then exports
+  - `update_collection` reverse-maps localized faction names to API names for DB lookup
   - Each command loads `LanguageConfig` via `get_language_config()`
 
 ## Code Patterns
+- English originals stored in DB — translation only at export time via static mappings
 - Language-specific data from `kardscm.config` (`LanguageConfig`), language-agnostic constants from `kardscm.constants`
 - No emojis in log messages
 - Imports at top of file (not inline in exception handlers)

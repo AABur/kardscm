@@ -17,6 +17,7 @@ from kardscm.export import (
     export_to_csv,
     export_to_json,
     export_to_xlsx,
+    translate_card_for_export,
 )
 from kardscm.helpers import parse_int
 from kardscm.importing import parse_deck_file
@@ -25,14 +26,14 @@ from kardscm.storage import (
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,
-    find_card_id_by_nation_name,
+    find_card_id,
     find_deck_by_name,
     get_connection,
     initialize_schema,
     insert_deck,
     insert_deck_cards,
     set_metadata,
-    update_quantity_by_nation_name,
+    update_quantity,
     upsert_cards,
 )
 
@@ -66,15 +67,16 @@ def validate_file(path: str, expected_ext: str, must_exist: bool = False) -> Pat
 
 
 def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
-    """Read nation, name, quantity from XLSX file.
+    """Read faction, title, quantity from XLSX file.
 
     Column names are determined by the configured language.
+    Returns (faction_display, localized_title, quantity) tuples.
 
     Args:
         filename: Path to XLSX file.
 
     Returns:
-        List of (nation, name, quantity) tuples.
+        List of (faction, title, quantity) tuples.
 
     Raises:
         FileNotFoundError: If file doesn't exist.
@@ -86,8 +88,8 @@ def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
     lang_config = get_language_config()
     headers_list = lang_config.export_headers
     header_map = {
-        headers_list[0]: "nation",
-        headers_list[1]: "name",
+        headers_list[0]: "faction",
+        headers_list[1]: "title",
         headers_list[6]: "quantity",
     }
 
@@ -107,25 +109,24 @@ def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
 
     results = []
     for row in ws.iter_rows(min_row=2, values_only=False):
-        nation_cell = row[headers["nation"] - 1]
-        name_cell = row[headers["name"] - 1]
+        faction_cell = row[headers["faction"] - 1]
+        title_cell = row[headers["title"] - 1]
         qty_cell = row[headers["quantity"] - 1]
 
-        nation = nation_cell.value
-        name = name_cell.value
+        faction = faction_cell.value
+        title = title_cell.value
         qty_val = qty_cell.value
 
-        if not nation or not name:
+        if not faction or not title:
             continue
 
         qty = parse_int(qty_val)
-
-        results.append((str(nation).strip(), str(name).strip(), qty))
+        results.append((str(faction).strip(), str(title).strip(), qty))
 
     return results
 
 
-async def sync_collection(db_path: str = DEFAULT_DB_PATH) -> None:
+def sync_collection(db_path: str = DEFAULT_DB_PATH) -> None:
     """Synchronize local SQLite storage with the website.
 
     Args:
@@ -133,7 +134,7 @@ async def sync_collection(db_path: str = DEFAULT_DB_PATH) -> None:
     """
     lang_config = get_language_config()
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
-    cards = await scrape_cards()
+    cards = scrape_cards()
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
@@ -160,10 +161,12 @@ def export_collection(
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
-        cards = fetch_cards(conn)
+        raw_cards = fetch_cards(conn)
 
-    if not cards:
+    if not raw_cards:
         raise SystemExit("No cards in database. Run 'kards sync' first.")
+
+    cards = [translate_card_for_export(card, lang_config) for card in raw_cards]
 
     if export_format == "xlsx":
         export_to_xlsx(
@@ -191,6 +194,7 @@ def update_collection(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
         db_path: SQLite database path.
     """
     logger.info("Starting update from file: %s", filename)
+    lang_config = get_language_config()
 
     try:
         updates = _read_xlsx_quantities(filename)
@@ -201,9 +205,17 @@ def update_collection(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
         logger.warning("No valid entries found in file")
         return
 
+    # Reverse-map localized faction names to API faction names
+    reverse_faction = {v: k for k, v in lang_config.faction_names.items()}
+
+    mapped_updates = []
+    for faction_display, title, qty in updates:
+        faction_api = reverse_faction.get(faction_display, faction_display)
+        mapped_updates.append((faction_api, title, qty))
+
     with get_connection(db_path) as conn:
         initialize_schema(conn)
-        updated_count, not_found = update_quantity_by_nation_name(conn, updates)
+        updated_count, not_found = update_quantity(conn, mapped_updates, lang_config.locale_key)
 
     logger.info(
         "Update completed: %d cards updated, %d not found",
@@ -240,17 +252,23 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
 
         not_found = []
         for card in deck["cards"]:
-            db_nation = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
-            card_id = find_card_id_by_nation_name(conn, db_nation, card["name"])
+            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            card_id = find_card_id(conn, faction, card["name"], lang_config.locale_key)
             if card_id is None:
-                not_found.append(f"{db_nation} / {card['name']}")
+                not_found.append(f"{faction} / {card['name']}")
 
         if not_found:
             lines = "\n".join(f"  - {entry}" for entry in not_found)
             raise SystemExit(f"Cards not found in collection:\n{lines}")
 
         deck_id = insert_deck(conn, deck)
-        insert_deck_cards(conn, deck_id, deck["cards"], lang_config.deck_nation_to_db)
+        insert_deck_cards(
+            conn,
+            deck_id,
+            deck["cards"],
+            lang_config.deck_nation_to_db,
+            lang_config.locale_key,
+        )
         conn.commit()
 
     logger.info("Deck '%s' imported (%d cards)", deck["name"], len(deck["cards"]))
@@ -276,7 +294,7 @@ def _select_deck(conn: sqlite3.Connection) -> dict:
     try:
         choice = int(input("Enter deck number: "))
     except (ValueError, EOFError) as e:
-        raise SystemExit(f"Expected a deck number (1-{len(decks)})") from e
+        raise SystemExit(f"Invalid input: expected a deck number (1-{len(decks)})") from e
 
     if choice < 1 or choice > len(decks):
         raise SystemExit(f"Invalid choice: {choice}. Enter a number from 1 to {len(decks)}")
@@ -307,7 +325,7 @@ def export_deck(
         raise SystemExit("Deck has no cards")
 
     if fmt == "json":
-        export_deck_to_json(deck_meta, deck_cards, filename)
+        export_deck_to_json(deck_meta, deck_cards, filename, lang_config)
     else:
         wb = load_workbook(filename)
         add_deck_sheet(
@@ -318,6 +336,7 @@ def export_deck(
             lang_config.deck_metadata_labels,
             lang_config.deck_nation_to_db,
             lang_config.nation_display_names,
+            lang_config,
         )
         wb.save(filename)
 

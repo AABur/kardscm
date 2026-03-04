@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
 
 from openpyxl import load_workbook
 
@@ -12,35 +11,34 @@ from kardscm.config import LANGUAGE_EN
 from kardscm.export import export_to_csv, export_to_json, export_to_xlsx
 
 
-def _sample_cards() -> list[dict[str, str]]:
+def _sample_cards() -> list[dict]:
+    """Sample translated card dicts for export tests."""
     return [
         {
-            "CardId": "c1",
-            "Nation": "USA",
-            "Name": "Alpha",
-            "Type": "Infantry",
-            "Rarity": "Standard",
-            "Abilities": "Guard",
-            "Set": "Base",
-            "Quantity": "2",
-            "Credits": "1",
-            "Attack": "1",
-            "Defense": "2",
-            "Description": "Test card",
+            "faction": "USA",
+            "title": "Alpha",
+            "type": "Infantry",
+            "rarity": "Standard",
+            "attributes": "Guard",
+            "set": "Base",
+            "quantity": 2,
+            "kredits": 1,
+            "attack": 1,
+            "defense": 2,
+            "text": "Test card",
         },
         {
-            "CardId": "c2",
-            "Nation": "Germany",
-            "Name": "Panzer IV",
-            "Type": "Tank",
-            "Rarity": "Limited",
-            "Abilities": "Blitz",
-            "Set": "Base",
-            "Quantity": "1",
-            "Credits": "4",
-            "Attack": "3",
-            "Defense": "4",
-            "Description": "Tank card",
+            "faction": "Germany",
+            "title": "Panzer IV",
+            "type": "Tank",
+            "rarity": "Limited",
+            "attributes": "Blitz",
+            "set": "Base",
+            "quantity": 1,
+            "kredits": 4,
+            "attack": 3,
+            "defense": 4,
+            "text": "Tank card",
         },
     ]
 
@@ -67,7 +65,7 @@ class TestExportToXlsx:
 
         wb = load_workbook(str(out))
         ws = wb.active
-        assert ws.max_row == 3  # 1 header + 2 data rows
+        assert ws.max_row == 3
 
     def test_numeric_fields_as_int(self, tmp_path):
         out = tmp_path / "cards.xlsx"
@@ -136,7 +134,7 @@ class TestExportToJson:
         export_to_json(cards, str(out), "en", "English")
 
         data = json.loads(out.read_text(encoding="utf-8"))
-        assert data["cards"][0]["Name"] == "Alpha"
+        assert data["cards"][0]["title"] == "Alpha"
 
     def test_creates_file(self, tmp_path):
         out = tmp_path / "cards.json"
@@ -151,7 +149,7 @@ class TestExportEmptyCards:
         assert out.exists()
         wb = load_workbook(str(out))
         ws = wb.active
-        assert ws.max_row == 1  # header only
+        assert ws.max_row == 1
 
     def test_csv_empty(self, tmp_path):
         out = tmp_path / "empty.csv"
@@ -160,7 +158,7 @@ class TestExportEmptyCards:
         with open(str(out), newline="", encoding="utf-8-sig") as f:
             reader = csv.reader(f)
             rows = list(reader)
-        assert len(rows) == 1  # header only
+        assert len(rows) == 1
 
     def test_json_empty(self, tmp_path):
         out = tmp_path / "empty.json"

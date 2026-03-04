@@ -11,14 +11,95 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
+from kardscm.config import LanguageConfig
 from kardscm.constants import DECK_COLUMN_WIDTHS, EXPORT_FIELD_NAMES
-from kardscm.helpers import parse_int
+from kardscm.helpers import sanitize_text
 
 logger = logging.getLogger(__name__)
 
 
+def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
+    """Translate a raw DB card dict to a localized export dict.
+
+    Extracts localized title and text via locale_key, translates
+    faction/type/rarity/set via static mappings, formats attributes.
+
+    Args:
+        card: Raw card dict from database.
+        lang_config: Language configuration.
+
+    Returns:
+        Dict with export field names as keys.
+    """
+    locale_key = lang_config.locale_key
+
+    # Extract localized title
+    title_raw = card.get("title", "")
+    try:
+        title_dict = json.loads(title_raw) if title_raw else {}
+    except (json.JSONDecodeError, TypeError):
+        title_dict = {}
+    if isinstance(title_dict, dict):
+        title = title_dict.get(locale_key, title_dict.get("en-EN", title_raw))
+    else:
+        title = str(title_raw)
+
+    # Extract localized text
+    text_raw = card.get("text", "")
+    try:
+        text_dict = json.loads(text_raw) if text_raw else {}
+    except (json.JSONDecodeError, TypeError):
+        text_dict = {}
+    if isinstance(text_dict, dict):
+        text = text_dict.get(locale_key, text_dict.get("en-EN", ""))
+    else:
+        text = str(text_raw) if text_raw else ""
+
+    # Translate faction
+    faction_api = card.get("faction", "")
+    faction = lang_config.faction_names.get(faction_api, faction_api)
+
+    # Translate type
+    type_api = card.get("type", "")
+    type_name = lang_config.type_names.get(type_api, type_api)
+
+    # Translate rarity
+    rarity_api = card.get("rarity", "")
+    rarity = lang_config.rarity_names.get(rarity_api, rarity_api)
+
+    # Translate set
+    set_api = card.get("set", "")
+    set_name = lang_config.set_names.get(set_api, set_api)
+
+    # Format attributes
+    attributes_raw = card.get("attributes", "[]")
+    try:
+        attributes_list = json.loads(attributes_raw) if attributes_raw else []
+    except (json.JSONDecodeError, TypeError):
+        attributes_list = []
+    abilities = ", ".join(
+        lang_config.ability_names.get(a, a)
+        for a in attributes_list
+        if a in lang_config.ability_names
+    )
+
+    return {
+        "faction": sanitize_text(faction),
+        "title": sanitize_text(title),
+        "type": sanitize_text(type_name),
+        "rarity": sanitize_text(rarity),
+        "attributes": abilities,
+        "set": sanitize_text(set_name),
+        "quantity": card.get("quantity", 0),
+        "kredits": card.get("kredits", 0),
+        "attack": card.get("attack"),
+        "defense": card.get("defense"),
+        "text": sanitize_text(str(text)) if text else "",
+    }
+
+
 def export_to_xlsx(
-    cards: list[dict[str, str]],
+    cards: list[dict],
     filename: str,
     headers: list[str],
     sheet_name: str = "Collection",
@@ -26,7 +107,7 @@ def export_to_xlsx(
     """Export cards to Excel format with formatting.
 
     Args:
-        cards: List of card dictionaries.
+        cards: List of card dictionaries (already translated for export).
         filename: Output filename.
         headers: Display headers for columns.
         sheet_name: Name of the worksheet.
@@ -51,10 +132,10 @@ def export_to_xlsx(
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    numeric_fields = {"Quantity", "Credits", "Attack", "Defense"}
+    numeric_fields = {"quantity", "kredits", "attack", "defense"}
     for card in cards:
         row = [
-            parse_int(card.get(field, "")) if field in numeric_fields else card.get(field, "")
+            card.get(field) if field in numeric_fields else card.get(field, "")
             for field in EXPORT_FIELD_NAMES
         ]
         ws.append(row)
@@ -71,7 +152,7 @@ def export_to_xlsx(
 
 
 def export_to_csv(
-    cards: list[dict[str, str]],
+    cards: list[dict],
     filename: str,
     headers: list[str],
 ) -> None:
@@ -80,7 +161,7 @@ def export_to_csv(
     Uses UTF-8 with BOM for Excel compatibility on Windows.
 
     Args:
-        cards: List of card dictionaries.
+        cards: List of card dictionaries (already translated for export).
         filename: Output filename.
         headers: Display headers for columns.
     """
@@ -100,7 +181,7 @@ def export_to_csv(
 
 
 def export_to_json(
-    cards: list[dict[str, str]],
+    cards: list[dict],
     filename: str,
     language: str,
     language_name: str,
@@ -108,7 +189,7 @@ def export_to_json(
     """Export cards to JSON format with metadata.
 
     Args:
-        cards: List of card dictionaries.
+        cards: List of card dictionaries (already translated for export).
         filename: Output filename.
         language: Language code for metadata.
         language_name: Language name for metadata.
@@ -138,6 +219,7 @@ def add_deck_sheet(
     metadata_labels: list[str],
     deck_nation_to_db: dict[str, str],
     nation_display_names: dict[str, str],
+    lang_config: LanguageConfig,
 ) -> None:
     """Add a deck sheet to an existing workbook.
 
@@ -147,10 +229,11 @@ def add_deck_sheet(
         deck_cards: List of card dicts with deck_quantity and deck_cost.
         deck_headers: Headers for deck card table.
         metadata_labels: Labels for deck metadata section.
-        deck_nation_to_db: Mapping from deck nation keys to DB names.
+        deck_nation_to_db: Mapping from deck nation keys to API faction names.
         nation_display_names: Display names for nation sections.
+        lang_config: Language configuration for translating card fields.
     """
-    sheet_name = deck_meta["name"][:31]  # Excel sheet name limit
+    sheet_name = deck_meta["name"][:31]
     ws = wb.create_sheet(title=sheet_name)
 
     bold_font = Font(bold=True)
@@ -159,8 +242,8 @@ def add_deck_sheet(
     ally = deck_meta.get("ally", "")
     meta_values = [
         deck_meta.get("name", ""),
-        deck_nation_to_db.get(major, major),
-        deck_nation_to_db.get(ally, ally),
+        lang_config.faction_names.get(deck_nation_to_db.get(major, major), major),
+        lang_config.faction_names.get(deck_nation_to_db.get(ally, ally), ally),
         deck_meta.get("hq", ""),
         deck_meta.get("deck_code", ""),
     ]
@@ -178,20 +261,35 @@ def add_deck_sheet(
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
     current_row = header_row + 1
-    cards_by_nation: dict[str, list[dict]] = {}
+    cards_by_faction: dict[str, list[dict]] = {}
     for card in deck_cards:
-        nation = card.get("nation", "")
-        cards_by_nation.setdefault(nation, []).append(card)
+        faction = card.get("faction", "")
+        cards_by_faction.setdefault(faction, []).append(card)
 
-    for nation, nation_cards in cards_by_nation.items():
-        nation_lower = nation.lower()
-        display_name = nation_display_names.get(nation_lower, nation)
+    locale_key = lang_config.locale_key
+    for faction, faction_cards in cards_by_faction.items():
+        faction_lower = faction.lower()
+        display_name = nation_display_names.get(faction_lower, faction)
         ws.cell(row=current_row, column=1, value=display_name).font = bold_font
         current_row += 1
 
-        for card in nation_cards:
-            ws.cell(row=current_row, column=1, value=card.get("name", ""))
-            ws.cell(row=current_row, column=2, value=card.get("type", ""))
+        for card in faction_cards:
+            # Extract localized title
+            title_raw = card.get("title", "")
+            try:
+                title_dict = json.loads(title_raw) if title_raw else {}
+            except (json.JSONDecodeError, TypeError):
+                title_dict = {}
+            if isinstance(title_dict, dict):
+                title = title_dict.get(locale_key, title_dict.get("en-EN", title_raw))
+            else:
+                title = str(title_raw)
+
+            type_api = card.get("type", "")
+            type_name = lang_config.type_names.get(type_api, type_api)
+
+            ws.cell(row=current_row, column=1, value=title)
+            ws.cell(row=current_row, column=2, value=type_name)
             ws.cell(row=current_row, column=3, value=card.get("deck_quantity"))
             ws.cell(row=current_row, column=4, value=card.get("deck_cost"))
             ws.cell(row=current_row, column=5, value=card.get("attack"))
@@ -208,6 +306,7 @@ def export_deck_to_json(
     deck_meta: dict,
     deck_cards: list[dict],
     filename: str,
+    lang_config: LanguageConfig,
 ) -> None:
     """Export a deck to JSON format.
 
@@ -215,7 +314,20 @@ def export_deck_to_json(
         deck_meta: Deck metadata dict.
         deck_cards: List of card dicts with deck_quantity and deck_cost.
         filename: Output file path.
+        lang_config: Language configuration for translating card fields.
     """
+    locale_key = lang_config.locale_key
+
+    def extract_title(card: dict) -> str:
+        title_raw = card.get("title", "")
+        try:
+            title_dict = json.loads(title_raw) if title_raw else {}
+        except (json.JSONDecodeError, TypeError):
+            title_dict = {}
+        if isinstance(title_dict, dict):
+            return str(title_dict.get(locale_key, title_dict.get("en-EN", title_raw)))
+        return str(title_raw)
+
     output = {
         "deck": {
             "name": deck_meta.get("name", ""),
@@ -225,15 +337,19 @@ def export_deck_to_json(
         },
         "cards": [
             {
-                "nation": card.get("nation", ""),
-                "name": card.get("name", ""),
-                "type": card.get("type", ""),
-                "rarity": card.get("rarity", ""),
-                "set": card.get("set_name", ""),
-                "credits": card.get("credits"),
+                "faction": lang_config.faction_names.get(
+                    card.get("faction", ""), card.get("faction", "")
+                ),
+                "title": extract_title(card),
+                "type": lang_config.type_names.get(card.get("type", ""), card.get("type", "")),
+                "rarity": lang_config.rarity_names.get(
+                    card.get("rarity", ""), card.get("rarity", "")
+                ),
+                "set": lang_config.set_names.get(card.get("set", ""), card.get("set", "")),
+                "kredits": card.get("kredits"),
                 "attack": card.get("attack"),
                 "defense": card.get("defense"),
-                "description": card.get("description", ""),
+                "text": card.get("text", ""),
                 "deck_quantity": card.get("deck_quantity"),
                 "deck_cost": card.get("deck_cost"),
             }
