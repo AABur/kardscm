@@ -4,63 +4,72 @@ from __future__ import annotations
 
 # === URLs ===
 BASE_URL = "https://www.kards.com"
+COLLECTION_URL = "https://www.kards.com/en/decks/collection"
 
-# === Known Mappings (translation IDs on the KARDS website) ===
-KNOWN_MAPPINGS: dict[str, dict[str, str]] = {
-    "type": {
-        "infantry": "llkqn9",
-        "tank": "QIFcAI",
-        "armor": "QIFcAI",
-        "artillery": "ziY9j1",
-        "fighter": "al73ht",
-        "air": "al73ht",
-        "order": "UYUgdb",
-        "countermeasure": "qM208o",
-    },
-    "faction": {
-        "Soviet": "iROGPL",
-        "USA": "Mqy/Zy",
-        "Japan": "A1ET6E",
-        "Germany": "XTtR6a",
-        "Britain": "OICU0U",
-        "France": "+gY+iO",
-        "Italy": "MFljzs",
-        "Poland": "sfwBnA",
-    },
-    "rarity": {
-        "Standard": "TJBHlP",
-        "Limited": "HhURN3",
-        "Special": "qBFI6F",
-        "Elite": "JEzmqf",
-    },
-    "set": {
-        "Base": "Nzwli2",
-        "Allegiance": "bPobF4",
-        "TheatersOfWar": "MPVNE8",
-        "Breakthrough": "paHq3y",
-        "WorldAtWar": "tkXxPO",
-        "CovertOps": "/Adfjf",
-        "BloodAndIron": "vhFlLC",
-        "Legions": "a6nh/L",
-        "NavalWarfare": "6bDKSi",
-        "Homefront": "5rE6vr",
-        "WinterWar": "wDZgXG",
-    },
+# === GraphQL API ===
+GRAPHQL_URL = "https://api.kards.com/graphql"
+GRAPHQL_HEADERS: dict[str, str] = {
+    "referer": "https://www.kards.com/",
+    "accept": "*/*",
+    "content-type": "application/json",
+}
+GRAPHQL_QUERY = """query getCards($language: String, $offset: Int, $nationIds: [Int], $kredits: [Int], $q: String, $type: [String], $rarity: [String], $set: [String], $showSpawnables: Boolean, $showExiles: Boolean, $showReserved: Boolean) {
+  cards(
+    language: $language
+    first: 20
+    offset: $offset
+    nationIds: $nationIds
+    kredits: $kredits
+    q: $q
+    type: $type
+    set: $set
+    rarity: $rarity
+    showSpawnables: $showSpawnables
+    showExiles: $showExiles
+    showReserved: $showReserved
+  ) {
+    pageInfo {
+      count
+      hasNextPage
+      __typename
+    }
+    edges {
+      node {
+        id
+        cardId
+        importId
+        json
+        reserved
+        imageUrl: image(language: $language)
+        thumbUrl: image(type: thumb, language: $language)
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+"""
+GRAPHQL_VARIABLES: dict = {
+    "language": "en",
+    "showSpawnables": False,
+    "showExiles": False,
+    "showReserved": False,
 }
 
-# Internal field names used to extract data from card dicts
+# Internal field names used to extract data from card dicts for export
 EXPORT_FIELD_NAMES: list[str] = [
-    "Nation",
-    "Name",
-    "Type",
-    "Rarity",
-    "Abilities",
-    "Set",
-    "Quantity",
-    "Credits",
-    "Attack",
-    "Defense",
-    "Description",
+    "faction",
+    "title",
+    "type",
+    "rarity",
+    "attributes",
+    "set",
+    "quantity",
+    "kredits",
+    "attack",
+    "defense",
+    "text",
 ]
 
 # === Database ===

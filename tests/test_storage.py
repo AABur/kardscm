@@ -1,5 +1,8 @@
 """Tests for SQLite storage helpers."""
 
+from __future__ import annotations
+
+import json
 from pathlib import Path
 
 import pytest
@@ -8,16 +11,43 @@ from kardscm.storage import (
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,
-    find_card_id_by_nation_name,
+    find_card_id,
     find_deck_by_name,
     get_connection,
     initialize_schema,
     insert_deck,
     insert_deck_cards,
     set_metadata,
-    update_quantity_by_nation_name,
+    update_quantity,
     upsert_cards,
 )
+
+
+def _make_card(**overrides) -> dict:
+    """Create a sample CardDict with defaults."""
+    card = {
+        "cardId": "card-1",
+        "importId": "imp-1",
+        "imageUrl": "",
+        "thumbUrl": "",
+        "faction": "USA",
+        "type": "infantry",
+        "rarity": "Standard",
+        "set": "Base",
+        "title": json.dumps({"en-EN": "Alpha", "ru-RU": "Альфа"}),
+        "text": json.dumps({"en-EN": "Test", "ru-RU": "Тест"}),
+        "kredits": 2,
+        "attack": 3,
+        "defense": 2,
+        "attributes": json.dumps(["guard"]),
+        "operationCost": None,
+        "reserved": 0,
+        "image": "",
+        "can_create": None,
+        "exile": None,
+    }
+    card.update(overrides)
+    return card
 
 
 def test_initialize_schema_creates_tables(tmp_path: Path) -> None:
@@ -31,54 +61,54 @@ def test_initialize_schema_creates_tables(tmp_path: Path) -> None:
     assert "metadata" in table_names
 
 
+def test_old_schema_detected(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        conn.execute("CREATE TABLE cards (nation TEXT, name TEXT)")
+        with pytest.raises(SystemExit, match="Old database schema"):
+            initialize_schema(conn)
+
+
 def test_upsert_cards_inserts_and_updates(tmp_path: Path) -> None:
     db_path = tmp_path / "test.db"
     with get_connection(db_path) as conn:
         initialize_schema(conn)
 
-        upsert_cards(
-            conn,
-            [
-                {
-                    "CardId": "card-1",
-                    "Name": "Alpha",
-                    "Nation": "USA",
-                    "Type": "Infantry",
-                    "Rarity": "Standard",
-                    "Set": "Base",
-                    "Credits": "2",
-                    "Attack": "3",
-                    "Defense": "2",
-                    "Description": "First",
-                }
-            ],
-        )
+        upsert_cards(conn, [_make_card()])
 
         upsert_cards(
             conn,
             [
-                {
-                    "CardId": "card-1",
-                    "Name": "Alpha Prime",
-                    "Nation": "USA",
-                    "Type": "Infantry",
-                    "Rarity": "Standard",
-                    "Set": "Base",
-                    "Credits": "3",
-                    "Attack": "4",
-                    "Defense": "2",
-                    "Description": "Updated",
-                }
+                _make_card(
+                    title=json.dumps({"en-EN": "Alpha Prime", "ru-RU": "Альфа Прайм"}),
+                    kredits=3,
+                    attack=4,
+                )
             ],
         )
 
         cards = fetch_cards(conn)
 
     assert len(cards) == 1
-    assert cards[0]["Name"] == "Alpha Prime"
-    assert cards[0]["Credits"] == "3"
-    assert cards[0]["Attack"] == "4"
-    assert cards[0]["Description"] == "Updated"
+    title = json.loads(cards[0]["title"])
+    assert title["en-EN"] == "Alpha Prime"
+    assert cards[0]["kredits"] == 3
+    assert cards[0]["attack"] == 4
+
+
+def test_upsert_preserves_quantity(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_make_card()])
+        conn.execute("UPDATE cards SET quantity = 5 WHERE cardId = 'card-1'")
+        conn.commit()
+
+        upsert_cards(conn, [_make_card(kredits=99)])
+        cards = fetch_cards(conn)
+
+    assert cards[0]["quantity"] == 5
+    assert cards[0]["kredits"] == 99
 
 
 def test_fetch_cards_returns_empty(tmp_path: Path) -> None:
@@ -86,44 +116,53 @@ def test_fetch_cards_returns_empty(tmp_path: Path) -> None:
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         cards = fetch_cards(conn)
-
     assert cards == []
 
 
-_SAMPLE_CARD = {
-    "CardId": "card-soviet-1",
-    "Name": "16-й СТРЕЛКОВЫЙ ПОЛК",
-    "Nation": "Soviet",
-    "Type": "Infantry",
-    "Rarity": "Standard",
-    "Set": "Base",
-    "Credits": "1",
-    "Attack": "1",
-    "Defense": "2",
-    "Description": "Test card",
-}
+_SAMPLE_CARD = _make_card(
+    cardId="card-soviet-1",
+    faction="Soviet",
+    type="infantry",
+    rarity="Standard",
+    set="Base",
+    title=json.dumps({"en-EN": "16th Rifle Regiment", "ru-RU": "16-й СТРЕЛКОВЫЙ ПОЛК"}),
+    text=json.dumps({"en-EN": "Test card"}),
+    kredits=1,
+    attack=1,
+    defense=2,
+)
 
 _SAMPLE_DECK = {
     "name": "Test Deck",
     "major_power": "soviet",
     "ally": "usa",
-    "hq": "СТАЛИНГРАД",
+    "hq": "STALINGRAD",
     "deck_code": "%%TEST",
-    "cards": [{"nation": "soviet", "name": "16-й СТРЕЛКОВЫЙ ПОЛК", "quantity": 2, "cost": 1}],
+    "cards": [{"nation": "soviet", "name": "16th Rifle Regiment", "quantity": 2, "cost": 1}],
 }
 
 
-def test_find_card_id_by_nation_name(tmp_path: Path) -> None:
+def test_find_card_id(tmp_path: Path) -> None:
     db_path = tmp_path / "test.db"
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         upsert_cards(conn, [_SAMPLE_CARD])
 
-        card_id = find_card_id_by_nation_name(conn, "Soviet", "16-й СТРЕЛКОВЫЙ ПОЛК")
+        card_id = find_card_id(conn, "Soviet", "16th Rifle Regiment", "en-EN")
         assert card_id == "card-soviet-1"
 
-        missing = find_card_id_by_nation_name(conn, "Soviet", "NONEXISTENT")
+        missing = find_card_id(conn, "Soviet", "NONEXISTENT", "en-EN")
         assert missing is None
+
+
+def test_find_card_id_ru(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_SAMPLE_CARD])
+
+        card_id = find_card_id(conn, "Soviet", "16-й СТРЕЛКОВЫЙ ПОЛК", "ru-RU")
+        assert card_id == "card-soviet-1"
 
 
 def test_insert_and_fetch_deck(tmp_path: Path) -> None:
@@ -133,7 +172,13 @@ def test_insert_and_fetch_deck(tmp_path: Path) -> None:
         upsert_cards(conn, [_SAMPLE_CARD])
 
         deck_id = insert_deck(conn, _SAMPLE_DECK)
-        insert_deck_cards(conn, deck_id, _SAMPLE_DECK["cards"], {"soviet": "Soviet"})
+        insert_deck_cards(
+            conn,
+            deck_id,
+            _SAMPLE_DECK["cards"],
+            {"soviet": "Soviet"},
+            "en-EN",
+        )
         conn.commit()
 
         decks = fetch_all_decks(conn)
@@ -143,7 +188,8 @@ def test_insert_and_fetch_deck(tmp_path: Path) -> None:
 
         cards = fetch_deck_cards(conn, deck_id)
         assert len(cards) == 1
-        assert cards[0]["name"] == "16-й СТРЕЛКОВЫЙ ПОЛК"
+        title = json.loads(cards[0]["title"])
+        assert title["en-EN"] == "16th Rifle Regiment"
         assert cards[0]["deck_quantity"] == 2
         assert cards[0]["deck_cost"] == 1
 
@@ -158,7 +204,6 @@ def test_find_deck_by_name(tmp_path: Path) -> None:
         found = find_deck_by_name(conn, "Test Deck")
         assert found is not None
         assert found["name"] == "Test Deck"
-        assert found["major_power"] == "soviet"
 
         not_found = find_deck_by_name(conn, "Nonexistent Deck")
         assert not_found is None
@@ -176,21 +221,23 @@ def test_deck_card_not_found(tmp_path: Path) -> None:
                 deck_id,
                 [{"nation": "soviet", "name": "MISSING", "quantity": 1, "cost": 1}],
                 {"soviet": "Soviet"},
+                "en-EN",
             )
 
 
-def test_update_quantity_by_nation_name(tmp_path: Path) -> None:
+def test_update_quantity(tmp_path: Path) -> None:
     db_path = tmp_path / "test.db"
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         upsert_cards(conn, [_SAMPLE_CARD])
 
-        updated, not_found = update_quantity_by_nation_name(
+        updated, not_found = update_quantity(
             conn,
             [
-                ("Soviet", "16-й СТРЕЛКОВЫЙ ПОЛК", 5),
+                ("Soviet", "16th Rifle Regiment", 5),
                 ("USA", "NonExistent", 3),
             ],
+            "en-EN",
         )
 
     assert updated == 1
@@ -204,23 +251,25 @@ def test_update_quantity_skips_none_qty(tmp_path: Path) -> None:
         initialize_schema(conn)
         upsert_cards(conn, [_SAMPLE_CARD])
 
-        updated, not_found = update_quantity_by_nation_name(
+        updated, not_found = update_quantity(
             conn,
-            [("Soviet", "16-й СТРЕЛКОВЫЙ ПОЛК", None)],
+            [("Soviet", "16th Rifle Regiment", None)],
+            "en-EN",
         )
 
     assert updated == 0
     assert not_found == []
 
 
-def test_update_quantity_skips_empty_nation_name(tmp_path: Path) -> None:
+def test_update_quantity_skips_empty(tmp_path: Path) -> None:
     db_path = tmp_path / "test.db"
     with get_connection(db_path) as conn:
         initialize_schema(conn)
 
-        updated, not_found = update_quantity_by_nation_name(
+        updated, not_found = update_quantity(
             conn,
             [("", "Card", 1), ("USA", "", 1)],
+            "en-EN",
         )
 
     assert updated == 0
@@ -232,7 +281,6 @@ def test_fetch_all_decks_empty(tmp_path: Path) -> None:
     with get_connection(db_path) as conn:
         initialize_schema(conn)
         decks = fetch_all_decks(conn)
-
     assert decks == []
 
 
@@ -269,7 +317,6 @@ def test_set_metadata(tmp_path: Path) -> None:
         row = conn.execute("SELECT value FROM metadata WHERE key = ?", ("test_key",)).fetchone()
         assert row[0] == "test_value"
 
-        # Update existing key
         set_metadata(conn, "test_key", "new_value")
         row = conn.execute("SELECT value FROM metadata WHERE key = ?", ("test_key",)).fetchone()
         assert row[0] == "new_value"

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 
 import pytest
 
 from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
+from kardscm.models import CardDict
 from kardscm.storage import get_connection, initialize_schema
 
 
@@ -23,46 +25,60 @@ def lang_config_en():
 
 
 @pytest.fixture()
-def sample_card() -> dict[str, str]:
-    """Sample card dictionary for reuse across tests."""
-    return {
-        "CardId": "card-soviet-1",
-        "Name": "16-й СТРЕЛКОВЫЙ ПОЛК",
-        "Nation": "Советский Союз",
-        "Type": "Пехота",
-        "Rarity": "Стандартная",
-        "Abilities": "Охрана",
-        "Set": "Базовый",
-        "Quantity": "2",
-        "Credits": "1",
-        "Attack": "1",
-        "Defense": "2",
-        "Description": "Тестовая карта",
-    }
+def sample_card() -> CardDict:
+    """Sample CardDict for reuse across tests."""
+    return CardDict(
+        cardId="card-soviet-1",
+        importId="imp-1",
+        imageUrl="https://example.com/img.png",
+        thumbUrl="https://example.com/thumb.png",
+        faction="Soviet",
+        type="infantry",
+        rarity="Standard",
+        set="Base",
+        title=json.dumps({"en-EN": "16th Rifle Regiment", "ru-RU": "16-й СТРЕЛКОВЫЙ ПОЛК"}),
+        text=json.dumps({"en-EN": "Test card", "ru-RU": "Тестовая карта"}),
+        kredits=1,
+        attack=1,
+        defense=2,
+        attributes=json.dumps(["guard"]),
+        operationCost=None,
+        reserved=0,
+        image="img.png",
+        can_create=None,
+        exile=None,
+    )
 
 
 @pytest.fixture()
-def sample_card_en() -> dict[str, str]:
-    """Sample English card dictionary."""
-    return {
-        "CardId": "card-usa-1",
-        "Name": "M4 Sherman",
-        "Nation": "USA",
-        "Type": "Tank",
-        "Rarity": "Standard",
-        "Abilities": "Blitz",
-        "Set": "Base",
-        "Quantity": "1",
-        "Credits": "4",
-        "Attack": "3",
-        "Defense": "4",
-        "Description": "Test tank card",
-    }
+def sample_card_en() -> CardDict:
+    """Sample English CardDict."""
+    return CardDict(
+        cardId="card-usa-1",
+        importId="imp-2",
+        imageUrl="https://example.com/img2.png",
+        thumbUrl="https://example.com/thumb2.png",
+        faction="USA",
+        type="tank",
+        rarity="Standard",
+        set="Base",
+        title=json.dumps({"en-EN": "M4 Sherman", "ru-RU": "М4 Шерман"}),
+        text=json.dumps({"en-EN": "Test tank card", "ru-RU": "Тестовая танковая карта"}),
+        kredits=4,
+        attack=3,
+        defense=4,
+        attributes=json.dumps(["blitz"]),
+        operationCost=None,
+        reserved=0,
+        image="img2.png",
+        can_create=None,
+        exile=None,
+    )
 
 
 @pytest.fixture()
 def db_connection(tmp_path) -> sqlite3.Connection:
-    """SQLite in-memory-like connection with initialized schema."""
+    """SQLite connection with initialized schema."""
     db_path = tmp_path / "test.db"
     conn = get_connection(db_path)
     initialize_schema(conn)
@@ -77,10 +93,10 @@ def sample_deck() -> dict:
         "name": "Test Deck",
         "major_power": "soviet",
         "ally": "usa",
-        "hq": "СТАЛИНГРАД",
+        "hq": "STALINGRAD",
         "deck_code": "%%TEST",
         "cards": [
-            {"nation": "soviet", "name": "16-й СТРЕЛКОВЫЙ ПОЛК", "quantity": 2, "cost": 1},
+            {"nation": "soviet", "name": "16th Rifle Regiment", "quantity": 2, "cost": 1},
             {"nation": "usa", "name": "M4 Sherman", "quantity": 1, "cost": 4},
         ],
     }

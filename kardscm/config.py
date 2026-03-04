@@ -7,8 +7,6 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from kardscm.constants import BASE_URL
-
 logger = logging.getLogger(__name__)
 
 CONFIG_FILE = "config.ini"
@@ -20,11 +18,12 @@ class LanguageConfig:
 
     code: str
     name: str
-    keys: tuple[str, ...]
-    lang_index: int
-    collection_url: str
+    locale_key: str
     export_headers: list[str] = field(default_factory=list)
     faction_names: dict[str, str] = field(default_factory=dict)
+    type_names: dict[str, str] = field(default_factory=dict)
+    rarity_names: dict[str, str] = field(default_factory=dict)
+    set_names: dict[str, str] = field(default_factory=dict)
     deck_nation_to_db: dict[str, str] = field(default_factory=dict)
     nation_display_names: dict[str, str] = field(default_factory=dict)
     deck_headers: list[str] = field(default_factory=list)
@@ -36,9 +35,7 @@ class LanguageConfig:
 LANGUAGE_EN = LanguageConfig(
     code="en",
     name="English",
-    keys=("en", "en-EN"),
-    lang_index=0,
-    collection_url=f"{BASE_URL}/en/decks/collection",
+    locale_key="en-EN",
     export_headers=[
         "Nation",
         "Name",
@@ -63,8 +60,35 @@ LANGUAGE_EN = LanguageConfig(
         "Poland": "Poland",
         "Finland": "Finland",
     },
+    type_names={
+        "infantry": "Infantry",
+        "tank": "Tank",
+        "artillery": "Artillery",
+        "fighter": "Fighter",
+        "order": "Order",
+        "countermeasure": "Countermeasure",
+    },
+    rarity_names={
+        "Standard": "Standard",
+        "Limited": "Limited",
+        "Special": "Special",
+        "Elite": "Elite",
+    },
+    set_names={
+        "Base": "Base",
+        "Allegiance": "Allegiance",
+        "TheatersOfWar": "Theaters of War",
+        "Breakthrough": "Breakthrough",
+        "WorldAtWar": "World at War",
+        "CovertOps": "Covert Ops",
+        "BloodAndIron": "Blood and Iron",
+        "Legions": "Legions",
+        "NavalWarfare": "Naval Warfare",
+        "Homefront": "Homefront",
+        "WinterWar": "Winter War",
+    },
     deck_nation_to_db={
-        "soviet": "Soviet Union",
+        "soviet": "Soviet",
         "usa": "USA",
         "britain": "Britain",
         "germany": "Germany",
@@ -113,9 +137,7 @@ LANGUAGE_EN = LanguageConfig(
 LANGUAGE_RU = LanguageConfig(
     code="ru",
     name="Russian",
-    keys=("ru", "ru-RU"),
-    lang_index=9,
-    collection_url=f"{BASE_URL}/ru/decks/collection",
+    locale_key="ru-RU",
     export_headers=[
         "Нация",
         "Название",
@@ -140,16 +162,43 @@ LANGUAGE_RU = LanguageConfig(
         "Poland": "Польша",
         "Finland": "Финляндия",
     },
+    type_names={
+        "infantry": "Пехота",
+        "tank": "Танк",
+        "artillery": "Артиллерия",
+        "fighter": "Истребитель",
+        "order": "Приказ",
+        "countermeasure": "Контрмера",
+    },
+    rarity_names={
+        "Standard": "Стандартная",
+        "Limited": "Лимитированная",
+        "Special": "Специальная",
+        "Elite": "Элитная",
+    },
+    set_names={
+        "Base": "Базовый",
+        "Allegiance": "Верность",
+        "TheatersOfWar": "Театры войны",
+        "Breakthrough": "Прорыв",
+        "WorldAtWar": "Мировая война",
+        "CovertOps": "Тайные операции",
+        "BloodAndIron": "Кровь и железо",
+        "Legions": "Легионы",
+        "NavalWarfare": "Морская война",
+        "Homefront": "Тыл",
+        "WinterWar": "Зимняя война",
+    },
     deck_nation_to_db={
-        "soviet": "Советский Союз",
-        "usa": "США",
-        "britain": "Великобритания",
-        "germany": "Германия",
-        "japan": "Япония",
-        "france": "Франция",
-        "italy": "Италия",
-        "poland": "Польша",
-        "finland": "Финляндия",
+        "soviet": "Soviet",
+        "usa": "USA",
+        "britain": "Britain",
+        "germany": "Germany",
+        "japan": "Japan",
+        "france": "France",
+        "italy": "Italy",
+        "poland": "Poland",
+        "finland": "Finland",
     },
     nation_display_names={
         "soviet": "Советские",

@@ -1,7 +1,7 @@
 """Tests for collection CLI (Typer-based)."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from typer.testing import CliRunner
 
@@ -25,7 +25,7 @@ def test_version_flag() -> None:
 
 
 def test_sync_command() -> None:
-    with patch("kardscm.cli.sync_collection", new_callable=AsyncMock) as mock_sync:
+    with patch("kardscm.cli.sync_collection") as mock_sync:
         result = runner.invoke(app, ["sync"])
     assert result.exit_code == 0
     mock_sync.assert_called_once()
