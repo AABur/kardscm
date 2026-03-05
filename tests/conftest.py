@@ -87,6 +87,36 @@ def db_connection(tmp_path) -> sqlite3.Connection:
 
 
 @pytest.fixture()
+def make_card():
+    """Factory fixture for creating test card dicts with defaults."""
+    def _factory(**overrides):
+        base = {
+            "cardId": "card-1",
+            "importId": "imp-1",
+            "imageUrl": "",
+            "thumbUrl": "",
+            "faction": "USA",
+            "type": "infantry",
+            "rarity": "Standard",
+            "set": "Base",
+            "title": json.dumps({"en-EN": "Alpha", "ru-RU": "Альфа"}),
+            "text": json.dumps({"en-EN": "Test", "ru-RU": "Тест"}),
+            "kredits": 2,
+            "attack": 3,
+            "defense": 2,
+            "attributes": json.dumps([]),
+            "operationCost": None,
+            "reserved": 0,
+            "image": "",
+            "can_create": None,
+            "exile": None,
+        }
+        base.update(overrides)
+        return base
+    return _factory
+
+
+@pytest.fixture()
 def sample_deck() -> dict:
     """Sample ParsedDeck for reuse across tests."""
     return {

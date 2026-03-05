@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from kardscm.scraping.fetcher import (
     _detect_pagination,
     _extract_card,
@@ -71,10 +73,31 @@ class TestDetectPagination:
 
 
 class TestFetchAllCards:
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_single_page(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+    @pytest.fixture()
+    def mock_httpx_client(self):
+        with patch("kardscm.scraping.fetcher.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+            yield mock_client
+
+    @pytest.fixture()
+    def default_probe(self):
+        return {
+            "url": "https://api.example.com/graphql",
+            "headers": {},
+            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
+        }
+
+    def _make_response(self, data):
+        resp = MagicMock()
+        resp.json.return_value = data
+        resp.raise_for_status = MagicMock()
+        return resp
+
+    def test_single_page(self, mock_httpx_client, default_probe):
+        mock_httpx_client.post.return_value = self._make_response({
             "data": {
                 "cards": {
                     "edges": [
@@ -83,29 +106,14 @@ class TestFetchAllCards:
                     ]
                 }
             }
-        }
-        mock_response.raise_for_status = MagicMock()
+        })
 
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
+        result = fetch_all_cards(default_probe)
         assert len(result) == 2
         assert result[0]["cardId"] == "c1"
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_deduplication(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+    def test_deduplication(self, mock_httpx_client, default_probe):
+        mock_httpx_client.post.return_value = self._make_response({
             "data": {
                 "cards": {
                     "edges": [
@@ -114,68 +122,28 @@ class TestFetchAllCards:
                     ]
                 }
             }
-        }
-        mock_response.raise_for_status = MagicMock()
+        })
 
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
+        result = fetch_all_cards(default_probe)
         assert len(result) == 1
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_graphql_errors_stop(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"errors": [{"message": "fail"}]}
-        mock_response.raise_for_status = MagicMock()
+    def test_graphql_errors_stop(self, mock_httpx_client, default_probe):
+        mock_httpx_client.post.return_value = self._make_response(
+            {"errors": [{"message": "fail"}]}
+        )
 
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
+        result = fetch_all_cards(default_probe)
         assert result == []
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_empty_edges_stops(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"data": {"cards": {"edges": []}}}
-        mock_response.raise_for_status = MagicMock()
+    def test_empty_edges_stops(self, mock_httpx_client, default_probe):
+        mock_httpx_client.post.return_value = self._make_response(
+            {"data": {"cards": {"edges": []}}}
+        )
 
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
+        result = fetch_all_cards(default_probe)
         assert result == []
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_cursor_pagination(self, mock_client_cls):
+    def test_cursor_pagination(self, mock_httpx_client):
         responses = [
             {
                 "data": {
@@ -194,19 +162,12 @@ class TestFetchAllCards:
                 }
             },
         ]
-        mock_client = MagicMock()
         resp_iter = iter(responses)
 
         def make_response(*args, **kwargs):
-            resp = MagicMock()
-            resp.json.return_value = next(resp_iter)
-            resp.raise_for_status = MagicMock()
-            return resp
+            return self._make_response(next(resp_iter))
 
-        mock_client.post.side_effect = make_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        mock_httpx_client.post.side_effect = make_response
 
         probe = {
             "url": "https://api.example.com/graphql",
@@ -217,40 +178,18 @@ class TestFetchAllCards:
         result = fetch_all_cards(probe)
         assert len(result) == 2
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_no_data_stops(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"data": {"something": "else"}}
-        mock_response.raise_for_status = MagicMock()
+    def test_no_data_stops(self, mock_httpx_client, default_probe):
+        mock_httpx_client.post.return_value = self._make_response(
+            {"data": {"something": "else"}}
+        )
 
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
+        result = fetch_all_cards(default_probe)
         assert result == []
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_limit_from_query_text(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+    def test_limit_from_query_text(self, mock_httpx_client):
+        mock_httpx_client.post.return_value = self._make_response({
             "data": {"cards": {"edges": [{"node": {"cardId": "c1"}}]}}
-        }
-        mock_response.raise_for_status = MagicMock()
-
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
+        })
 
         probe = {
             "url": "https://api.example.com/graphql",
@@ -261,25 +200,10 @@ class TestFetchAllCards:
         result = fetch_all_cards(probe)
         assert len(result) == 1
 
-    @patch("kardscm.scraping.fetcher.httpx.Client")
-    def test_nodes_instead_of_edges(self, mock_client_cls):
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+    def test_nodes_instead_of_edges(self, mock_httpx_client, default_probe):
+        mock_httpx_client.post.return_value = self._make_response({
             "data": {"cards": {"nodes": [{"cardId": "c1"}, {"cardId": "c2"}]}}
-        }
-        mock_response.raise_for_status = MagicMock()
+        })
 
-        mock_client = MagicMock()
-        mock_client.post.return_value = mock_response
-        mock_client.__enter__ = MagicMock(return_value=mock_client)
-        mock_client.__exit__ = MagicMock(return_value=False)
-        mock_client_cls.return_value = mock_client
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"offset": 0, "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
+        result = fetch_all_cards(default_probe)
         assert len(result) == 2
