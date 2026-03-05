@@ -20,19 +20,24 @@ from kardscm.export import (
     translate_card_for_export,
 )
 from kardscm.helpers import parse_int
+from kardscm.models import DeckCardEntry
 from kardscm.importing import parse_deck_file
 from kardscm.scraping import scrape_cards
 from kardscm.storage import (
+    delete_deck,
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,
     find_card_id,
+    find_card_id_by_exile,
     find_deck_by_name,
+    get_card_quantity_by_id,
     get_connection,
     initialize_schema,
     insert_deck,
     insert_deck_cards,
     set_metadata,
+    update_card_quantity_by_id,
     update_quantity,
     upsert_cards,
 )
@@ -274,6 +279,84 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
     logger.info("Deck '%s' imported (%d cards)", deck["name"], len(deck["cards"]))
 
 
+def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH) -> None:
+    """Add a deck from TXT file with exile card support and quantity check.
+
+    Args:
+        filename: Path to deck TXT file.
+        update: If True, update collection quantities to match deck.
+        db_path: SQLite database path.
+    """
+    lang_config = get_language_config()
+    logger.info("Adding deck from file: %s", filename)
+
+    try:
+        deck = parse_deck_file(filename)
+    except (FileNotFoundError, ValueError) as e:
+        raise SystemExit(f"Failed to parse deck file: {e}") from e
+
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+
+        existing = find_deck_by_name(conn, deck["name"])
+        if existing:
+            raise SystemExit(f"Deck '{deck['name']}' already exists (id={existing['deck_id']})")
+
+        # Resolve card IDs with exile fallback
+        not_found = []
+        resolved: list[tuple[DeckCardEntry, str]] = []
+        for card in deck["cards"]:
+            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            card_id = find_card_id(conn, faction, card["name"], lang_config.locale_key)
+            if card_id is None:
+                card_id = find_card_id_by_exile(conn, faction, card["name"], lang_config.locale_key)
+            if card_id is None:
+                not_found.append(f"{faction} / {card['name']}")
+            else:
+                resolved.append((card, card_id))
+
+        if not_found:
+            lines = "\n".join(f"  - {entry}" for entry in not_found)
+            raise SystemExit(f"Cards not found in collection:\n{lines}")
+
+        # Quantity check
+        mismatches: list[tuple[DeckCardEntry, str, int, int]] = []
+        for card, card_id in resolved:
+            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            collection_qty = get_card_quantity_by_id(conn, card_id)
+            if card["quantity"] != collection_qty:
+                mismatches.append((card, card_id, card["quantity"], collection_qty))
+
+        if mismatches and not update:
+            lines = "\n".join(
+                f"  - {lang_config.deck_nation_to_db.get(c['nation'], c['nation'])} / {c['name']}:"
+                f" deck={deck_qty}, collection={col_qty}"
+                for c, _, deck_qty, col_qty in mismatches
+            )
+            raise SystemExit(
+                f"Card quantity mismatch:\n{lines}\n"
+                "Re-run with --update (-u) to update collection quantities."
+            )
+
+        deck_id = insert_deck(conn, deck)
+        insert_deck_cards(
+            conn,
+            deck_id,
+            deck["cards"],
+            lang_config.deck_nation_to_db,
+            lang_config.locale_key,
+            use_exile_fallback=True,
+        )
+        conn.commit()
+
+        if update and mismatches:
+            for _, card_id, deck_qty, _ in mismatches:
+                update_card_quantity_by_id(conn, card_id, deck_qty)
+            conn.commit()
+
+    logger.info("Deck '%s' added (%d cards)", deck["name"], len(deck["cards"]))
+
+
 def _select_deck(conn: sqlite3.Connection) -> dict:
     """Interactively select a deck from the database.
 
@@ -300,6 +383,33 @@ def _select_deck(conn: sqlite3.Connection) -> dict:
         raise SystemExit(f"Invalid choice: {choice}. Enter a number from 1 to {len(decks)}")
 
     return decks[choice - 1]
+
+
+def remove_deck(db_path: str = DEFAULT_DB_PATH) -> None:
+    """Interactively select and delete a deck from the database.
+
+    Prompts for confirmation before deleting. Does not affect the cards table.
+
+    Args:
+        db_path: SQLite database path.
+    """
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        deck = _select_deck(conn)
+
+        print(f"\nDeck to delete: {deck['name']}")
+        try:
+            confirm = input("Confirm deletion? [y/N]: ").strip().lower()
+        except EOFError:
+            raise SystemExit("Aborted.")
+
+        if confirm != "y":
+            raise SystemExit("Aborted.")
+
+        delete_deck(conn, deck["deck_id"])
+        conn.commit()
+
+    logger.info("Deck '%s' deleted.", deck["name"])
 
 
 def export_deck(

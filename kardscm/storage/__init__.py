@@ -1,31 +1,39 @@
 """Storage subpackage for card database management."""
 
 from kardscm.storage.database import (
+    delete_deck,
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,
     find_card_id,
+    find_card_id_by_exile,
     find_deck_by_name,
+    get_card_quantity_by_id,
     get_connection,
     initialize_schema,
     insert_deck,
     insert_deck_cards,
     set_metadata,
+    update_card_quantity_by_id,
     update_quantity,
     upsert_cards,
 )
 
 __all__ = [
+    "delete_deck",
     "fetch_all_decks",
     "fetch_cards",
     "fetch_deck_cards",
     "find_card_id",
+    "find_card_id_by_exile",
     "find_deck_by_name",
+    "get_card_quantity_by_id",
     "get_connection",
     "initialize_schema",
     "insert_deck",
     "insert_deck_cards",
     "set_metadata",
+    "update_card_quantity_by_id",
     "update_quantity",
     "upsert_cards",
 ]

@@ -245,8 +245,8 @@ def update_quantity(
             continue
 
         cursor = conn.execute(
-            "UPDATE cards SET quantity = ? WHERE faction = ? AND json_extract(title, ?) = ?",
-            (qty, faction, f'$."{locale_key}"', title),
+            "UPDATE cards SET quantity = ? WHERE faction = ? AND TRIM(json_extract(title, ?)) = ?",
+            (qty, faction, f'$."{locale_key}"', title.strip()),
         )
 
         if cursor.rowcount > 0:
@@ -276,10 +276,59 @@ def find_card_id(
         cardId string or None if not found.
     """
     row = conn.execute(
-        "SELECT cardId FROM cards WHERE faction = ? AND json_extract(title, ?) = ?",
-        (faction, f'$."{locale_key}"', title),
+        "SELECT cardId FROM cards WHERE faction = ? AND TRIM(json_extract(title, ?)) = ?",
+        (faction, f'$."{locale_key}"', title.strip()),
     ).fetchone()
     return row[0] if row else None
+
+
+def find_card_id_by_exile(
+    conn: sqlite3.Connection,
+    exile_faction: str,
+    title: str,
+    locale_key: str,
+) -> str | None:
+    """Find cardId where exile == faction (cross-faction card fallback).
+
+    Args:
+        conn: SQLite connection instance.
+        exile_faction: Faction that can use the card via exile (e.g. 'Soviet').
+        title: Localized card title.
+        locale_key: Locale key for JSON title extraction.
+
+    Returns:
+        cardId string or None if not found.
+    """
+    row = conn.execute(
+        "SELECT cardId FROM cards WHERE exile = ? AND TRIM(json_extract(title, ?)) = ?",
+        (exile_faction, f'$."{locale_key}"', title.strip()),
+    ).fetchone()
+    return row[0] if row else None
+
+
+def get_card_quantity_by_id(conn: sqlite3.Connection, card_id: str) -> int:
+    """Return current quantity for a card (0 if not found).
+
+    Args:
+        conn: SQLite connection instance.
+        card_id: cardId to look up.
+
+    Returns:
+        Quantity value, or 0 if card not found.
+    """
+    row = conn.execute("SELECT quantity FROM cards WHERE cardId = ?", (card_id,)).fetchone()
+    return row[0] if row else 0
+
+
+def update_card_quantity_by_id(conn: sqlite3.Connection, card_id: str, quantity: int) -> None:
+    """Update quantity for a card by its ID.
+
+    Args:
+        conn: SQLite connection instance.
+        card_id: cardId to update.
+        quantity: New quantity value.
+    """
+    conn.execute("UPDATE cards SET quantity = ? WHERE cardId = ?", (quantity, card_id))
 
 
 def insert_deck(conn: sqlite3.Connection, deck: ParsedDeck) -> int:
@@ -305,6 +354,7 @@ def insert_deck_cards(
     cards: list[DeckCardEntry],
     faction_map: dict[str, str],
     locale_key: str,
+    use_exile_fallback: bool = False,
 ) -> None:
     """Insert deck cards, linking each to its card_id.
 
@@ -314,6 +364,7 @@ def insert_deck_cards(
         cards: List of DeckCardEntry dicts.
         faction_map: Mapping from deck nation key to API faction name.
         locale_key: Locale key for title lookup.
+        use_exile_fallback: If True, try exile lookup when faction lookup fails.
 
     Raises:
         ValueError: If a card is not found in the collection.
@@ -321,6 +372,8 @@ def insert_deck_cards(
     for card in cards:
         faction = faction_map.get(card["nation"], card["nation"])
         card_id = find_card_id(conn, faction, card["name"], locale_key)
+        if card_id is None and use_exile_fallback:
+            card_id = find_card_id_by_exile(conn, faction, card["name"], locale_key)
         if card_id is None:
             msg = f"Card not found: {faction} / {card['name']}"
             raise ValueError(msg)
@@ -331,6 +384,19 @@ def insert_deck_cards(
             "quantity = excluded.quantity, cost = excluded.cost",
             (deck_id, card_id, card["quantity"], card["cost"]),
         )
+
+
+def delete_deck(conn: sqlite3.Connection, deck_id: int) -> None:
+    """Delete a deck and its cards from the database.
+
+    Relies on ON DELETE CASCADE to remove deck_cards rows automatically.
+    Does not affect the cards table.
+
+    Args:
+        conn: SQLite connection instance.
+        deck_id: ID of the deck to delete.
+    """
+    conn.execute("DELETE FROM decks WHERE deck_id = ?", (deck_id,))
 
 
 def fetch_all_decks(conn: sqlite3.Connection) -> list[dict]:
