@@ -12,9 +12,11 @@ import typer
 
 from kardscm import __version__
 from kardscm.commands import (
+    add_deck,
     export_collection,
     export_deck,
     import_deck,
+    remove_deck,
     sync_collection,
     update_collection,
     validate_file,
@@ -159,6 +161,49 @@ def deck_import(
     """
     validate_file(str(file), ".txt", must_exist=True)
     import_deck(str(file))
+
+
+@deck_app.command(
+    "add",
+    epilog="Examples:\n\n* `kards deck add -f deck.txt`\n\n* `kards deck add -f deck.txt -u`",
+)
+def deck_add(
+    file: Annotated[
+        Path,
+        typer.Option(
+            "--file",
+            "-f",
+            help="Deck TXT file",
+            exists=True,
+            readable=True,
+            resolve_path=True,
+        ),
+    ],
+    update: Annotated[
+        bool,
+        typer.Option("--update", "-u", help="Update collection quantities to match deck"),
+    ] = False,
+) -> None:
+    """Add a deck from a TXT file, with exile card support.
+
+    Looks up cards by faction first, then falls back to the exile field.
+    Checks collection quantities; use --update to fix mismatches.
+    """
+    validate_file(str(file), ".txt", must_exist=True)
+    add_deck(str(file), update=update)
+
+
+@deck_app.command(
+    "delete",
+    epilog="Examples:\n\n* `kards deck delete`",
+)
+def deck_delete() -> None:
+    """Delete a saved deck from the database.
+
+    Lists available decks, prompts for selection and confirmation.
+    Only removes records from decks and deck_cards tables.
+    """
+    remove_deck()
 
 
 @deck_app.command(

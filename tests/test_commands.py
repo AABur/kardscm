@@ -11,6 +11,7 @@ import pytest
 from kardscm.commands import (
     _read_xlsx_quantities,
     _select_deck,
+    add_deck,
     export_collection,
     export_deck,
     import_deck,
@@ -494,3 +495,164 @@ class TestReadXlsxQuantities:
 
         with pytest.raises(ValueError, match="Missing required columns"):
             _read_xlsx_quantities(str(xlsx))
+
+
+class TestAddDeck:
+    def _make_exile_card(self, **overrides) -> dict:
+        card = {
+            "cardId": "card-poland-exile",
+            "importId": "imp-exile",
+            "imageUrl": "",
+            "thumbUrl": "",
+            "faction": "Poland",
+            "type": "plane",
+            "rarity": "Standard",
+            "set": "Base",
+            "title": json.dumps({"en-EN": "IL-2M PL", "ru-RU": "Ил-2М PL"}),
+            "text": json.dumps({"en-EN": "Exile card"}),
+            "kredits": 3,
+            "attack": 2,
+            "defense": 2,
+            "attributes": "[]",
+            "operationCost": None,
+            "reserved": 0,
+            "image": "",
+            "can_create": None,
+            "exile": "Soviet",
+        }
+        card.update(overrides)
+        return card
+
+    def _setup_db(self, tmp_path, cards=None):
+        from kardscm.storage import get_connection, initialize_schema, upsert_cards
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            if cards:
+                upsert_cards(conn, cards)
+        return db_path
+
+    @patch("kardscm.commands.get_language_config")
+    def test_file_not_found(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        with pytest.raises(SystemExit, match="Failed to parse deck"):
+            add_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
+
+    @patch("kardscm.commands.get_language_config")
+    def test_card_not_found_no_exile(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db(tmp_path)
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "New Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) MISSING\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(SystemExit, match="Cards not found"):
+            add_deck(str(deck_file), db_path=db_path)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_exile_fallback_success(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import fetch_all_decks, get_connection
+
+        mock_config.return_value = LANGUAGE_EN
+        # Exile card: faction=Poland, exile=Soviet; no quantity mismatch (both 0)
+        db_path = self._setup_db(tmp_path, cards=[self._make_exile_card()])
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Soviet Deck\nMajor power: soviet\n\nsoviet:\n0x (3K) IL-2M PL\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), db_path=db_path)
+
+        with get_connection(db_path) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 1
+        assert decks[0]["name"] == "Soviet Deck"
+
+    @patch("kardscm.commands.get_language_config")
+    def test_quantity_mismatch_no_update(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+
+        mock_config.return_value = LANGUAGE_EN
+        # Card in collection with quantity=1, deck wants 2
+        db_path = self._setup_db(
+            tmp_path,
+            cards=[_make_card(title=json.dumps({"en-EN": "Alpha"}))],
+        )
+        # Set quantity=1 in DB
+        from kardscm.storage import get_connection
+
+        with get_connection(db_path) as conn:
+            conn.execute("UPDATE cards SET quantity = 1 WHERE cardId = 'c1'")
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Alpha Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(SystemExit, match="quantity mismatch"):
+            add_deck(str(deck_file), db_path=db_path)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_quantity_mismatch_with_update(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import fetch_cards, get_connection
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db(
+            tmp_path,
+            cards=[_make_card(title=json.dumps({"en-EN": "Alpha"}))],
+        )
+        # Set quantity=1 in DB, deck wants 2
+        with get_connection(db_path) as conn:
+            conn.execute("UPDATE cards SET quantity = 1 WHERE cardId = 'c1'")
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Alpha Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), update=True, db_path=db_path)
+
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert cards[0]["quantity"] == 2
+
+    @patch("kardscm.commands.get_language_config")
+    def test_success_no_mismatch(self, mock_config, tmp_path):
+        from kardscm.config import LANGUAGE_EN
+        from kardscm.storage import fetch_all_decks, get_connection
+
+        mock_config.return_value = LANGUAGE_EN
+        db_path = self._setup_db(
+            tmp_path,
+            cards=[_make_card(title=json.dumps({"en-EN": "Alpha"}))],
+        )
+
+        deck_file = tmp_path / "deck.txt"
+        # quantity=0 matches default DB quantity=0
+        deck_file.write_text(
+            "My Deck\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), db_path=db_path)
+
+        with get_connection(db_path) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 1
+        assert decks[0]["name"] == "My Deck"

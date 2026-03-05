@@ -12,12 +12,15 @@ from kardscm.storage import (
     fetch_cards,
     fetch_deck_cards,
     find_card_id,
+    find_card_id_by_exile,
     find_deck_by_name,
+    get_card_quantity_by_id,
     get_connection,
     initialize_schema,
     insert_deck,
     insert_deck_cards,
     set_metadata,
+    update_card_quantity_by_id,
     update_quantity,
     upsert_cards,
 )
@@ -327,3 +330,107 @@ def test_get_connection_enables_foreign_keys(tmp_path: Path) -> None:
     with get_connection(db_path) as conn:
         fk = conn.execute("PRAGMA foreign_keys").fetchone()
         assert fk[0] == 1
+
+
+# --- Tests for new exile/quantity functions ---
+
+_EXILE_CARD = _make_card(
+    cardId="card-poland-1",
+    faction="Poland",
+    title=json.dumps({"en-EN": "IL-2M PL", "ru-RU": "Ил-2М PL"}),
+    exile="Soviet",
+)
+
+
+def test_find_card_id_by_exile_found(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_EXILE_CARD])
+
+        card_id = find_card_id_by_exile(conn, "Soviet", "IL-2M PL", "en-EN")
+        assert card_id == "card-poland-1"
+
+
+def test_find_card_id_by_exile_not_found(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_EXILE_CARD])
+
+        result = find_card_id_by_exile(conn, "USA", "IL-2M PL", "en-EN")
+        assert result is None
+
+
+def test_get_card_quantity_by_id_existing(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_make_card(cardId="q-card", quantity=5)])
+        conn.execute("UPDATE cards SET quantity = 5 WHERE cardId = 'q-card'")
+        conn.commit()
+
+        qty = get_card_quantity_by_id(conn, "q-card")
+        assert qty == 5
+
+
+def test_get_card_quantity_by_id_missing(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+
+        qty = get_card_quantity_by_id(conn, "nonexistent")
+        assert qty == 0
+
+
+def test_update_card_quantity_by_id(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_make_card(cardId="upd-card")])
+
+        update_card_quantity_by_id(conn, "upd-card", 7)
+        conn.commit()
+
+        qty = get_card_quantity_by_id(conn, "upd-card")
+        assert qty == 7
+
+
+def test_insert_deck_cards_with_exile_fallback(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_EXILE_CARD])
+
+        deck_id = insert_deck(conn, _SAMPLE_DECK)
+        # Card is under Soviet nation in deck but has faction=Poland, exile=Soviet
+        insert_deck_cards(
+            conn,
+            deck_id,
+            [{"nation": "soviet", "name": "IL-2M PL", "quantity": 1, "cost": 2}],
+            {"soviet": "Soviet"},
+            "en-EN",
+            use_exile_fallback=True,
+        )
+        conn.commit()
+
+        cards = fetch_deck_cards(conn, deck_id)
+        assert len(cards) == 1
+
+
+def test_insert_deck_cards_exile_fallback_disabled_raises(tmp_path: Path) -> None:
+    db_path = tmp_path / "test.db"
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        upsert_cards(conn, [_EXILE_CARD])
+
+        deck_id = insert_deck(conn, _SAMPLE_DECK)
+        with pytest.raises(ValueError, match="Card not found"):
+            insert_deck_cards(
+                conn,
+                deck_id,
+                [{"nation": "soviet", "name": "IL-2M PL", "quantity": 1, "cost": 2}],
+                {"soviet": "Soviet"},
+                "en-EN",
+                use_exile_fallback=False,
+            )
