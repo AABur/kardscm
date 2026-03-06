@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from kardscm.scraping.probe import _filter_headers, _is_graphql_request
 
 
@@ -12,30 +14,21 @@ class MockRequest:
         self.url = url
 
 
-class TestIsGraphqlRequest:
-    def test_valid_graphql(self):
-        req = MockRequest(method="POST", post_data='{"operationName":"GetCards"}')
-        assert _is_graphql_request(req) is True
-
-    def test_with_query(self):
-        req = MockRequest(method="POST", post_data='{"query":"{ cards { id } }"}')
-        assert _is_graphql_request(req) is True
-
-    def test_get_request(self):
-        req = MockRequest(method="GET", post_data='{"operationName":"X"}')
-        assert _is_graphql_request(req) is False
-
-    def test_no_post_data(self):
-        req = MockRequest(method="POST", post_data=None)
-        assert _is_graphql_request(req) is False
-
-    def test_invalid_json(self):
-        req = MockRequest(method="POST", post_data="not json")
-        assert _is_graphql_request(req) is False
-
-    def test_no_graphql_keys(self):
-        req = MockRequest(method="POST", post_data='{"foo":"bar"}')
-        assert _is_graphql_request(req) is False
+@pytest.mark.parametrize(
+    ("method", "post_data", "expected"),
+    [
+        ("POST", '{"operationName":"GetCards"}', True),
+        ("POST", '{"query":"{ cards { id } }"}', True),
+        ("GET", '{"operationName":"X"}', False),
+        ("POST", None, False),
+        ("POST", "not json", False),
+        ("POST", '{"foo":"bar"}', False),
+    ],
+    ids=["valid_graphql", "with_query", "get_request", "no_post_data", "invalid_json", "no_graphql_keys"],
+)
+def test_is_graphql_request(method, post_data, expected):
+    req = MockRequest(method=method, post_data=post_data)
+    assert _is_graphql_request(req) is expected
 
 
 class TestFilterHeaders:

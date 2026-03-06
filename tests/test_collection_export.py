@@ -21,39 +21,44 @@ def test_export_requires_data(tmp_path: Path) -> None:
         export_collection("csv", str(output_path), db_path=str(db_path))
 
 
-_DECK_META = {
-    "name": "Test Deck",
-    "major_power": "soviet",
-    "ally": "usa",
-    "hq": "STALINGRAD",
-    "deck_code": "%%CODE",
-}
-
-_DECK_CARDS = [
-    {
-        "faction": "Soviet",
-        "title": json.dumps({"en-EN": "16th Rifle Regiment", "ru-RU": "16-й СТРЕЛКОВЫЙ ПОЛК"}),
-        "type": "infantry",
-        "rarity": "Standard",
-        "attributes": json.dumps(["guard"]),
-        "set": "Base",
-        "kredits": 1,
-        "attack": 1,
-        "defense": 2,
-        "text": json.dumps({"en-EN": "Test", "ru-RU": "Тест"}),
-        "deck_quantity": 2,
-        "deck_cost": 1,
-    },
-]
+@pytest.fixture()
+def deck_meta():
+    return {
+        "name": "Test Deck",
+        "major_power": "soviet",
+        "ally": "usa",
+        "hq": "STALINGRAD",
+        "deck_code": "%%CODE",
+    }
 
 
-def test_add_deck_sheet() -> None:
+@pytest.fixture()
+def deck_cards():
+    return [
+        {
+            "faction": "Soviet",
+            "title": json.dumps({"en-EN": "16th Rifle Regiment", "ru-RU": "16-й СТРЕЛКОВЫЙ ПОЛК"}),
+            "type": "infantry",
+            "rarity": "Standard",
+            "attributes": json.dumps(["guard"]),
+            "set": "Base",
+            "kredits": 1,
+            "attack": 1,
+            "defense": 2,
+            "text": json.dumps({"en-EN": "Test", "ru-RU": "Тест"}),
+            "deck_quantity": 2,
+            "deck_cost": 1,
+        },
+    ]
+
+
+def test_add_deck_sheet(deck_meta, deck_cards) -> None:
     wb = Workbook()
     lang = LANGUAGE_RU
     add_deck_sheet(
         wb,
-        _DECK_META,
-        _DECK_CARDS,
+        deck_meta,
+        deck_cards,
         lang.deck_headers,
         lang.deck_metadata_labels,
         lang.deck_nation_to_db,
@@ -72,10 +77,10 @@ def test_add_deck_sheet() -> None:
     assert ws.cell(row=9, column=1).value == "16-й СТРЕЛКОВЫЙ ПОЛК"
 
 
-def test_export_deck_to_json(tmp_path: Path) -> None:
+def test_export_deck_to_json(tmp_path: Path, deck_meta, deck_cards) -> None:
     output = tmp_path / "deck.json"
     lang = LANGUAGE_RU
-    export_deck_to_json(_DECK_META, _DECK_CARDS, str(output), lang)
+    export_deck_to_json(deck_meta, deck_cards, str(output), lang)
 
     data = json.loads(output.read_text(encoding="utf-8"))
     assert data["deck"]["name"] == "Test Deck"

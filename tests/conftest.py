@@ -7,21 +7,8 @@ import sqlite3
 
 import pytest
 
-from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.models import CardDict
 from kardscm.storage import get_connection, initialize_schema
-
-
-@pytest.fixture()
-def lang_config_ru():
-    """Russian language configuration."""
-    return LANGUAGE_RU
-
-
-@pytest.fixture()
-def lang_config_en():
-    """English language configuration."""
-    return LANGUAGE_EN
 
 
 @pytest.fixture()
@@ -45,32 +32,6 @@ def sample_card() -> CardDict:
         operationCost=None,
         reserved=0,
         image="img.png",
-        can_create=None,
-        exile=None,
-    )
-
-
-@pytest.fixture()
-def sample_card_en() -> CardDict:
-    """Sample English CardDict."""
-    return CardDict(
-        cardId="card-usa-1",
-        importId="imp-2",
-        imageUrl="https://example.com/img2.png",
-        thumbUrl="https://example.com/thumb2.png",
-        faction="USA",
-        type="tank",
-        rarity="Standard",
-        set="Base",
-        title=json.dumps({"en-EN": "M4 Sherman", "ru-RU": "М4 Шерман"}),
-        text=json.dumps({"en-EN": "Test tank card", "ru-RU": "Тестовая танковая карта"}),
-        kredits=4,
-        attack=3,
-        defense=4,
-        attributes=json.dumps(["blitz"]),
-        operationCost=None,
-        reserved=0,
-        image="img2.png",
         can_create=None,
         exile=None,
     )
