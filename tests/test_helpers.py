@@ -38,41 +38,33 @@ def test_to_text(input_val, expected):
     assert to_text(input_val) == expected
 
 
-class TestDecodeEscapes:
-    def test_empty(self):
-        assert decode_escapes("") == ""
-
-    def test_no_escapes(self):
-        assert decode_escapes("hello world") == "hello world"
-
-    def test_newline(self):
-        assert decode_escapes("hello\\nworld") == "hello\nworld"
-
-    def test_tab(self):
-        assert decode_escapes("hello\\tworld") == "hello\tworld"
-
-    def test_unicode(self):
-        assert decode_escapes("\\u0041") == "A"
-
-    def test_hex(self):
-        assert decode_escapes("\\x41") == "A"
+@pytest.mark.parametrize(
+    ("input_val", "expected"),
+    [
+        ("", ""),
+        ("hello world", "hello world"),
+        ("hello\\nworld", "hello\nworld"),
+        ("hello\\tworld", "hello\tworld"),
+        ("\\u0041", "A"),
+        ("\\x41", "A"),
+    ],
+    ids=["empty", "no_escapes", "newline", "tab", "unicode", "hex"],
+)
+def test_decode_escapes(input_val, expected):
+    assert decode_escapes(input_val) == expected
 
 
-class TestSanitizeText:
-    def test_empty(self):
-        assert sanitize_text("") == ""
-
-    def test_newlines_replaced(self):
-        assert sanitize_text("hello\nworld") == "hello world"
-
-    def test_multiple_spaces_collapsed(self):
-        assert sanitize_text("hello   world") == "hello world"
-
-    def test_escapes_decoded(self):
-        assert sanitize_text("hello\\nworld") == "hello world"
-
-    def test_crlf(self):
-        assert sanitize_text("hello\r\nworld") == "hello world"
-
-    def test_none_passthrough(self):
-        assert sanitize_text(None) is None
+@pytest.mark.parametrize(
+    ("input_val", "expected"),
+    [
+        ("", ""),
+        ("hello\nworld", "hello world"),
+        ("hello   world", "hello world"),
+        ("hello\\nworld", "hello world"),
+        ("hello\r\nworld", "hello world"),
+        (None, None),
+    ],
+    ids=["empty", "newlines_replaced", "spaces_collapsed", "escapes_decoded", "crlf", "none_passthrough"],
+)
+def test_sanitize_text(input_val, expected):
+    assert sanitize_text(input_val) == expected

@@ -64,9 +64,8 @@ disallow_untyped_defs = true
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-v --cov=kardscm --cov-report=term-missing"
+addopts = "-v --strict-markers --cov=kardscm --cov-report=term-missing"
 
 [dependency-groups]
 dev = [
