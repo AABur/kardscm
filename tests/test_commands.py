@@ -16,6 +16,7 @@ from kardscm.commands import (
     export_collection,
     export_deck,
     import_deck,
+    remove_deck,
     sync_collection,
     update_collection,
     validate_file,
@@ -525,3 +526,57 @@ class TestAddDeck:
             decks = fetch_all_decks(conn)
         assert len(decks) == 1
         assert decks[0]["name"] == "My Deck"
+
+
+class TestRemoveDeck:
+    @pytest.fixture()
+    def two_deck_db(self, tmp_path):
+        """DB with two decks, no cards required."""
+        db_path = str(tmp_path / "decks.db")
+        deck_base = {
+            "major_power": "usa",
+            "ally": None,
+            "hq": None,
+            "deck_code": None,
+            "cards": [],
+        }
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            insert_deck(conn, {**deck_base, "name": "Deck A"})
+            insert_deck(conn, {**deck_base, "name": "Deck B"})
+            conn.commit()
+        return db_path
+
+    def test_no_decks_raises(self, tmp_path):
+        db_path = str(tmp_path / "empty.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            conn.commit()
+        with pytest.raises(SystemExit, match="No decks"):
+            remove_deck(db_path=db_path)
+
+    def test_delete_all_confirmed(self, two_deck_db):
+        with patch("builtins.input", side_effect=["0", "y"]):
+            remove_deck(db_path=two_deck_db)
+        with get_connection(two_deck_db) as conn:
+            assert fetch_all_decks(conn) == []
+
+    def test_delete_all_aborted(self, two_deck_db):
+        with patch("builtins.input", side_effect=["0", "n"]):
+            with pytest.raises(SystemExit, match="Aborted"):
+                remove_deck(db_path=two_deck_db)
+        with get_connection(two_deck_db) as conn:
+            assert len(fetch_all_decks(conn)) == 2
+
+    def test_delete_one_still_works(self, two_deck_db):
+        with patch("builtins.input", side_effect=["1", "y"]):
+            remove_deck(db_path=two_deck_db)
+        with get_connection(two_deck_db) as conn:
+            remaining = fetch_all_decks(conn)
+        assert len(remaining) == 1
+        assert remaining[0]["name"] == "Deck B"
+
+    def test_invalid_choice_negative(self, two_deck_db):
+        with patch("builtins.input", return_value="-1"):
+            with pytest.raises(SystemExit, match="Invalid choice"):
+                remove_deck(db_path=two_deck_db)
