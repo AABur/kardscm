@@ -24,6 +24,7 @@ from kardscm.models import DeckCardEntry
 from kardscm.importing import parse_deck_file
 from kardscm.scraping import scrape_cards
 from kardscm.storage import (
+    delete_all_decks,
     delete_deck,
     fetch_all_decks,
     fetch_cards,
@@ -388,28 +389,58 @@ def _select_deck(conn: sqlite3.Connection) -> dict:
 def remove_deck(db_path: str = DEFAULT_DB_PATH) -> None:
     """Interactively select and delete a deck from the database.
 
-    Prompts for confirmation before deleting. Does not affect the cards table.
+    Enter 0 to delete all decks. Prompts for confirmation before deleting.
+    Does not affect the cards table.
 
     Args:
         db_path: SQLite database path.
     """
     with get_connection(db_path) as conn:
         initialize_schema(conn)
-        deck = _select_deck(conn)
+        decks = fetch_all_decks(conn)
+        if not decks:
+            raise SystemExit("No decks in database. Run 'kards deck import' first.")
 
-        print(f"\nDeck to delete: {deck['name']}")
+        print("Available decks:")
+        print("  0. Delete ALL decks")
+        for i, deck in enumerate(decks, 1):
+            print(f"  {i}. {deck['name']}")
+
         try:
-            confirm = input("Confirm deletion? [y/N]: ").strip().lower()
-        except EOFError:
-            raise SystemExit("Aborted.")
+            choice = int(input("Enter deck number (0 to delete all): "))
+        except (ValueError, EOFError) as e:
+            raise SystemExit(f"Invalid input: expected a number (0-{len(decks)})") from e
 
-        if confirm != "y":
-            raise SystemExit("Aborted.")
+        if choice < 0 or choice > len(decks):
+            raise SystemExit(f"Invalid choice: {choice}. Enter a number from 0 to {len(decks)}")
 
-        delete_deck(conn, deck["deck_id"])
-        conn.commit()
+        if choice == 0:
+            print(f"\nAll {len(decks)} deck(s) will be deleted.")
+            try:
+                confirm = input("Confirm deletion? [y/N]: ").strip().lower()
+            except EOFError:
+                raise SystemExit("Aborted.")
+            if confirm != "y":
+                raise SystemExit("Aborted.")
+            count = delete_all_decks(conn)
+            conn.commit()
 
-    logger.info("Deck '%s' deleted.", deck["name"])
+        else:
+            deck = decks[choice - 1]
+            print(f"\nDeck to delete: {deck['name']}")
+            try:
+                confirm = input("Confirm deletion? [y/N]: ").strip().lower()
+            except EOFError:
+                raise SystemExit("Aborted.")
+            if confirm != "y":
+                raise SystemExit("Aborted.")
+            delete_deck(conn, deck["deck_id"])
+            conn.commit()
+
+    if choice == 0:
+        logger.info("All decks deleted (%d).", count)
+    else:
+        logger.info("Deck '%s' deleted.", deck["name"])
 
 
 def export_deck(

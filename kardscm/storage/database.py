@@ -399,6 +399,22 @@ def delete_deck(conn: sqlite3.Connection, deck_id: int) -> None:
     conn.execute("DELETE FROM decks WHERE deck_id = ?", (deck_id,))
 
 
+def delete_all_decks(conn: sqlite3.Connection) -> int:
+    """Delete all decks and their cards from the database.
+
+    Relies on ON DELETE CASCADE to remove deck_cards rows automatically.
+    Does not affect the cards table.
+
+    Args:
+        conn: SQLite connection instance.
+
+    Returns:
+        Number of decks deleted.
+    """
+    cursor = conn.execute("DELETE FROM decks")
+    return cursor.rowcount
+
+
 def fetch_all_decks(conn: sqlite3.Connection) -> list[dict]:
     """Fetch all decks from the database.
 

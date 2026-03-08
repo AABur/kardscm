@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from kardscm.storage import (
+    delete_all_decks,
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,
@@ -339,3 +340,17 @@ def test_insert_deck_cards_exile_fallback_disabled_raises(
             "en-EN",
             use_exile_fallback=False,
         )
+
+
+def test_delete_all_decks(db_connection, storage_deck) -> None:
+    deck_a = {**storage_deck, "name": "Deck A"}
+    deck_b = {**storage_deck, "name": "Deck B"}
+    insert_deck(db_connection, deck_a)
+    insert_deck(db_connection, deck_b)
+    db_connection.commit()
+
+    count = delete_all_decks(db_connection)
+    db_connection.commit()
+
+    assert count == 2
+    assert fetch_all_decks(db_connection) == []
