@@ -24,7 +24,14 @@ class MockRequest:
         ("POST", "not json", False),
         ("POST", '{"foo":"bar"}', False),
     ],
-    ids=["valid_graphql", "with_query", "get_request", "no_post_data", "invalid_json", "no_graphql_keys"],
+    ids=[
+        "valid_graphql",
+        "with_query",
+        "get_request",
+        "no_post_data",
+        "invalid_json",
+        "no_graphql_keys",
+    ],
 )
 def test_is_graphql_request(method, post_data, expected):
     req = MockRequest(method=method, post_data=post_data)

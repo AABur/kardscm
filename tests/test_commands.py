@@ -441,7 +441,7 @@ class TestAddDeck:
     @patch("kardscm.commands.get_language_config")
     def test_file_not_found(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
-        with pytest.raises(SystemExit, match="Failed to parse deck"):
+        with pytest.raises(RuntimeError, match="Failed to parse deck"):
             add_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
 
     @patch("kardscm.commands.get_language_config")
@@ -454,7 +454,7 @@ class TestAddDeck:
             encoding="utf-8",
         )
 
-        with pytest.raises(SystemExit, match="Cards not found"):
+        with pytest.raises(RuntimeError, match="Cards not found"):
             add_deck(str(deck_file), db_path=empty_db)
 
     @patch("kardscm.commands.get_language_config")
@@ -487,7 +487,7 @@ class TestAddDeck:
             encoding="utf-8",
         )
 
-        with pytest.raises(SystemExit, match="quantity mismatch"):
+        with pytest.raises(RuntimeError, match="quantity mismatch"):
             add_deck(str(deck_file), db_path=db_with_card)
 
     @patch("kardscm.commands.get_language_config")

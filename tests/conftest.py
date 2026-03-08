@@ -50,6 +50,7 @@ def db_connection(tmp_path) -> sqlite3.Connection:
 @pytest.fixture()
 def make_card():
     """Factory fixture for creating test card dicts with defaults."""
+
     def _factory(**overrides):
         base = {
             "cardId": "card-1",
@@ -74,6 +75,7 @@ def make_card():
         }
         base.update(overrides)
         return base
+
     return _factory
 
 

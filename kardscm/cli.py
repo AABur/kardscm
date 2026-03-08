@@ -165,15 +165,13 @@ def deck_import(
 
 @deck_app.command(
     "add",
-    epilog="Examples:\n\n* `kards deck add -f deck.txt`\n\n* `kards deck add -f deck.txt -u`",
+    epilog="Examples:\n\n* `kards deck add deck.txt`\n\n* `kards deck add *.txt -u`",
 )
 def deck_add(
-    file: Annotated[
-        Path,
-        typer.Option(
-            "--file",
-            "-f",
-            help="Deck TXT file",
+    files: Annotated[
+        list[Path],
+        typer.Argument(
+            help="Deck TXT file(s) to add",
             exists=True,
             readable=True,
             resolve_path=True,
@@ -184,13 +182,23 @@ def deck_add(
         typer.Option("--update", "-u", help="Update collection quantities to match deck"),
     ] = False,
 ) -> None:
-    """Add a deck from a TXT file, with exile card support.
+    """Add deck(s) from TXT file(s), with exile card support.
 
     Looks up cards by faction first, then falls back to the exile field.
     Checks collection quantities; use --update to fix mismatches.
+    On error, continues with remaining files and prints a summary at the end.
     """
-    validate_file(str(file), ".txt", must_exist=True)
-    add_deck(str(file), update=update)
+    errors: list[tuple[str, str]] = []
+    for f in files:
+        try:
+            validate_file(str(f), ".txt")  # existence guaranteed by Typer
+            add_deck(str(f), update=update)
+        except (RuntimeError, SystemExit) as e:  # SystemExit: validate_file; RuntimeError: add_deck
+            errors.append((str(f), str(e)))
+
+    if errors:
+        lines = "\n".join(f"  {fname}: {msg}" for fname, msg in errors)
+        raise SystemExit(f"Failed to add {len(errors)} deck(s):\n{lines}")
 
 
 @deck_app.command(

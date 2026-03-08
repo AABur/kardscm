@@ -20,8 +20,8 @@ from kardscm.export import (
     translate_card_for_export,
 )
 from kardscm.helpers import parse_int
-from kardscm.models import DeckCardEntry
 from kardscm.importing import parse_deck_file
+from kardscm.models import DeckCardEntry
 from kardscm.scraping import scrape_cards
 from kardscm.storage import (
     delete_all_decks,
@@ -283,6 +283,9 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
 def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH) -> None:
     """Add a deck from TXT file with exile card support and quantity check.
 
+    Raises RuntimeError (not SystemExit) so the CLI can collect errors
+    across multiple files and report a batch summary.
+
     Args:
         filename: Path to deck TXT file.
         update: If True, update collection quantities to match deck.
@@ -294,14 +297,14 @@ def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH
     try:
         deck = parse_deck_file(filename)
     except (FileNotFoundError, ValueError) as e:
-        raise SystemExit(f"Failed to parse deck file: {e}") from e
+        raise RuntimeError(f"Failed to parse deck file: {e}") from e
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
 
         existing = find_deck_by_name(conn, deck["name"])
         if existing:
-            raise SystemExit(f"Deck '{deck['name']}' already exists (id={existing['deck_id']})")
+            raise RuntimeError(f"Deck '{deck['name']}' already exists (id={existing['deck_id']})")
 
         # Resolve card IDs with exile fallback
         not_found = []
@@ -318,7 +321,7 @@ def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH
 
         if not_found:
             lines = "\n".join(f"  - {entry}" for entry in not_found)
-            raise SystemExit(f"Cards not found in collection:\n{lines}")
+            raise RuntimeError(f"Cards not found in collection:\n{lines}")
 
         # Quantity check
         mismatches: list[tuple[DeckCardEntry, str, int, int]] = []
@@ -334,7 +337,7 @@ def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH
                 f" deck={deck_qty}, collection={col_qty}"
                 for c, _, deck_qty, col_qty in mismatches
             )
-            raise SystemExit(
+            raise RuntimeError(
                 f"Card quantity mismatch:\n{lines}\n"
                 "Re-run with --update (-u) to update collection quantities."
             )
