@@ -97,40 +97,42 @@ class TestFetchAllCards:
         return resp
 
     def test_single_page(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response({
-            "data": {
-                "cards": {
-                    "edges": [
-                        {"node": {"cardId": "c1"}},
-                        {"node": {"cardId": "c2"}},
-                    ]
+        mock_httpx_client.post.return_value = self._make_response(
+            {
+                "data": {
+                    "cards": {
+                        "edges": [
+                            {"node": {"cardId": "c1"}},
+                            {"node": {"cardId": "c2"}},
+                        ]
+                    }
                 }
             }
-        })
+        )
 
         result = fetch_all_cards(default_probe)
         assert len(result) == 2
         assert result[0]["cardId"] == "c1"
 
     def test_deduplication(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response({
-            "data": {
-                "cards": {
-                    "edges": [
-                        {"node": {"cardId": "c1"}},
-                        {"node": {"cardId": "c1"}},
-                    ]
+        mock_httpx_client.post.return_value = self._make_response(
+            {
+                "data": {
+                    "cards": {
+                        "edges": [
+                            {"node": {"cardId": "c1"}},
+                            {"node": {"cardId": "c1"}},
+                        ]
+                    }
                 }
             }
-        })
+        )
 
         result = fetch_all_cards(default_probe)
         assert len(result) == 1
 
     def test_graphql_errors_stop(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response(
-            {"errors": [{"message": "fail"}]}
-        )
+        mock_httpx_client.post.return_value = self._make_response({"errors": [{"message": "fail"}]})
 
         result = fetch_all_cards(default_probe)
         assert result == []
@@ -179,17 +181,15 @@ class TestFetchAllCards:
         assert len(result) == 2
 
     def test_no_data_stops(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response(
-            {"data": {"something": "else"}}
-        )
+        mock_httpx_client.post.return_value = self._make_response({"data": {"something": "else"}})
 
         result = fetch_all_cards(default_probe)
         assert result == []
 
     def test_limit_from_query_text(self, mock_httpx_client):
-        mock_httpx_client.post.return_value = self._make_response({
-            "data": {"cards": {"edges": [{"node": {"cardId": "c1"}}]}}
-        })
+        mock_httpx_client.post.return_value = self._make_response(
+            {"data": {"cards": {"edges": [{"node": {"cardId": "c1"}}]}}}
+        )
 
         probe = {
             "url": "https://api.example.com/graphql",
@@ -201,9 +201,9 @@ class TestFetchAllCards:
         assert len(result) == 1
 
     def test_nodes_instead_of_edges(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response({
-            "data": {"cards": {"nodes": [{"cardId": "c1"}, {"cardId": "c2"}]}}
-        })
+        mock_httpx_client.post.return_value = self._make_response(
+            {"data": {"cards": {"nodes": [{"cardId": "c1"}, {"cardId": "c2"}]}}}
+        )
 
         result = fetch_all_cards(default_probe)
         assert len(result) == 2

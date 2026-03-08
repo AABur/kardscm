@@ -64,7 +64,14 @@ def test_decode_escapes(input_val, expected):
         ("hello\r\nworld", "hello world"),
         (None, None),
     ],
-    ids=["empty", "newlines_replaced", "spaces_collapsed", "escapes_decoded", "crlf", "none_passthrough"],
+    ids=[
+        "empty",
+        "newlines_replaced",
+        "spaces_collapsed",
+        "escapes_decoded",
+        "crlf",
+        "none_passthrough",
+    ],
 )
 def test_sanitize_text(input_val, expected):
     assert sanitize_text(input_val) == expected
