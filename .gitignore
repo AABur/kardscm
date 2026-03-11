@@ -47,6 +47,10 @@ htmlcov/
 config.ini
 collection.db
 
+# Environment secrets
+.env
+!.env.example
+
 # Playwright MCP
 .playwright-mcp/
 

@@ -2,3 +2,11 @@
 # Supported languages: en, ru
 # Changing language requires deleting collection.db and re-running sync
 language = en
+
+[advisor]
+# LLM provider: openai, anthropic, google
+provider = openai
+# Model name (provider-specific)
+model = gpt-4o
+# Analysis depth: concise, standard, detailed
+depth = standard

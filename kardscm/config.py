@@ -241,6 +241,15 @@ LANGUAGE_RU = LanguageConfig(
 )
 
 
+@dataclass(frozen=True)
+class AdvisorConfig:
+    """LLM advisor configuration."""
+
+    provider: str = "openai"
+    model: str = "gpt-4o"
+    depth: str = "standard"
+
+
 LANGUAGES: dict[str, LanguageConfig] = {
     "en": LANGUAGE_EN,
     "ru": LANGUAGE_RU,
@@ -267,3 +276,30 @@ def get_language_config(config_path: str = CONFIG_FILE) -> LanguageConfig:
         return LANGUAGE_EN
 
     return LANGUAGES[code]
+
+
+def get_advisor_config(config_path: str = CONFIG_FILE) -> AdvisorConfig:
+    """Load advisor configuration from config.ini.
+
+    Reads the [advisor] section. Returns defaults if missing.
+
+    Returns:
+        AdvisorConfig for the configured LLM provider.
+    """
+    path = Path(config_path)
+    defaults = AdvisorConfig()
+
+    if not path.exists():
+        return defaults
+
+    config = configparser.ConfigParser()
+    config.read(path)
+
+    if not config.has_section("advisor"):
+        return defaults
+
+    return AdvisorConfig(
+        provider=config.get("advisor", "provider", fallback=defaults.provider).strip().lower(),
+        model=config.get("advisor", "model", fallback=defaults.model).strip(),
+        depth=config.get("advisor", "depth", fallback=defaults.depth).strip().lower(),
+    )
