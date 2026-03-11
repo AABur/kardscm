@@ -13,6 +13,7 @@ import typer
 from kardscm import __version__
 from kardscm.commands import (
     add_deck,
+    add_match,
     export_collection,
     export_deck,
     import_deck,
@@ -38,6 +39,13 @@ deck_app = typer.Typer(
     rich_markup_mode="markdown",
 )
 app.add_typer(deck_app, name="deck")
+
+match_app = typer.Typer(
+    help="Track match results",
+    no_args_is_help=True,
+    rich_markup_mode="markdown",
+)
+app.add_typer(match_app, name="match")
 
 
 class ExportFormat(StrEnum):
@@ -237,6 +245,19 @@ def deck_export_cmd(
     """
     validate_file(str(file), f".{fmt.value}")
     export_deck(fmt.value, str(file))
+
+
+@match_app.command(
+    "add",
+    epilog="Examples:\n\n* `kards match add`",
+)
+def match_add() -> None:
+    """Record match results for a deck.
+
+    Select a deck interactively, then enter match results
+    (win/loss, opponent factions) in a loop.
+    """
+    add_match()
 
 
 def run() -> None:

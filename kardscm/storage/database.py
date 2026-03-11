@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from kardscm.models import CardDict, DeckCardEntry, ParsedDeck
+from kardscm.models import CardDict, DeckCardEntry, DeckStats, MatchupStats, ParsedDeck
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,15 @@ CREATE TABLE IF NOT EXISTS deck_cards (
     FOREIGN KEY (deck_id) REFERENCES decks(deck_id) ON DELETE CASCADE,
     FOREIGN KEY (card_id) REFERENCES cards(cardId),
     UNIQUE(deck_id, card_id)
+);
+
+CREATE TABLE IF NOT EXISTS matches (
+    match_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    deck_id INTEGER NOT NULL,
+    result TEXT NOT NULL CHECK(result IN ('win', 'loss')),
+    opponent_major TEXT NOT NULL,
+    opponent_ally TEXT NOT NULL,
+    FOREIGN KEY (deck_id) REFERENCES decks(deck_id) ON DELETE CASCADE
 );
 """
 
@@ -481,3 +490,86 @@ def fetch_deck_cards(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
     rows = cursor.fetchall()
     conn.row_factory = None
     return [dict(row) for row in rows]
+
+
+def insert_match(
+    conn: sqlite3.Connection,
+    deck_id: int,
+    result: str,
+    opponent_major: str,
+    opponent_ally: str,
+) -> int:
+    """Insert a match record into the database.
+
+    Args:
+        conn: SQLite connection instance.
+        deck_id: ID of the deck used.
+        result: Match result ('win' or 'loss').
+        opponent_major: Opponent's major power faction.
+        opponent_ally: Opponent's ally faction.
+
+    Returns:
+        The new match_id.
+    """
+    cursor = conn.execute(
+        "INSERT INTO matches (deck_id, result, opponent_major, opponent_ally) "
+        "VALUES (?, ?, ?, ?)",
+        (deck_id, result, opponent_major, opponent_ally),
+    )
+    return cursor.lastrowid  # type: ignore[return-value]
+
+
+def fetch_matches_by_deck(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
+    """Fetch all match records for a deck.
+
+    Args:
+        conn: SQLite connection instance.
+        deck_id: ID of the deck.
+
+    Returns:
+        List of match record dicts.
+    """
+    cursor = conn.execute(
+        "SELECT match_id, deck_id, result, opponent_major, opponent_ally "
+        "FROM matches WHERE deck_id = ? ORDER BY match_id",
+        (deck_id,),
+    )
+    columns = [desc[0] for desc in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def compute_deck_stats(conn: sqlite3.Connection, deck_id: int) -> DeckStats | None:
+    """Compute aggregated match statistics for a deck.
+
+    Args:
+        conn: SQLite connection instance.
+        deck_id: ID of the deck.
+
+    Returns:
+        DeckStats dict or None if no matches exist.
+    """
+    matches = fetch_matches_by_deck(conn, deck_id)
+    if not matches:
+        return None
+
+    wins = sum(1 for m in matches if m["result"] == "win")
+    losses = len(matches) - wins
+    total = len(matches)
+
+    matchups: dict[tuple[str, str], MatchupStats] = {}
+    for m in matches:
+        key = (m["opponent_major"], m["opponent_ally"])
+        if key not in matchups:
+            matchups[key] = MatchupStats(wins=0, losses=0)
+        if m["result"] == "win":
+            matchups[key]["wins"] += 1
+        else:
+            matchups[key]["losses"] += 1
+
+    return DeckStats(
+        total=total,
+        wins=wins,
+        losses=losses,
+        winrate=round(wins / total * 100, 1) if total > 0 else 0.0,
+        matchups=matchups,
+    )

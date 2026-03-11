@@ -24,6 +24,7 @@ from kardscm.importing import parse_deck_file
 from kardscm.models import DeckCardEntry
 from kardscm.scraping import scrape_cards
 from kardscm.storage import (
+    compute_deck_stats,
     delete_all_decks,
     delete_deck,
     fetch_all_decks,
@@ -37,6 +38,7 @@ from kardscm.storage import (
     initialize_schema,
     insert_deck,
     insert_deck_cards,
+    insert_match,
     set_metadata,
     update_card_quantity_by_id,
     update_quantity,
@@ -485,3 +487,44 @@ def export_deck(
         wb.save(filename)
 
     logger.info("Deck exported: %s", filename)
+
+
+def add_match(db_path: str = DEFAULT_DB_PATH) -> None:
+    """Interactively record match results for a deck.
+
+    Args:
+        db_path: SQLite database path.
+    """
+    lang_config = get_language_config()
+    valid_factions = set(lang_config.faction_names.keys())
+
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        deck = _select_deck(conn)
+        count = 0
+
+        while True:
+            result = input("Result (win/loss): ").strip().lower()
+            if result not in ("win", "loss"):
+                print("Invalid result. Enter 'win' or 'loss'.")
+                continue
+
+            opponent_major = input("Opponent major power: ").strip()
+            if opponent_major not in valid_factions:
+                print(f"Invalid faction. Choose from: {', '.join(sorted(valid_factions))}")
+                continue
+
+            opponent_ally = input("Opponent ally: ").strip()
+            if opponent_ally not in valid_factions:
+                print(f"Invalid faction. Choose from: {', '.join(sorted(valid_factions))}")
+                continue
+
+            insert_match(conn, deck["deck_id"], result, opponent_major, opponent_ally)
+            conn.commit()
+            count += 1
+
+            again = input("Add another match? [y/N]: ").strip().lower()
+            if again != "y":
+                break
+
+    logger.info("%d match(es) recorded for deck '%s'.", count, deck["name"])

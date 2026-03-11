@@ -55,3 +55,30 @@ class ParsedDeck(TypedDict):
     hq: str | None
     deck_code: str | None
     cards: list[DeckCardEntry]
+
+
+class MatchRecord(TypedDict):
+    """Single match record."""
+
+    match_id: int
+    deck_id: int
+    result: str
+    opponent_major: str
+    opponent_ally: str
+
+
+class MatchupStats(TypedDict):
+    """Win/loss stats for a specific matchup."""
+
+    wins: int
+    losses: int
+
+
+class DeckStats(TypedDict):
+    """Aggregated deck statistics."""
+
+    total: int
+    wins: int
+    losses: int
+    winrate: float
+    matchups: dict[tuple[str, str], MatchupStats]
