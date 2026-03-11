@@ -282,7 +282,12 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
     logger.info("Deck '%s' imported (%d cards)", deck["name"], len(deck["cards"]))
 
 
-def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH) -> None:
+def add_deck(
+    filename: str,
+    update: bool = False,
+    replace: bool = False,
+    db_path: str = DEFAULT_DB_PATH,
+) -> None:
     """Add a deck from TXT file with exile card support and quantity check.
 
     Raises RuntimeError (not SystemExit) so the CLI can collect errors
@@ -291,6 +296,7 @@ def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH
     Args:
         filename: Path to deck TXT file.
         update: If True, update collection quantities to match deck.
+        replace: If True, replace existing deck with same name.
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
@@ -306,7 +312,16 @@ def add_deck(filename: str, update: bool = False, db_path: str = DEFAULT_DB_PATH
 
         existing = find_deck_by_name(conn, deck["name"])
         if existing:
-            raise RuntimeError(f"Deck '{deck['name']}' already exists (id={existing['deck_id']})")
+            if not replace:
+                if existing.get("deck_code") != deck["deck_code"]:
+                    raise RuntimeError(
+                        f"Deck '{deck['name']}' exists with different code. Use --replace."
+                    )
+                raise RuntimeError(
+                    f"Deck '{deck['name']}' already exists (id={existing['deck_id']})"
+                )
+            delete_deck(conn, existing["deck_id"])
+            conn.commit()
 
         # Resolve card IDs with exile fallback
         not_found = []
