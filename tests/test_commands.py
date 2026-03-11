@@ -527,6 +527,97 @@ class TestAddDeck:
         assert len(decks) == 1
         assert decks[0]["name"] == "My Deck"
 
+    @patch("kardscm.commands.get_language_config")
+    def test_duplicate_same_code_no_replace_error(self, mock_config, db_with_card, tmp_path):
+        mock_config.return_value = LANGUAGE_EN
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "My Deck\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        add_deck(str(deck_file), db_path=db_with_card)
+        with pytest.raises(RuntimeError, match="already exists"):
+            add_deck(str(deck_file), db_path=db_with_card)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_duplicate_different_code_no_replace_hint(self, mock_config, db_with_card, tmp_path):
+        mock_config.return_value = LANGUAGE_EN
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "My Deck\nMajor power: usa\n%%AAA\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        add_deck(str(deck_file), db_path=db_with_card)
+
+        deck_file2 = tmp_path / "deck2.txt"
+        deck_file2.write_text(
+            "My Deck\nMajor power: usa\n%%BBB\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(RuntimeError, match="Use --replace"):
+            add_deck(str(deck_file2), db_path=db_with_card)
+
+    @patch("kardscm.commands.get_language_config")
+    def test_replace_deletes_old_deck(self, mock_config, db_with_card, tmp_path):
+        mock_config.return_value = LANGUAGE_EN
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "My Deck\nMajor power: usa\n%%AAA\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        add_deck(str(deck_file), db_path=db_with_card)
+
+        deck_file2 = tmp_path / "deck2.txt"
+        deck_file2.write_text(
+            "My Deck\nMajor power: usa\n%%BBB\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        add_deck(str(deck_file2), replace=True, db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 1
+        assert decks[0]["deck_code"] == "%%BBB"
+
+    @patch("kardscm.commands.get_language_config")
+    def test_replace_no_existing_normal_add(self, mock_config, db_with_card, tmp_path):
+        mock_config.return_value = LANGUAGE_EN
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "New Deck\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        add_deck(str(deck_file), replace=True, db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 1
+        assert decks[0]["name"] == "New Deck"
+
+    @patch("kardscm.commands.get_language_config")
+    def test_replace_cascades_matches(self, mock_config, db_with_card, tmp_path):
+        mock_config.return_value = LANGUAGE_EN
+        from kardscm.storage import fetch_matches_by_deck, insert_match
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "My Deck\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        add_deck(str(deck_file), db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            decks = fetch_all_decks(conn)
+            old_id = decks[0]["deck_id"]
+            insert_match(conn, old_id, "win", "Germany", "Japan")
+            conn.commit()
+
+        add_deck(str(deck_file), replace=True, db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            matches = fetch_matches_by_deck(conn, old_id)
+        assert matches == []
+
 
 class TestRemoveDeck:
     @pytest.fixture()
