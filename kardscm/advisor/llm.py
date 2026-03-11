@@ -33,7 +33,7 @@ def _call_anthropic(system_prompt: str, user_prompt: str, model: str) -> str:
         system=system_prompt,
         messages=[{"role": "user", "content": user_prompt}],
     )
-    return response.content[0].text
+    return str(response.content[0].text)
 
 
 def _call_google(system_prompt: str, user_prompt: str, model: str) -> str:

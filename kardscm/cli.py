@@ -233,9 +233,7 @@ def deck_delete() -> None:
 
 @deck_app.command(
     "analyze",
-    epilog="Examples:\n\n"
-    "* `kards deck analyze`\n\n"
-    "* `kards deck analyze -d detailed`",
+    epilog="Examples:\n\n* `kards deck analyze`\n\n* `kards deck analyze -d detailed`",
 )
 def deck_analyze(
     depth: Annotated[

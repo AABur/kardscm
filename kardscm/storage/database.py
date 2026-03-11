@@ -512,8 +512,7 @@ def insert_match(
         The new match_id.
     """
     cursor = conn.execute(
-        "INSERT INTO matches (deck_id, result, opponent_major, opponent_ally) "
-        "VALUES (?, ?, ?, ?)",
+        "INSERT INTO matches (deck_id, result, opponent_major, opponent_ally) VALUES (?, ?, ?, ?)",
         (deck_id, result, opponent_major, opponent_ally),
     )
     return cursor.lastrowid  # type: ignore[return-value]

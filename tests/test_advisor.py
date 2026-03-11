@@ -59,7 +59,10 @@ def sample_stats() -> DeckStats:
 class TestBuildContext:
     def test_with_stats(self, deck_meta, deck_cards, sample_stats, tmp_path):
         system, user = build_analysis_context(
-            deck_meta, deck_cards, sample_stats, "standard",
+            deck_meta,
+            deck_cards,
+            sample_stats,
+            "standard",
             rules_dir=str(tmp_path / "no_rules"),
             lang_config=LANGUAGE_EN,
         )
@@ -71,7 +74,10 @@ class TestBuildContext:
 
     def test_no_stats(self, deck_meta, deck_cards, tmp_path):
         system, user = build_analysis_context(
-            deck_meta, deck_cards, None, "standard",
+            deck_meta,
+            deck_cards,
+            None,
+            "standard",
             rules_dir=str(tmp_path / "no_rules"),
             lang_config=LANGUAGE_EN,
         )
@@ -79,7 +85,10 @@ class TestBuildContext:
 
     def test_no_rules_dir(self, deck_meta, deck_cards, tmp_path):
         system, user = build_analysis_context(
-            deck_meta, deck_cards, None, "standard",
+            deck_meta,
+            deck_cards,
+            None,
+            "standard",
             rules_dir=str(tmp_path / "nonexistent"),
             lang_config=LANGUAGE_EN,
         )
@@ -91,7 +100,10 @@ class TestBuildContext:
         (rules_dir / "deck_building.md").write_text("Max 40 cards per deck.", encoding="utf-8")
 
         system, user = build_analysis_context(
-            deck_meta, deck_cards, None, "standard",
+            deck_meta,
+            deck_cards,
+            None,
+            "standard",
             rules_dir=str(rules_dir),
             lang_config=LANGUAGE_EN,
         )
@@ -100,7 +112,10 @@ class TestBuildContext:
 
     def test_depth_concise(self, deck_meta, deck_cards, tmp_path):
         _, user = build_analysis_context(
-            deck_meta, deck_cards, None, "concise",
+            deck_meta,
+            deck_cards,
+            None,
+            "concise",
             rules_dir=str(tmp_path / "no_rules"),
             lang_config=LANGUAGE_EN,
         )
@@ -108,7 +123,10 @@ class TestBuildContext:
 
     def test_depth_detailed(self, deck_meta, deck_cards, tmp_path):
         _, user = build_analysis_context(
-            deck_meta, deck_cards, None, "detailed",
+            deck_meta,
+            deck_cards,
+            None,
+            "detailed",
             rules_dir=str(tmp_path / "no_rules"),
             lang_config=LANGUAGE_EN,
         )
@@ -116,7 +134,10 @@ class TestBuildContext:
 
     def test_depth_default_fallback(self, deck_meta, deck_cards, tmp_path):
         _, user = build_analysis_context(
-            deck_meta, deck_cards, None, "unknown_depth",
+            deck_meta,
+            deck_cards,
+            None,
+            "unknown_depth",
             rules_dir=str(tmp_path / "no_rules"),
             lang_config=LANGUAGE_EN,
         )

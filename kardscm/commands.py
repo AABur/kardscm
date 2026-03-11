@@ -568,7 +568,11 @@ def analyze_deck(depth: str | None = None, db_path: str = DEFAULT_DB_PATH) -> No
         stats = compute_deck_stats(conn, deck["deck_id"])
 
     system_prompt, user_prompt = build_analysis_context(
-        deck, cards, stats, effective_depth, lang_config=lang_config,
+        deck,
+        cards,
+        stats,
+        effective_depth,
+        lang_config=lang_config,
     )
     load_dotenv()
     response = get_llm_response(system_prompt, user_prompt, advisor_config)
