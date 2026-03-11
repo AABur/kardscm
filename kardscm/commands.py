@@ -9,7 +9,8 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from kardscm.config import get_language_config
+from kardscm.advisor import build_analysis_context, get_llm_response
+from kardscm.config import get_advisor_config, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH
 from kardscm.export import (
     add_deck_sheet,
@@ -543,3 +544,32 @@ def add_match(db_path: str = DEFAULT_DB_PATH) -> None:
                 break
 
     logger.info("%d match(es) recorded for deck '%s'.", count, deck["name"])
+
+
+def analyze_deck(depth: str | None = None, db_path: str = DEFAULT_DB_PATH) -> None:
+    """Analyze a deck using LLM advisor.
+
+    Args:
+        depth: Analysis depth override (concise/standard/detailed).
+        db_path: SQLite database path.
+    """
+    from dotenv import load_dotenv
+
+    lang_config = get_language_config()
+    advisor_config = get_advisor_config()
+    effective_depth = depth or advisor_config.depth
+
+    with get_connection(db_path) as conn:
+        initialize_schema(conn)
+        deck = _select_deck(conn)
+        cards = fetch_deck_cards(conn, deck["deck_id"])
+        if not cards:
+            raise SystemExit("Deck has no cards")
+        stats = compute_deck_stats(conn, deck["deck_id"])
+
+    system_prompt, user_prompt = build_analysis_context(
+        deck, cards, stats, effective_depth, lang_config=lang_config,
+    )
+    load_dotenv()
+    response = get_llm_response(system_prompt, user_prompt, advisor_config)
+    print(response)

@@ -14,6 +14,7 @@ from kardscm import __version__
 from kardscm.commands import (
     add_deck,
     add_match,
+    analyze_deck,
     export_collection,
     export_deck,
     import_deck,
@@ -228,6 +229,27 @@ def deck_delete() -> None:
     Only removes records from decks and deck_cards tables.
     """
     remove_deck()
+
+
+@deck_app.command(
+    "analyze",
+    epilog="Examples:\n\n"
+    "* `kards deck analyze`\n\n"
+    "* `kards deck analyze -d detailed`",
+)
+def deck_analyze(
+    depth: Annotated[
+        str | None,
+        typer.Option("--depth", "-d", help="Analysis depth: concise, standard, detailed"),
+    ] = None,
+) -> None:
+    """Analyze a deck using LLM advisor.
+
+    Select a deck interactively and get AI-powered analysis of
+    its composition, strengths, and weaknesses.
+    Requires API key in .env file and advisor config in config.ini.
+    """
+    analyze_deck(depth=depth)
 
 
 @deck_app.command(

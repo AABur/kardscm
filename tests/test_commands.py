@@ -13,6 +13,7 @@ from kardscm.commands import (
     _read_xlsx_quantities,
     _select_deck,
     add_deck,
+    analyze_deck,
     export_collection,
     export_deck,
     import_deck,
@@ -671,3 +672,102 @@ class TestRemoveDeck:
         with patch("builtins.input", return_value="-1"):
             with pytest.raises(SystemExit, match="Invalid choice"):
                 remove_deck(db_path=two_deck_db)
+
+
+class TestAnalyzeDeck:
+    @pytest.fixture()
+    def deck_db_path(self, tmp_path, make_card):
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [make_card(title=json.dumps({"en-EN": "Alpha"}))])
+            deck_id = insert_deck(
+                conn,
+                {
+                    "name": "Test Deck",
+                    "major_power": "usa",
+                    "ally": None,
+                    "hq": None,
+                    "deck_code": None,
+                    "cards": [],
+                },
+            )
+            insert_deck_cards(
+                conn,
+                deck_id,
+                [{"nation": "usa", "name": "Alpha", "quantity": 2, "cost": 1}],
+                {"usa": "USA"},
+                "en-EN",
+            )
+            conn.commit()
+        return db_path
+
+    @patch("kardscm.commands.get_llm_response")
+    @patch("kardscm.commands.get_advisor_config")
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands._select_deck")
+    def test_analyze_calls_llm(
+        self, mock_select, mock_lang, mock_advisor, mock_llm, deck_db_path, capsys
+    ):
+        mock_lang.return_value = LANGUAGE_EN
+        from kardscm.config import AdvisorConfig
+
+        mock_advisor.return_value = AdvisorConfig()
+        mock_select.return_value = {"deck_id": 1, "name": "Test Deck"}
+        mock_llm.return_value = "Analysis result text"
+
+        analyze_deck(db_path=deck_db_path)
+
+        mock_llm.assert_called_once()
+        captured = capsys.readouterr()
+        assert "Analysis result text" in captured.out
+
+    @patch("kardscm.commands.get_llm_response")
+    @patch("kardscm.commands.get_advisor_config")
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands._select_deck")
+    def test_analyze_depth_override(
+        self, mock_select, mock_lang, mock_advisor, mock_llm, deck_db_path
+    ):
+        mock_lang.return_value = LANGUAGE_EN
+        from kardscm.config import AdvisorConfig
+
+        mock_advisor.return_value = AdvisorConfig(depth="standard")
+        mock_select.return_value = {"deck_id": 1, "name": "Test Deck"}
+        mock_llm.return_value = "ok"
+
+        analyze_deck(depth="detailed", db_path=deck_db_path)
+
+        call_args = mock_llm.call_args
+        # The user prompt should contain "detailed" depth instruction
+        user_prompt = call_args[0][1]
+        assert "comprehensive" in user_prompt
+
+    @patch("kardscm.commands.get_advisor_config")
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands._select_deck")
+    def test_no_cards_raises(self, mock_select, mock_lang, mock_advisor, tmp_path):
+        mock_lang.return_value = LANGUAGE_EN
+        from kardscm.config import AdvisorConfig
+
+        mock_advisor.return_value = AdvisorConfig()
+
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            insert_deck(
+                conn,
+                {
+                    "name": "Empty",
+                    "major_power": "usa",
+                    "ally": None,
+                    "hq": None,
+                    "deck_code": None,
+                    "cards": [],
+                },
+            )
+            conn.commit()
+
+        mock_select.return_value = {"deck_id": 1, "name": "Empty"}
+        with pytest.raises(SystemExit, match="no cards"):
+            analyze_deck(db_path=db_path)
