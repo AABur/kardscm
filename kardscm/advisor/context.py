@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from kardscm.advisor.prompts import DEPTH_MODIFIERS, SYSTEM_PROMPT
-from kardscm.config import LanguageConfig
+from kardscm.config import LanguageConfig, get_language_config
 from kardscm.export import translate_card_for_export
 from kardscm.models import DeckStats
 
@@ -79,8 +79,6 @@ def _load_rules(rules_dir: str) -> str:
 
     sections = []
     for md_file in sorted(rules_path.glob("*.md")):
-        if md_file.name == "metadata.json":
-            continue
         try:
             content = md_file.read_text(encoding="utf-8").strip()
             if content:
@@ -112,8 +110,6 @@ def build_analysis_context(
     Returns:
         Tuple of (system_prompt, user_prompt).
     """
-    from kardscm.config import get_language_config
-
     if lang_config is None:
         lang_config = get_language_config()
 

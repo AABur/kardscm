@@ -528,13 +528,15 @@ def fetch_matches_by_deck(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
     Returns:
         List of match record dicts.
     """
+    conn.row_factory = sqlite3.Row
     cursor = conn.execute(
         "SELECT match_id, deck_id, result, opponent_major, opponent_ally "
         "FROM matches WHERE deck_id = ? ORDER BY match_id",
         (deck_id,),
     )
-    columns = [desc[0] for desc in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    rows = cursor.fetchall()
+    conn.row_factory = None
+    return [dict(row) for row in rows]
 
 
 def compute_deck_stats(conn: sqlite3.Connection, deck_id: int) -> DeckStats | None:

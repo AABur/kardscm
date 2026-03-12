@@ -7,6 +7,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
 from openpyxl import load_workbook
 
 from kardscm.advisor import build_analysis_context, get_llm_response
@@ -505,6 +506,24 @@ def export_deck(
     logger.info("Deck exported: %s", filename)
 
 
+def _prompt_choice(prompt: str, valid: tuple[str, ...]) -> str:
+    """Prompt until user enters a valid choice."""
+    while True:
+        value = input(prompt).strip().lower()
+        if value in valid:
+            return value
+        print(f"Invalid input. Choose from: {', '.join(valid)}")
+
+
+def _prompt_faction(prompt: str, valid: set[str], hint: str) -> str:
+    """Prompt until user enters a valid faction name."""
+    while True:
+        value = input(prompt).strip()
+        if value in valid:
+            return value
+        print(f"Invalid faction. Choose from: {hint}")
+
+
 def add_match(db_path: str = DEFAULT_DB_PATH) -> None:
     """Interactively record match results for a deck.
 
@@ -518,22 +537,12 @@ def add_match(db_path: str = DEFAULT_DB_PATH) -> None:
         initialize_schema(conn)
         deck = _select_deck(conn)
         count = 0
+        faction_hint = ", ".join(sorted(valid_factions))
 
         while True:
-            result = input("Result (win/loss): ").strip().lower()
-            if result not in ("win", "loss"):
-                print("Invalid result. Enter 'win' or 'loss'.")
-                continue
-
-            opponent_major = input("Opponent major power: ").strip()
-            if opponent_major not in valid_factions:
-                print(f"Invalid faction. Choose from: {', '.join(sorted(valid_factions))}")
-                continue
-
-            opponent_ally = input("Opponent ally: ").strip()
-            if opponent_ally not in valid_factions:
-                print(f"Invalid faction. Choose from: {', '.join(sorted(valid_factions))}")
-                continue
+            result = _prompt_choice("Result (win/loss): ", ("win", "loss"))
+            opponent_major = _prompt_faction("Opponent major power: ", valid_factions, faction_hint)
+            opponent_ally = _prompt_faction("Opponent ally: ", valid_factions, faction_hint)
 
             insert_match(conn, deck["deck_id"], result, opponent_major, opponent_ally)
             conn.commit()
@@ -553,8 +562,7 @@ def analyze_deck(depth: str | None = None, db_path: str = DEFAULT_DB_PATH) -> No
         depth: Analysis depth override (concise/standard/detailed).
         db_path: SQLite database path.
     """
-    from dotenv import load_dotenv
-
+    load_dotenv()
     lang_config = get_language_config()
     advisor_config = get_advisor_config()
     effective_depth = depth or advisor_config.depth
@@ -574,6 +582,5 @@ def analyze_deck(depth: str | None = None, db_path: str = DEFAULT_DB_PATH) -> No
         effective_depth,
         lang_config=lang_config,
     )
-    load_dotenv()
     response = get_llm_response(system_prompt, user_prompt, advisor_config)
     print(response)
