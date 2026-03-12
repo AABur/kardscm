@@ -5,10 +5,11 @@ Crawls kards.com for game rules and mechanics pages, extracts text content,
 and saves topic-based markdown files for use by the LLM advisor.
 
 Usage:
+    uv pip install kardscm[rules]
     python scripts/rules_sync.py [--output-dir rules/]
 
-Requirements:
-    pip install httpx beautifulsoup4
+Requirements (installed via kardscm[rules] extra):
+    httpx, beautifulsoup4
 """
 
 from __future__ import annotations
@@ -90,26 +91,31 @@ def _extract_text(html: str) -> str:
 
 
 def _url_to_topic(url: str) -> str:
-    """Convert URL to a filesystem-safe topic name."""
-    path = url.rstrip("/").split("/")[-1] or "index"
-    # Remove language prefix if present
-    if path in ("en", "ru"):
-        path = "index"
-    # Sanitize
-    topic = re.sub(r"[^a-z0-9_-]", "_", path.lower())
-    return topic
+    """Convert URL path to a unique filesystem-safe topic name.
+
+    Uses the full path (minus domain) to avoid collisions between
+    URLs like /rules and /en/rules.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    path = parsed.path.strip("/") or "index"
+    # Sanitize: replace non-alphanum with underscore, collapse runs
+    topic = re.sub(r"[^a-z0-9]+", "_", path.lower()).strip("_")
+    return topic or "index"
 
 
 def _discover_links(html: str, base_url: str) -> list[str]:
-    """Find internal rule-related links in the page."""
+    """Find internal rule-related links on the same domain."""
     soup = BeautifulSoup(html, "html.parser")
     discovered = set()
+    allowed_origin = base_url.rstrip("/")
 
     for a_tag in soup.find_all("a", href=True):
         href = a_tag["href"]
         if href.startswith("/"):
-            href = base_url.rstrip("/") + href
-        if not href.startswith(base_url.rstrip("/").split("//")[0] + "//"):
+            href = allowed_origin + href
+        if not href.startswith(allowed_origin + "/") and href != allowed_origin:
             continue
         if RULES_LINK_PATTERN.search(href):
             discovered.add(href.split("#")[0].split("?")[0])
