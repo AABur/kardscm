@@ -16,7 +16,6 @@
 - Export deck: `uv run kardscm deck export --format xlsx --file deck.xlsx`
 - Analyze deck: `uv run kardscm deck analyze` or `uv run kardscm deck analyze -d detailed`
 - Record matches: `uv run kardscm match add`
-- Sync rules: `python scripts/rules_sync.py`
 - Short form: `uv run python -m kardscm sync`
 
 ## Useful Commands
@@ -59,8 +58,6 @@ kardscm/
     ├── llm.py          # Provider dispatch (openai/anthropic/google)
     ├── context.py      # Context assembly for analysis prompts
     └── prompts.py      # System prompt template and depth modifiers
-scripts/
-└── rules_sync.py       # Standalone rules crawler (not a kardscm subcommand)
 tests/                  # pytest tests
 ```
 
@@ -115,11 +112,6 @@ tests/                  # pytest tests
   - `context.py`: Assembles user prompt from deck data, cards, stats, rules
   - `prompts.py`: System prompt template and depth modifiers (concise/standard/detailed)
   - API keys loaded from `.env` via python-dotenv
-- **Rules Sync**: `scripts/rules_sync.py` (standalone, not a subcommand)
-  - Crawls kards.com for game rules pages
-  - Saves topic-based markdown files to `rules/` directory
-  - Tracks content hashes in `rules/metadata.json` for incremental updates
-
 ## Code Patterns
 - `add_deck` raises `RuntimeError` (not `SystemExit`) — allows CLI batch loop to collect errors; `import_deck` raises `SystemExit` (fail-fast)
 - English originals stored in DB — translation only at export time via static mappings
