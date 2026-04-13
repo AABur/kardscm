@@ -24,6 +24,7 @@ from kardscm.export import (
 from kardscm.helpers import parse_int
 from kardscm.importing import parse_deck_file
 from kardscm.models import DeckCardEntry
+from kardscm.rules import accept_staged_rules, discard_staged_rules, sync_rules_to_staging
 from kardscm.scraping import scrape_cards
 from kardscm.storage import (
     compute_deck_stats,
@@ -153,6 +154,33 @@ def sync_collection(db_path: str = DEFAULT_DB_PATH) -> None:
         set_metadata(conn, "language", lang_config.code)
 
     logger.info("Sync completed. Stored %s cards.", len(cards))
+
+
+def sync_rules() -> None:
+    """Fetch rules pages into a staged review directory."""
+    result = sync_rules_to_staging()
+    logger.info(
+        "Rules staged: %d added, %d changed, %d removed, %d unchanged.",
+        result.added,
+        result.changed,
+        result.removed,
+        result.unchanged,
+    )
+    if result.warnings:
+        logger.warning("Rules staging completed with %d validation warning(s).", result.warnings)
+    logger.info("Review report: %s", result.report_path)
+
+
+def accept_rules() -> None:
+    """Accept the staged rules corpus as the active one."""
+    accept_staged_rules()
+    logger.info("Staged rules accepted.")
+
+
+def discard_rules() -> None:
+    """Discard the staged rules corpus."""
+    discard_staged_rules()
+    logger.info("Staged rules discarded.")
 
 
 def export_collection(

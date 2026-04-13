@@ -13,8 +13,7 @@ Rules:
 
 DEPTH_MODIFIERS = {
     "concise": (
-        "Provide a brief analysis in 3-5 bullet points. "
-        "Focus on the most critical observations."
+        "Provide a brief analysis in 3-5 bullet points. Focus on the most critical observations."
     ),
     "standard": (
         "Provide a structured analysis covering: deck overview, strengths, "

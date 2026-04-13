@@ -12,14 +12,17 @@ import typer
 
 from kardscm import __version__
 from kardscm.commands import (
+    accept_rules,
     add_deck,
     add_match,
     analyze_deck,
+    discard_rules,
     export_collection,
     export_deck,
     import_deck,
     remove_deck,
     sync_collection,
+    sync_rules,
     update_collection,
     validate_file,
 )
@@ -47,6 +50,13 @@ match_app = typer.Typer(
     rich_markup_mode="markdown",
 )
 app.add_typer(match_app, name="match")
+
+rules_app = typer.Typer(
+    help="Sync and review the local rules knowledge base",
+    no_args_is_help=True,
+    rich_markup_mode="markdown",
+)
+app.add_typer(rules_app, name="rules")
 
 
 class ExportFormat(StrEnum):
@@ -93,6 +103,33 @@ def sync() -> None:
     and stores them in the local SQLite database.
     """
     sync_collection()
+
+
+@rules_app.command(
+    "sync",
+    epilog="Examples:\n\n* `kards rules sync`",
+)
+def rules_sync_cmd() -> None:
+    """Fetch rules pages into a staged corpus and generate a review report."""
+    sync_rules()
+
+
+@rules_app.command(
+    "accept",
+    epilog="Examples:\n\n* `kards rules accept`",
+)
+def rules_accept_cmd() -> None:
+    """Replace the active rules corpus with the staged reviewed version."""
+    accept_rules()
+
+
+@rules_app.command(
+    "discard",
+    epilog="Examples:\n\n* `kards rules discard`",
+)
+def rules_discard_cmd() -> None:
+    """Delete the staged rules corpus without changing the active one."""
+    discard_rules()
 
 
 @app.command(
