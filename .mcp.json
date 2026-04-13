@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "pare-python": {
+      "command": "npx",
+      "args": ["-y", "@paretools/python"]
+    },
+    "pare-test": {
+      "command": "npx",
+      "args": ["-y", "@paretools/test"]
+    },
+    "pare-lint": {
+      "command": "npx",
+      "args": ["-y", "@paretools/lint"]
+    },
+    "pare-make": {
+      "command": "npx",
+      "args": ["-y", "@paretools/make"]
+    }
+  }
+}
