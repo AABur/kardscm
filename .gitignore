@@ -56,3 +56,8 @@ collection.db
 
 # Claude Code (local only)
 .claude/settings.local.json
+
+# Local-only work areas
+experiments/
+test_data/
+docs/
