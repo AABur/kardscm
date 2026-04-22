@@ -342,6 +342,77 @@ def test_insert_deck_cards_exile_fallback_disabled_raises(
         )
 
 
+def test_update_quantity_matches_nbsp_in_db(db_connection, make_card) -> None:
+    nbsp_card = make_card(
+        cardId="nbsp-card",
+        faction="Britain",
+        title=json.dumps({"en-EN": "GLADIATOR Mk I", "ru-RU": "GLADIATOR Mk I"}),
+    )
+    upsert_cards(db_connection, [nbsp_card])
+
+    updated, not_found = update_quantity(
+        db_connection,
+        [("Britain", "GLADIATOR Mk I", 4)],
+        "ru-RU",
+    )
+
+    assert updated == 1
+    assert not_found == []
+    qty = db_connection.execute("SELECT quantity FROM cards WHERE cardId = 'nbsp-card'").fetchone()[
+        0
+    ]
+    assert qty == 4
+
+
+def test_update_quantity_matches_double_space_in_db(db_connection, make_card) -> None:
+    dbl_card = make_card(
+        cardId="dbl-card",
+        faction="USA",
+        title=json.dumps({"en-EN": "USS FITCH", "ru-RU": "USS  ФИТЧ"}),
+    )
+    upsert_cards(db_connection, [dbl_card])
+
+    updated, not_found = update_quantity(
+        db_connection,
+        [("USA", "USS ФИТЧ", 2)],
+        "ru-RU",
+    )
+
+    assert updated == 1
+    assert not_found == []
+
+
+def test_find_card_id_matches_nbsp(db_connection, make_card) -> None:
+    upsert_cards(
+        db_connection,
+        [
+            make_card(
+                cardId="nbsp-find",
+                faction="Germany",
+                title=json.dumps({"en-EN": "PANTHER G", "ru-RU": "PANTHER G"}),
+            )
+        ],
+    )
+
+    assert find_card_id(db_connection, "Germany", "PANTHER G", "ru-RU") == "nbsp-find"
+
+
+def test_find_card_id_by_exile_matches_nbsp(db_connection, make_card) -> None:
+    upsert_cards(
+        db_connection,
+        [
+            make_card(
+                cardId="exile-nbsp",
+                faction="Poland",
+                exile="Soviet",
+                title=json.dumps({"en-EN": "IL-2M PL", "ru-RU": "ИЛ-2М PL"}),
+            )
+        ],
+    )
+
+    assert find_card_id_by_exile(db_connection, "Soviet", "ИЛ-2М PL", "ru-RU") == "exile-nbsp"
+
+
 def test_delete_all_decks(db_connection, storage_deck) -> None:
     deck_a = {**storage_deck, "name": "Deck A"}
     deck_b = {**storage_deck, "name": "Deck B"}
