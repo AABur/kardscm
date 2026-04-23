@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Card Collection
 
 ## Environment

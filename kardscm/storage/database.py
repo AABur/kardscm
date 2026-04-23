@@ -7,6 +7,7 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
+from kardscm.helpers import sanitize_text
 from kardscm.models import CardDict, DeckCardEntry, ParsedDeck
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ def get_connection(db_path: str | Path) -> sqlite3.Connection:
     """
     conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.create_function("sanitize_text", 1, sanitize_text, deterministic=True)
     return conn
 
 
@@ -245,8 +247,10 @@ def update_quantity(
             continue
 
         cursor = conn.execute(
-            "UPDATE cards SET quantity = ? WHERE faction = ? AND TRIM(json_extract(title, ?)) = ?",
-            (qty, faction, f'$."{locale_key}"', title.strip()),
+            "UPDATE cards SET quantity = ? "
+            "WHERE faction = ? "
+            "AND sanitize_text(json_extract(title, ?)) = sanitize_text(?)",
+            (qty, faction, f'$."{locale_key}"', title),
         )
 
         if cursor.rowcount > 0:
@@ -276,8 +280,10 @@ def find_card_id(
         cardId string or None if not found.
     """
     row = conn.execute(
-        "SELECT cardId FROM cards WHERE faction = ? AND TRIM(json_extract(title, ?)) = ?",
-        (faction, f'$."{locale_key}"', title.strip()),
+        "SELECT cardId FROM cards "
+        "WHERE faction = ? "
+        "AND sanitize_text(json_extract(title, ?)) = sanitize_text(?)",
+        (faction, f'$."{locale_key}"', title),
     ).fetchone()
     return row[0] if row else None
 
@@ -300,8 +306,10 @@ def find_card_id_by_exile(
         cardId string or None if not found.
     """
     row = conn.execute(
-        "SELECT cardId FROM cards WHERE exile = ? AND TRIM(json_extract(title, ?)) = ?",
-        (exile_faction, f'$."{locale_key}"', title.strip()),
+        "SELECT cardId FROM cards "
+        "WHERE exile = ? "
+        "AND sanitize_text(json_extract(title, ?)) = sanitize_text(?)",
+        (exile_faction, f'$."{locale_key}"', title),
     ).fetchone()
     return row[0] if row else None
 
