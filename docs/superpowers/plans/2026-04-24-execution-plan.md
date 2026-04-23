@@ -32,10 +32,10 @@ after the last task is merged.
 
 ### Task 1.1 — Release prep (version + CHANGELOG + README install)
 
-- [ ] Branch: `chore/0.3.0-release-prep`
-- [ ] Subtask: `chore: bump version to 0.3.0`
+- [x] Branch: `chore/0.3.0-release-prep`
+- [x] Subtask: `chore: bump version to 0.3.0`
   - edit `pyproject.toml` `version = "0.3.0"`
-- [ ] Subtask: `docs: add CHANGELOG.md with initial 0.3.0 entry`
+- [x] Subtask: `docs: add CHANGELOG.md with initial 0.3.0 entry`
   - create `CHANGELOG.md` in Keep a Changelog format
   - `[Unreleased]` header (empty)
   - `[0.3.0] - 2026-04-??` with sections Added / Changed / Fixed
@@ -43,7 +43,7 @@ after the last task is merged.
     sanitize_text whitespace normalization, AGENTS.md adoption, README
     expansion
   - bottom: compare-URL links to GitHub
-- [ ] Subtask: `docs: document github-only install in README`
+- [x] Subtask: `docs: document github-only install in README`
   - rewrite Installation section per spec
   - explicit "no PyPI, ever" language
   - show `git clone` + `pipx install git+...`
