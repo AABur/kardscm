@@ -20,10 +20,19 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 
 ## Installation
 
+`kardscm` is distributed **only from GitHub**. It is not and will not
+be published to PyPI — clone the repo and run it via `uv`.
+
 ```bash
 git clone git@github.com:AABur/kardscm.git
 cd kardscm
 make sync
+```
+
+Or, for an isolated install without cloning:
+
+```bash
+pipx install git+https://github.com/AABur/kardscm.git
 ```
 
 ## Configuration
