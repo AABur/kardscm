@@ -13,7 +13,20 @@ GRAPHQL_HEADERS: dict[str, str] = {
     "accept": "*/*",
     "content-type": "application/json",
 }
-GRAPHQL_QUERY = """query getCards($language: String, $offset: Int, $nationIds: [Int], $kredits: [Int], $q: String, $type: [String], $rarity: [String], $set: [String], $showSpawnables: Boolean, $showExiles: Boolean, $showReserved: Boolean) {
+GRAPHQL_QUERY = """
+query getCards(
+  $language: String,
+  $offset: Int,
+  $nationIds: [Int],
+  $kredits: [Int],
+  $q: String,
+  $type: [String],
+  $rarity: [String],
+  $set: [String],
+  $showSpawnables: Boolean,
+  $showExiles: Boolean,
+  $showReserved: Boolean,
+) {
   cards(
     language: $language
     first: 20
