@@ -49,7 +49,7 @@ players to the repo without further qualification.
 ### CHANGELOG.md
 
 - Format: Keep a Changelog + SemVer
-- First entry: `[0.3.0] - 2026-04-23`
+- First entry: `[0.3.0] - 2026-04-24`
   - `### Added` — public MVP scope, `deck add` with `--update`/`--replace`,
     `deck delete`, sanitize_text whitespace normalization, AGENTS.md
   - `### Changed` — README expanded with typical workflow

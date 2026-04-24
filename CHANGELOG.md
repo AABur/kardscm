@@ -17,8 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `deck add` accepts multiple files; failures are batched and reported
   at the end.
 - `deck delete` interactive selection with a "delete all" option.
-- Whitespace normalization (`sanitize_text`) on card-title lookups so
-  NBSP and double-space variants match consistently.
 - `AGENTS.md` at the repo root defining agent operating rules;
   `CLAUDE.md` and `GEMINI.md` now reference it.
 
@@ -29,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scroll required for a normal sync).
 
 ### Fixed
-- Deck import correctly falls back through the exile field when a card
-  is not found under the primary faction.
+- Card title lookups now ignore NBSP and double-space variants that
+  previously caused mismatches between deck files and the database.
 
 [Unreleased]: https://github.com/AABur/kardscm/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/AABur/kardscm/releases/tag/v0.3.0

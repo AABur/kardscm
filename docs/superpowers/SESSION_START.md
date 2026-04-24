@@ -15,8 +15,9 @@ private LLM-adjacent tooling lives in a separate future track.
 ## Where we are right now
 
 - **Branch:** should be `main` at session start
-- **Version:** `0.2.0` in `pyproject.toml`; next release is `0.3.0`
-- **Release status:** v0.3.0 not yet tagged. Phase 1 not yet executed.
+- **Version:** `0.3.0` in `pyproject.toml`
+- **Release status:** v0.3.0 not yet tagged. Phase 1 in progress
+  (Task 1.1 shipped; Tasks 1.2–1.4 pending).
 - **Current priority (Phase 1):** polish repo for public release
 
 ## Key files to read (in order)

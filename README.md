@@ -9,7 +9,7 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 - SQLite storage with upsert on sync (preserves user-managed `quantity`)
 - Export to XLSX, CSV, JSON with localized headers
 - Bulk collection quantity update from an edited XLSX
-- Deck add/import from KARDS client TXT format (with exile-card fallback and collection quantity checks)
+- Deck add/import from KARDS client TXT format (`deck add` includes exile-card fallback and collection quantity checks)
 - Deck replace, delete, and export to XLSX or JSON
 - Interactive deck selection for export and delete
 
