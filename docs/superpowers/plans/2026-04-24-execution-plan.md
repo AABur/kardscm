@@ -70,7 +70,7 @@ after the last task is merged.
   - MIT badge (shields.io)
   - Python 3.12+ badge
   - CI status badge (from workflow in Task 1.2)
-- [ ] PR: merge into `main`
+- [x] PR: merge into `main`
 
 ### Task 1.4 — Tag and release (admin, no PR)
 
@@ -81,14 +81,6 @@ after the last task is merged.
 - [x] `git push origin v0.3.0`
 - [x] `gh release create v0.3.0` with notes from CHANGELOG entry
 - [x] Verify: `gh release view v0.3.0`, repo page shows topics
-
-### Task 1.5 — Asciinema demo (simple commit, after release)
-
-- [ ] Record `asciinema rec docs/demo.cast` — session: config, sync,
-  export, deck add, deck export. Short (≤90s). User does the recording.
-- [ ] `docs: embed asciinema demo in README` — decide host (asciinema.org
-  upload or self-hosted player) at commit time
-- [ ] Commit directly to `main` (no PR needed — docs-only, post-release)
 
 ### Phase 1 exit criterion
 
