@@ -47,7 +47,7 @@ after the last task is merged.
   - rewrite Installation section per spec
   - explicit "no PyPI, ever" language
   - show `git clone` + `pipx install git+...`
-- [ ] PR: merge into `main`
+- [x] PR: merge into `main`
 
 ### Task 1.2 — CI workflow
 
@@ -55,28 +55,21 @@ after the last task is merged.
 - [x] Subtask: `ci: add GitHub Actions workflow for lint and test`
   - create `.github/workflows/ci.yml`
   - triggers: `pull_request`, `push` to `main`
-  - steps: checkout → setup-uv → `uv sync --all-extras` →
+  - steps: checkout → setup-uv → `uv sync --all-extras --frozen` →
     `ruff check` → `ruff format --check` → `uv run mypy kardscm/` →
     `uv run pytest`
   - Python 3.12, Ubuntu runner
   - skip or mock any live-network tests
 - [x] Subtask (if needed): not needed — all tests already mock network calls
-- [ ] PR: merge into `main`. Verify green run on the PR.
+- [x] PR: merge into `main`. CI green on first run.
 
-### Task 1.3 — README polish (badges + demo)
+### Task 1.3 — README badges
 
-- [ ] Branch: `docs/readme-badges-demo`
-- [ ] Subtask: `docs: record asciinema demo cast`
-  - `asciinema rec docs/demo.cast` — session: config, sync, export,
-    deck add, deck export. Short (≤90s).
-  - commit the `.cast` file into `docs/`
-- [ ] Subtask: `docs: embed asciinema demo in README`
-  - use asciinema-player embed via self-hosted approach OR an
-    uploaded asciinema.org cast link — decide at commit time
-- [ ] Subtask: `docs: add license, python, CI badges to README`
+- [x] Branch: `docs/readme-badges`
+- [x] Subtask: `docs: add license, python, CI badges to README`
   - MIT badge (shields.io)
   - Python 3.12+ badge
-  - CI status badge (auto from the workflow added in Task 1.2)
+  - CI status badge (from workflow in Task 1.2)
 - [ ] PR: merge into `main`
 
 ### Task 1.4 — Tag and release (admin, no PR)
@@ -88,13 +81,20 @@ after the last task is merged.
 - [ ] `git push origin v0.3.0`
 - [ ] `gh release create v0.3.0 --notes-from-tag` (or write body from
   CHANGELOG entry)
-- [ ] Verify: `gh release view v0.3.0`, repo page shows topics, demo
-  plays in README
+- [ ] Verify: `gh release view v0.3.0`, repo page shows topics
+
+### Task 1.5 — Asciinema demo (simple commit, after release)
+
+- [ ] Record `asciinema rec docs/demo.cast` — session: config, sync,
+  export, deck add, deck export. Short (≤90s). User does the recording.
+- [ ] `docs: embed asciinema demo in README` — decide host (asciinema.org
+  upload or self-hosted player) at commit time
+- [ ] Commit directly to `main` (no PR needed — docs-only, post-release)
 
 ### Phase 1 exit criterion
 
 - [ ] Tag `v0.3.0` on GitHub
-- [ ] CI green on `main`
+- [x] CI green on `main`
 - [ ] `gh repo view AABur/kardscm` shows description + topics
 - [ ] README has badges + working demo embed
 - [ ] CHANGELOG.md up to date
