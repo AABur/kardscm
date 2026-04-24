@@ -74,14 +74,13 @@ after the last task is merged.
 
 ### Task 1.4 — Tag and release (admin, no PR)
 
-- [ ] Precheck: `make check` green on `main`
-- [ ] `gh repo edit AABur/kardscm --description "..." --add-topic kards,kards-ccg,card-game,wwii,python,cli,sqlite,playwright,collection-manager,deck-manager`
+- [x] Precheck: `make check` green on `main`
+- [x] `gh repo edit AABur/kardscm --description "..." --add-topic kards,kards-ccg,card-game,wwii,python,cli,sqlite,playwright,collection-manager,deck-manager`
   - description: one sentence, <120 chars
-- [ ] `git tag v0.3.0`
-- [ ] `git push origin v0.3.0`
-- [ ] `gh release create v0.3.0 --notes-from-tag` (or write body from
-  CHANGELOG entry)
-- [ ] Verify: `gh release view v0.3.0`, repo page shows topics
+- [x] `git tag v0.3.0`
+- [x] `git push origin v0.3.0`
+- [x] `gh release create v0.3.0` with notes from CHANGELOG entry
+- [x] Verify: `gh release view v0.3.0`, repo page shows topics
 
 ### Task 1.5 — Asciinema demo (simple commit, after release)
 
@@ -93,11 +92,11 @@ after the last task is merged.
 
 ### Phase 1 exit criterion
 
-- [ ] Tag `v0.3.0` on GitHub
+- [x] Tag `v0.3.0` on GitHub
 - [x] CI green on `main`
-- [ ] `gh repo view AABur/kardscm` shows description + topics
+- [x] `gh repo view AABur/kardscm` shows description + topics
 - [x] README has badges
-- [ ] CHANGELOG.md up to date
+- [x] CHANGELOG.md up to date
 
 ---
 
