@@ -6,11 +6,12 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 ## Features
 
 - Multi-language support (English and Russian)
-- SQLite storage with upsert on sync
+- SQLite storage with upsert on sync (preserves user-managed `quantity`)
 - Export to XLSX, CSV, JSON with localized headers
-- Deck import from KARDS client TXT format
-- Deck export to XLSX or JSON
-- Interactive deck selection for export
+- Bulk collection quantity update from an edited XLSX
+- Deck add/import from KARDS client TXT format (`deck add` includes exile-card fallback and collection quantity checks)
+- Deck replace, delete, and export to XLSX or JSON
+- Interactive deck selection for export and delete
 
 ## Requirements
 
@@ -19,10 +20,19 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 
 ## Installation
 
+`kardscm` is distributed **only from GitHub**. It is not and will not
+be published to PyPI — clone the repo and run it via `uv`.
+
 ```bash
 git clone git@github.com:AABur/kardscm.git
 cd kardscm
 make sync
+```
+
+Or, for an isolated install without cloning:
+
+```bash
+pipx install git+https://github.com/AABur/kardscm.git
 ```
 
 ## Configuration
@@ -69,19 +79,79 @@ kardscm export -f json -o cards.json
 kardscm update -i cards.xlsx
 ```
 
+Edit the `quantity` column in the XLSX exported above and feed it back with
+`update`. Cards are matched by `faction + title`; whitespace differences
+(NBSP, double spaces) are normalized automatically. Other columns are ignored.
+Unmatched rows are logged as warnings and skipped.
+
+### Add a deck
+
+```bash
+kardscm deck add deck.txt
+kardscm deck add *.txt                 # add many at once; errors are batched
+kardscm deck add deck.txt -u           # also sync collection quantities to deck
+kardscm deck add deck.txt -r           # replace existing deck with same name
+```
+
+`deck add` is the primary way to save a deck. It:
+
+- looks up cards by faction first, then falls back to the exile field
+- fails if any card is missing from the collection (shows which ones)
+- with `--update`/`-u`, raises collection quantities to match the deck
+- with `--replace`/`-r`, overwrites an existing deck with the same name
+- continues past failures when multiple files are given and prints a summary
+
+The deck TXT file must use card names matching the configured language.
+
 ### Import a deck
 
 ```bash
 kardscm deck import -i deck.txt
 ```
 
-The deck TXT file must use card names matching the configured language.
+Simpler single-file alternative to `deck add`: no exile fallback, no quantity
+check, no `--replace`. Prefer `deck add` for day-to-day use.
+
+### Delete a deck
+
+```bash
+kardscm deck delete
+```
+
+Lists saved decks, prompts for selection and confirmation.
 
 ### Export a deck
 
 ```bash
-kardscm deck export -f xlsx -o cards.xlsx
+kardscm deck export -f xlsx -o deck.xlsx
 kardscm deck export -f json -o deck.json
+```
+
+Interactively prompts for a deck when more than one is saved.
+
+## Typical workflow
+
+End-to-end loop for keeping collection and decks in sync:
+
+```bash
+# 1. Pull the card catalog (first run or after a patch)
+kardscm sync
+
+# 2. Export collection to XLSX and edit the `quantity` column in your editor
+kardscm export -f xlsx -o cards.xlsx
+# ... edit cards.xlsx ...
+
+# 3. Push edited quantities back into the database
+kardscm update -i cards.xlsx
+
+# 4. Save decks exported from the KARDS client
+kardscm deck add my-deck.txt
+
+# 5. If the collection is short on copies, let the deck top it up
+kardscm deck add my-deck.txt -u
+
+# 6. Replace a deck after rebuilding it in the client
+kardscm deck add my-deck.txt -r
 ```
 
 ## Deck file format
@@ -131,7 +201,9 @@ make clean      # clean cache files
 
 - Data is obtained from the official KARDS website.
 - The scrape targets the collection page in the configured language and falls back to English when needed.
-- Deck import requires a synced collection (cards must exist in the database).
+- `deck add`/`deck import` require a synced collection — every card in the deck file must already exist in the database.
+- Card lookups normalize whitespace (NBSP, double spaces) so titles from the KARDS API always match user input.
+- `sync` preserves user-managed `quantity` on upsert; re-syncing never resets edited quantities.
 - Card abilities (Blitz, Guard, Fury, etc.) are translated according to the configured language.
 
 ## License
