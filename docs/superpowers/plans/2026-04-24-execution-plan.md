@@ -51,8 +51,8 @@ after the last task is merged.
 
 ### Task 1.2 — CI workflow
 
-- [ ] Branch: `chore/ci-workflow`
-- [ ] Subtask: `ci: add GitHub Actions workflow for lint and test`
+- [x] Branch: `chore/ci-workflow`
+- [x] Subtask: `ci: add GitHub Actions workflow for lint and test`
   - create `.github/workflows/ci.yml`
   - triggers: `pull_request`, `push` to `main`
   - steps: checkout → setup-uv → `uv sync --all-extras` →
@@ -60,7 +60,7 @@ after the last task is merged.
     `uv run pytest`
   - Python 3.12, Ubuntu runner
   - skip or mock any live-network tests
-- [ ] Subtask (if needed): `test: mark any network-dependent tests as skip in CI`
+- [x] Subtask (if needed): not needed — all tests already mock network calls
 - [ ] PR: merge into `main`. Verify green run on the PR.
 
 ### Task 1.3 — README polish (badges + demo)
