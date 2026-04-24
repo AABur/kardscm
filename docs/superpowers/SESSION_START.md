@@ -16,9 +16,9 @@ private LLM-adjacent tooling lives in a separate future track.
 
 - **Branch:** should be `main` at session start
 - **Version:** `0.3.0` in `pyproject.toml`
-- **Release status:** v0.3.0 not yet tagged. Phase 1 in progress
-  (Task 1.1 shipped; Tasks 1.2–1.4 pending).
-- **Current priority (Phase 1):** polish repo for public release
+- **Release status:** v0.3.0 tagged and released. Phase 1 complete.
+- **Current priority (Phase 2):** nerf/buff handling — start with
+  Task 2.0 (write design spec `docs/superpowers/specs/YYYY-MM-DD-nerf-buff-design.md`)
 
 ## Key files to read (in order)
 
