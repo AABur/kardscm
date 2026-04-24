@@ -96,7 +96,7 @@ after the last task is merged.
 - [ ] Tag `v0.3.0` on GitHub
 - [x] CI green on `main`
 - [ ] `gh repo view AABur/kardscm` shows description + topics
-- [ ] README has badges + working demo embed
+- [x] README has badges
 - [ ] CHANGELOG.md up to date
 
 ---
