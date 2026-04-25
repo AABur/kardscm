@@ -1,6 +1,6 @@
 # kardscm Execution Plan
 
-**Status:** Phase 2 in progress (release pending)
+**Status:** Phase 1 + Phase 2 shipped; Phase 3 next
 **Started:** 2026-04-23
 **Last updated:** 2026-04-25
 
@@ -145,9 +145,16 @@ report. No `card_history` table — single-shot report per sync.
 
 ### Task 2.4 — Release
 
-- [~] CHANGELOG entry `[0.4.0]`
-- [~] Version bump to 0.4.0
-- [ ] Tag, release
+- [x] CHANGELOG entry `[0.4.0]`
+- [x] Version bump to 0.4.0
+- [x] Tag, release (`v0.4.0` shipped 2026-04-25)
+
+### Phase 2 exit criterion
+
+- [x] Tag `v0.4.0` on GitHub
+- [x] CI green on `main`
+- [x] CHANGELOG.md up to date
+- [x] README documents new sync flow
 
 ---
 
