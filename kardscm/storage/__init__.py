@@ -2,6 +2,7 @@
 
 from kardscm.storage.database import (
     delete_all_decks,
+    delete_cards,
     delete_deck,
     fetch_all_decks,
     fetch_cards,
@@ -22,6 +23,7 @@ from kardscm.storage.database import (
 
 __all__ = [
     "delete_all_decks",
+    "delete_cards",
     "delete_deck",
     "fetch_all_decks",
     "fetch_cards",

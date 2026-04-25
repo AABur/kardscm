@@ -30,6 +30,7 @@ class LanguageConfig:
     deck_metadata_labels: list[str] = field(default_factory=list)
     collection_sheet_name: str = "Collection"
     ability_names: dict[str, str] = field(default_factory=dict)
+    diff_headers: dict[str, str] = field(default_factory=dict)
 
 
 LANGUAGE_EN = LanguageConfig(
@@ -130,6 +131,14 @@ LANGUAGE_EN = LanguageConfig(
         "salvage": "Salvage",
         "shock": "Shock",
         "smokescreen": "Smokescreen",
+    },
+    diff_headers={
+        "title": "Sync diff",
+        "new": "New cards",
+        "changed": "Changed characteristics",
+        "reserved_in": "Moved to reserve",
+        "reserved_out": "Returned from reserve",
+        "removed": "Removed cards",
     },
 )
 
@@ -237,6 +246,14 @@ LANGUAGE_RU = LanguageConfig(
         "salvage": "Утилизауия",
         "shock": "Штурм",
         "smokescreen": "Дымовая завеса",
+    },
+    diff_headers={
+        "title": "Изменения синхронизации",
+        "new": "Новые карты",
+        "changed": "Изменённые характеристики",
+        "reserved_in": "Ушли в резерв",
+        "reserved_out": "Вернулись из резерва",
+        "removed": "Удалённые карты",
     },
 )
 
