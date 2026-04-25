@@ -75,15 +75,45 @@ def main_callback(
 
 
 @app.command(
-    epilog="Examples:\n\n* `kards sync`",
+    epilog="Examples:\n\n"
+    "* `kards sync`\n\n"
+    "* `kards sync --diff-only`\n\n"
+    "* `kards sync --yes --diff-report ./diffs/today.md`",
 )
-def sync() -> None:
+def sync(
+    diff_only: Annotated[
+        bool,
+        typer.Option(
+            "--diff-only",
+            help="Print diff and write the Markdown report; do not modify the DB.",
+        ),
+    ] = False,
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes",
+            "-y",
+            help="Auto-approve every diff category without prompting.",
+        ),
+    ] = False,
+    diff_report: Annotated[
+        Path | None,
+        typer.Option(
+            "--diff-report",
+            help="Markdown diff report path (default: ./sync-diff-<UTC>.md).",
+            resolve_path=True,
+        ),
+    ] = None,
+) -> None:
     """Sync card collection from the website.
 
-    Intercepts GraphQL API, fetches all cards via direct HTTP,
-    and stores them in the local SQLite database.
+    Fetches all cards via GraphQL, computes a diff against the local DB,
+    and prompts approval per non-empty category (new cards / changed
+    characteristics / reserve transitions / removed cards). Any
+    rejection aborts the sync; the DB is left untouched. A Markdown
+    diff report is always written when the diff is non-empty.
     """
-    sync_collection()
+    sync_collection(diff_only=diff_only, yes=yes, diff_report_path=diff_report)
 
 
 @app.command(

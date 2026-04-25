@@ -220,33 +220,160 @@ class TestImportDeck:
 
 
 class TestSyncCollection:
+    @staticmethod
+    def _list_diff_files(directory: Path) -> list[Path]:
+        return sorted(directory.glob("sync-diff-*.md"))
+
     @patch("kardscm.commands.get_language_config")
     @patch("kardscm.commands.scrape_cards")
-    def test_success(self, mock_scrape, mock_config, tmp_path, make_card):
+    def test_first_sync_writes_all_new_cards_and_report(
+        self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
+    ):
+        """Empty DB + non-empty scrape: every card lands in 'new', interactive
+        approval (auto via --yes) writes everything and emits a report."""
         mock_config.return_value = LANGUAGE_EN
         mock_scrape.return_value = [make_card()]
+        monkeypatch.chdir(tmp_path)
 
         db_path = str(tmp_path / "sync.db")
-        sync_collection(db_path=db_path)
+        sync_collection(db_path=db_path, yes=True)
 
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert len(cards) == 1
-        title = json.loads(cards[0]["title"])
-        assert title["en-EN"] == "Alpha"
+        assert json.loads(cards[0]["title"])["en-EN"] == "Alpha"
+        assert len(self._list_diff_files(tmp_path)) == 1
 
     @patch("kardscm.commands.get_language_config")
     @patch("kardscm.commands.scrape_cards")
-    def test_empty_scrape(self, mock_scrape, mock_config, tmp_path):
+    def test_empty_diff_no_prompts_no_report(
+        self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
+    ):
+        """If old equals new, sync skips prompts/report and updates last_sync."""
         mock_config.return_value = LANGUAGE_EN
-        mock_scrape.return_value = []
+        card = make_card()
+        mock_scrape.return_value = [card]
+        monkeypatch.chdir(tmp_path)
 
-        db_path = str(tmp_path / "empty.db")
+        db_path = str(tmp_path / "sync.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [card])
+
+        sync_collection(db_path=db_path)
+
+        assert self._list_diff_files(tmp_path) == []
+        with get_connection(db_path) as conn:
+            row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+        assert row is not None
+
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.scrape_cards")
+    def test_diff_only_writes_report_no_db_changes(
+        self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
+    ):
+        mock_config.return_value = LANGUAGE_EN
+        old = make_card(kredits=2)
+        new = make_card(kredits=5)
+        mock_scrape.return_value = [new]
+        monkeypatch.chdir(tmp_path)
+
+        db_path = str(tmp_path / "sync.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [old])
+
+        sync_collection(db_path=db_path, diff_only=True)
+
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert cards[0]["kredits"] == 2  # unchanged
+        diff_files = self._list_diff_files(tmp_path)
+        assert len(diff_files) == 1
+        assert "kredits: `2` → `5`" in diff_files[0].read_text(encoding="utf-8")
+
+    @patch("kardscm.commands.typer.confirm", return_value=False)
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.scrape_cards")
+    def test_user_rejects_aborts_without_db_changes(
+        self,
+        mock_scrape,
+        mock_config,
+        _confirm,
+        tmp_path,
+        make_card,
+        monkeypatch,
+    ):
+        mock_config.return_value = LANGUAGE_EN
+        old = make_card(kredits=2)
+        new = make_card(kredits=5)
+        mock_scrape.return_value = [new]
+        monkeypatch.chdir(tmp_path)
+
+        db_path = str(tmp_path / "sync.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [old])
+
         sync_collection(db_path=db_path)
 
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
-        assert cards == []
+            last_sync = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+        assert cards[0]["kredits"] == 2  # rejected — DB untouched
+        assert last_sync is None  # rejection does not bump last_sync
+        assert len(self._list_diff_files(tmp_path)) == 1  # report still written
+
+    @patch("kardscm.commands.delete_cards")
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.scrape_cards")
+    def test_yes_flag_applies_writes_and_deletes(
+        self,
+        mock_scrape,
+        mock_config,
+        mock_delete,
+        tmp_path,
+        make_card,
+        monkeypatch,
+    ):
+        """--yes: removed-card category triggers delete_cards on approval."""
+        mock_config.return_value = LANGUAGE_EN
+        existing = make_card(cardId="A")
+        going_away = make_card(cardId="B", title=json.dumps({"en-EN": "Bravo"}))
+        mock_scrape.return_value = [existing]
+        monkeypatch.chdir(tmp_path)
+
+        db_path = str(tmp_path / "sync.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [existing, going_away])
+
+        sync_collection(db_path=db_path, yes=True)
+
+        mock_delete.assert_called_once()
+        deleted_ids = list(mock_delete.call_args[0][1])
+        assert deleted_ids == ["B"]
+
+    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.scrape_cards")
+    def test_diff_report_custom_path(
+        self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
+    ):
+        mock_config.return_value = LANGUAGE_EN
+        mock_scrape.return_value = [make_card(kredits=9)]
+        monkeypatch.chdir(tmp_path)
+
+        db_path = str(tmp_path / "sync.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [make_card(kredits=2)])
+
+        custom = tmp_path / "subdir" / "out.md"
+        custom.parent.mkdir()
+        sync_collection(db_path=db_path, diff_only=True, diff_report_path=custom)
+
+        assert custom.exists()
+        assert "kredits" in custom.read_text(encoding="utf-8")
 
 
 class TestExportDeck:

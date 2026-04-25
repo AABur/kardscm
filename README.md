@@ -66,8 +66,20 @@ Changing the language requires deleting `collection.db` and re-running sync.
 ### Sync card catalog
 
 ```bash
-kardscm sync
+kardscm sync                              # interactive: review and approve changes
+kardscm sync --diff-only                  # dry-run: print + write report, do not modify DB
+kardscm sync --yes                        # auto-approve everything (CI / scripting)
+kardscm sync --diff-report ./out.md       # custom report path
 ```
+
+Sync fetches the full catalog (including reserved and spawnable cards),
+diffs it against the local DB, and groups changes into four categories:
+**new cards**, **changed characteristics** (cost, attack, defense, operation
+cost, abilities, ability text), **reserve transitions** (in/out), and
+**removed cards**. Each non-empty category is shown to you and prompts a
+single y/N. Any "no" aborts the sync — the DB is left untouched. A
+Markdown diff report (`./sync-diff-<UTC-iso>.md` by default) is written
+whenever the diff is non-empty.
 
 ### Export collection
 
