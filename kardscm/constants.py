@@ -65,9 +65,9 @@ query getCards(
 """
 GRAPHQL_VARIABLES: dict = {
     "language": "en",
-    "showSpawnables": False,
+    "showSpawnables": True,
     "showExiles": False,
-    "showReserved": False,
+    "showReserved": True,
 }
 
 # Internal field names used to extract data from card dicts for export
