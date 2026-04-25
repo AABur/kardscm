@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
 class CardDict(TypedDict):
@@ -55,3 +55,32 @@ class ParsedDeck(TypedDict):
     hq: str | None
     deck_code: str | None
     cards: list[DeckCardEntry]
+
+
+class FieldChange(TypedDict):
+    """One changed field for a card during sync diff."""
+
+    field: str
+    old: Any
+    new: Any
+
+
+class CardChange(TypedDict):
+    """A card whose compared characteristics differ between DB and API.
+
+    `card` carries the new (API) record so callers can render the current
+    state. `changes` lists the per-field deltas.
+    """
+
+    card: CardDict
+    changes: list[FieldChange]
+
+
+class DiffReport(TypedDict):
+    """Result of compute_diff over old DB rows and new API cards."""
+
+    new: list[CardDict]
+    changed: list[CardChange]
+    reserved_in: list[CardDict]
+    reserved_out: list[CardDict]
+    removed: list[dict]

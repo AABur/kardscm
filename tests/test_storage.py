@@ -9,6 +9,7 @@ import pytest
 
 from kardscm.storage import (
     delete_all_decks,
+    delete_cards,
     fetch_all_decks,
     fetch_cards,
     fetch_deck_cards,
@@ -425,3 +426,39 @@ def test_delete_all_decks(db_connection, storage_deck) -> None:
 
     assert count == 2
     assert fetch_all_decks(db_connection) == []
+
+
+def test_delete_cards_removes_only_listed_ids(db_connection, make_card) -> None:
+    upsert_cards(
+        db_connection,
+        [
+            make_card(cardId="A"),
+            make_card(cardId="B"),
+            make_card(cardId="C"),
+        ],
+    )
+
+    deleted = delete_cards(db_connection, ["B", "C"])
+
+    assert deleted == 2
+    remaining = {row["cardId"] for row in fetch_cards(db_connection)}
+    assert remaining == {"A"}
+
+
+def test_delete_cards_preserves_other_quantities(db_connection, make_card) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A"), make_card(cardId="B")])
+    db_connection.execute("UPDATE cards SET quantity = 7 WHERE cardId = 'A'")
+    db_connection.commit()
+
+    delete_cards(db_connection, ["B"])
+
+    rows = fetch_cards(db_connection)
+    assert len(rows) == 1
+    assert rows[0]["cardId"] == "A"
+    assert rows[0]["quantity"] == 7
+
+
+def test_delete_cards_empty_input_is_noop(db_connection, make_card) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A")])
+    assert delete_cards(db_connection, []) == 0
+    assert len(fetch_cards(db_connection)) == 1

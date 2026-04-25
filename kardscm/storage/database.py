@@ -222,6 +222,26 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def delete_cards(conn: sqlite3.Connection, card_ids: Iterable[str]) -> int:
+    """Delete cards from the database by cardId. Used after explicit user
+    approval of the "removed" diff category.
+
+    Args:
+        conn: SQLite connection instance.
+        card_ids: Iterable of cardId strings to remove.
+
+    Returns:
+        Number of rows actually deleted.
+    """
+    ids = [cid for cid in card_ids if cid]
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    cursor = conn.execute(f"DELETE FROM cards WHERE cardId IN ({placeholders})", ids)
+    conn.commit()
+    return cursor.rowcount
+
+
 def update_quantity(
     conn: sqlite3.Connection,
     updates: Iterable[tuple[str, str, int | None]],
