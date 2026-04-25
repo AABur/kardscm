@@ -1,6 +1,6 @@
 # kardscm Execution Plan
 
-**Status:** in progress
+**Status:** Phase 2 in progress (release pending)
 **Started:** 2026-04-23
 **Last updated:** 2026-04-25
 
@@ -105,50 +105,48 @@ report. No `card_history` table — single-shot report per sync.
 
 ### Task 2.0 — Design spec
 
-- [~] Branch: `design/2.0-nerf-buff`
-- [~] Subtask: `docs: write design spec for nerf/buff handling`
+- [x] Branch: `design/2.0-nerf-buff`
+- [x] Subtask: `docs: write design spec for nerf/buff handling`
   - new file `docs/superpowers/specs/2026-04-25-nerf-buff-design.md`
-- [ ] PR: merge spec into `main` before implementation starts
+- [x] PR: merge spec into `main` before implementation starts
 
 ### Task 2.1 — Include reserved + spawnable in sync
 
-- [ ] Branch: `feat/sync-reserved-spawnable`
-- [ ] Subtask: `feat: include reserved and spawnable cards in sync`
+- [x] Branch: `feat/sync-reserved-spawnable`
+- [x] Subtask: `feat: include reserved and spawnable cards in sync`
   - `kardscm/constants.py`: flip `showSpawnables` and `showReserved` to
     `True` in `GRAPHQL_VARIABLES`
   - update / add tests asserting the two values
-- [ ] PR
+- [x] PR
 
 ### Task 2.2 — Compute and render sync diff
 
-- [ ] Branch: `feat/sync-diff`
-- [ ] Subtask: `feat: add diff TypedDicts to models`
+- [x] Branch: `feat/sync-diff`
+- [x] Subtask: `feat: add diff TypedDicts to models`
   - `FieldChange`, `CardChange`, `DiffReport` in `kardscm/models.py`
-- [ ] Subtask: `feat: implement compute_diff and report formatters`
+- [x] Subtask: `feat: implement compute_diff and report formatters`
   - new `kardscm/diff.py` with `compute_diff`, `format_console_report`,
     `format_markdown_report`
   - locale-aware `text` comparison via `LanguageConfig.locale_key`
   - `attributes` compared as a set
   - `reserved` routed to its own categories
-- [ ] Subtask: `feat: add fetch_all_cards and delete_cards storage helpers`
-- [ ] Subtask: `test: cover diff engine and storage helpers`
-- [ ] PR
+- [x] Subtask: `feat: add delete_cards storage helper (fetch_cards reused as-is)`
+- [x] Subtask: `test: cover diff engine and storage helpers`
+- [x] PR
 
 ### Task 2.3 — Make sync interactive with diff approval
 
-- [ ] Branch: `feat/sync-interactive`
-- [ ] Subtask: `feat: rewrite sync_collection with diff prompts`
-  - load old cards, compute diff, print, prompt or write report,
-    apply on full approval, abort on any rejection
-- [ ] Subtask: `feat: add --diff-only, --diff-report, --yes flags to sync`
-- [ ] Subtask: `test: cover empty/diff-only/reject/approve paths`
-- [ ] Subtask: `docs: document new sync flow in README`
-- [ ] PR
+- [x] Branch: `feat/sync-interactive`
+- [x] Subtask: `feat: rewrite sync_collection with diff prompts`
+- [x] Subtask: `feat: add --diff-only, --diff-report, --yes flags to sync`
+- [x] Subtask: `test: cover empty/diff-only/reject/approve paths`
+- [x] Subtask: `docs: document new sync flow in README`
+- [x] PR
 
 ### Task 2.4 — Release
 
-- [ ] CHANGELOG entry `[0.4.0]`
-- [ ] Version bump to 0.4.0
+- [~] CHANGELOG entry `[0.4.0]`
+- [~] Version bump to 0.4.0
 - [ ] Tag, release
 
 ---
