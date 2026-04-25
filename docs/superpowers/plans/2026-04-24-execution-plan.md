@@ -2,7 +2,7 @@
 
 **Status:** in progress
 **Started:** 2026-04-23
-**Last updated:** 2026-04-24
+**Last updated:** 2026-04-25
 
 This is the authoritative, cross-session execution plan. Structure:
 
@@ -92,54 +92,64 @@ after the last task is merged.
 
 ---
 
-## Phase 2 — v0.4.0 (nerf/buff handling)
+## Phase 2 — v0.4.0 (nerf/buff handling + reserve tracking)
 
-**Design spec:** to be written as part of Task 2.0
+**Design spec:** [`specs/2026-04-25-nerf-buff-design.md`](../specs/2026-04-25-nerf-buff-design.md)
 
 **Prerequisite:** Phase 1 shipped.
 
+Sync becomes interactive: fetches reserved + spawnable cards, computes a
+four-section diff (new / changed / reserve transitions / removed), prompts
+bulk-approve per category, aborts on any rejection, writes a Markdown
+report. No `card_history` table — single-shot report per sync.
+
 ### Task 2.0 — Design spec
 
-- [ ] Branch: `design/2.0-nerf-buff`
-- [ ] Subtask: `docs: write design spec for nerf/buff handling`
-  - new file `docs/superpowers/specs/YYYY-MM-DD-nerf-buff-design.md`
-  - resolve open questions from roadmap:
-    - card history table vs one-shot diff?
-    - export integration?
-    - deck warning on nerf?
-  - single chosen approach
+- [~] Branch: `design/2.0-nerf-buff`
+- [~] Subtask: `docs: write design spec for nerf/buff handling`
+  - new file `docs/superpowers/specs/2026-04-25-nerf-buff-design.md`
 - [ ] PR: merge spec into `main` before implementation starts
 
-### Task 2.1 — `card_history` table and diff computation
+### Task 2.1 — Include reserved + spawnable in sync
 
-- [ ] Branch: `feat/card-history`
-- [ ] Subtask: `feat: add card_history table to schema`
-- [ ] Subtask: `feat: archive card state before upsert on sync`
-- [ ] Subtask: `test: cover card_history append on changed stats`
+- [ ] Branch: `feat/sync-reserved-spawnable`
+- [ ] Subtask: `feat: include reserved and spawnable cards in sync`
+  - `kardscm/constants.py`: flip `showSpawnables` and `showReserved` to
+    `True` in `GRAPHQL_VARIABLES`
+  - update / add tests asserting the two values
 - [ ] PR
 
-### Task 2.2 — Diff report after sync
+### Task 2.2 — Compute and render sync diff
 
-- [ ] Branch: `feat/sync-diff-report`
-- [ ] Subtask: `feat: compute diff from card_history after sync`
-- [ ] Subtask: `feat: print diff summary on sync command`
-- [ ] Subtask: `feat: write full diff to docs/sync-diff-<ts>.md`
-- [ ] Subtask: `test: diff with buffs, nerfs, text-only changes`
-- [ ] Subtask: `docs: document diff output in README`
+- [ ] Branch: `feat/sync-diff`
+- [ ] Subtask: `feat: add diff TypedDicts to models`
+  - `FieldChange`, `CardChange`, `DiffReport` in `kardscm/models.py`
+- [ ] Subtask: `feat: implement compute_diff and report formatters`
+  - new `kardscm/diff.py` with `compute_diff`, `format_console_report`,
+    `format_markdown_report`
+  - locale-aware `text` comparison via `LanguageConfig.locale_key`
+  - `attributes` compared as a set
+  - `reserved` routed to its own categories
+- [ ] Subtask: `feat: add fetch_all_cards and delete_cards storage helpers`
+- [ ] Subtask: `test: cover diff engine and storage helpers`
 - [ ] PR
 
-### Task 2.3 — `--diff-only` dry-run flag
+### Task 2.3 — Make sync interactive with diff approval
 
-- [ ] Branch: `feat/sync-diff-only`
-- [ ] Subtask: `feat: add --diff-only flag to sync command`
-- [ ] Subtask: `test: --diff-only does not touch DB`
+- [ ] Branch: `feat/sync-interactive`
+- [ ] Subtask: `feat: rewrite sync_collection with diff prompts`
+  - load old cards, compute diff, print, prompt or write report,
+    apply on full approval, abort on any rejection
+- [ ] Subtask: `feat: add --diff-only, --diff-report, --yes flags to sync`
+- [ ] Subtask: `test: cover empty/diff-only/reject/approve paths`
+- [ ] Subtask: `docs: document new sync flow in README`
 - [ ] PR
 
 ### Task 2.4 — Release
 
 - [ ] CHANGELOG entry `[0.4.0]`
 - [ ] Version bump to 0.4.0
-- [ ] Tag, release, topics update if needed
+- [ ] Tag, release
 
 ---
 
