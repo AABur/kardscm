@@ -21,6 +21,7 @@ from kardscm.commands import (
     update_collection,
     validate_file,
 )
+from kardscm.web.app import run as run_web
 
 logging.basicConfig(
     level=logging.INFO,
@@ -275,6 +276,32 @@ def deck_export_cmd(
     """
     validate_file(str(file), f".{fmt.value}")
     export_deck(fmt.value, str(file))
+
+
+@app.command(
+    epilog="Examples:\n\n* `kards web`\n\n* `kards web --port 9000 --no-browser`",
+)
+def web(
+    port: Annotated[
+        int,
+        typer.Option("--port", "-p", help="HTTP port (default 8765)"),
+    ] = 8765,
+    no_browser: Annotated[
+        bool,
+        typer.Option("--no-browser", help="Do not auto-open the browser"),
+    ] = False,
+    host: Annotated[
+        str,
+        typer.Option("--host", help="Bind host (default 127.0.0.1)"),
+    ] = "127.0.0.1",
+) -> None:
+    """Start the local webUI for browsing and editing the collection.
+
+    Mirrors the kards.com filter set, lays cards out as an Excel-like
+    table, and supports inline quantity editing autosaved to the local
+    database. Run **sync** first to populate the DB.
+    """
+    run_web(port=port, open_browser=not no_browser, host=host)
 
 
 def run() -> None:

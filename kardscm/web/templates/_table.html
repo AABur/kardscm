@@ -1,0 +1,58 @@
+{# Out-of-band counter swap so the header counter updates on filter change #}
+<span id="counter" class="counter" hx-swap-oob="true">{{ shown }} / {{ total }}</span>
+
+{% macro sort_header(col, label) -%}
+  {%- set is_active = sort == col -%}
+  {%- set next_dir = 'desc' if (is_active and direction == 'asc') else 'asc' -%}
+  <th
+    class="sortable{% if is_active %} sort-{{ direction }}{% endif %}"
+    hx-get="/cards"
+    hx-include="#filters"
+    hx-target="#table-wrap"
+    hx-swap="innerHTML"
+    hx-vals='{"sort":"{{ col }}","direction":"{{ next_dir }}"}'
+    hx-on:click="document.getElementById('filters').elements['sort'].value='{{ col }}';document.getElementById('filters').elements['direction'].value='{{ next_dir }}'"
+  >
+    {{ label }}{% if is_active %}<span class="sort-arrow">{{ '↑' if direction == 'asc' else '↓' }}</span>{% endif %}
+  </th>
+{%- endmacro %}
+
+<table class="cards-table">
+  <thead>
+    <tr>
+      {{ sort_header('faction',       headers[0]) }}
+      {{ sort_header('title',         headers[1]) }}
+      {{ sort_header('type',          headers[2]) }}
+      {{ sort_header('rarity',        headers[3]) }}
+      <th>{{ headers[4] }}</th>
+      {{ sort_header('set',           headers[5]) }}
+      {{ sort_header('quantity',      headers[6]) }}
+      {{ sort_header('kredits',       headers[7]) }}
+      {{ sort_header('operationCost', 'Стоимость' if lang == 'ru' else 'Cost') }}
+      {{ sort_header('attack',        headers[8]) }}
+      {{ sort_header('defense',       headers[9]) }}
+    </tr>
+  </thead>
+  <tbody id="card-tbody">
+    {% for card in cards %}
+      <tr
+        class="card-row"
+        hx-get="/cards/{{ card.cardId }}"
+        hx-target="#modal"
+        hx-swap="innerHTML"
+      >
+        <td>{{ card.faction }}</td>
+        <td class="title-cell">{{ card.title }}</td>
+        <td>{{ card.type }}</td>
+        <td>{{ card.rarity }}</td>
+        <td class="abilities">{{ card.attributes }}</td>
+        <td>{{ card.set }}</td>
+        {% include "_qty_cell.html" %}
+        <td class="num">{{ card.kredits }}</td>
+        <td class="num">{{ card.operationCost if card.operationCost is not none else '' }}</td>
+        <td class="num">{{ card.attack if card.attack is not none else '' }}</td>
+        <td class="num">{{ card.defense if card.defense is not none else '' }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

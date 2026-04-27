@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-27
+
+### Added
+- `kardscm web` subcommand: a local browser UI for the collection.
+  FastAPI + Jinja2 + HTMX, server-rendered, no JS build pipeline.
+  Defaults to `127.0.0.1:8765`, auto-opens the system browser.
+- Filters bar (top): nation, type, rarity, set, kredits, text search,
+  plus `spawnable` / `reserved` / `only owned` toggles. All filters
+  combine with AND, applied instantly via HTMX partials.
+- Excel-like card table with sortable columns (faction, title, type,
+  rarity, set, quantity, kredits, operationCost, attack, defense).
+- Inline quantity editing on each row, autosaved to the local DB on
+  blur/change — replaces the `export → edit xlsx → update` cycle.
+- Card detail modal (description + image) opens on row click.
+- `--port`, `--host`, and `--no-browser` flags on `kardscm web`.
+
 ## [0.4.0] - 2026-04-25
 
 ### Added
@@ -51,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Card title lookups now ignore NBSP and double-space variants that
   previously caused mismatches between deck files and the database.
 
-[Unreleased]: https://github.com/AABur/kardscm/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/AABur/kardscm/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/AABur/kardscm/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/AABur/kardscm/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/AABur/kardscm/releases/tag/v0.3.0

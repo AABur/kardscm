@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<header class="page-header">
+  <h1>kardscm collection</h1>
+  <span id="counter" class="counter">{{ shown }} / {{ total }}</span>
+</header>
+
+{% include "_filters.html" %}
+
+<section id="table-wrap">
+  {% include "_table.html" %}
+</section>
+{% endblock %}

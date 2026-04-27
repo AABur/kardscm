@@ -1,0 +1,94 @@
+<form
+  id="filters"
+  class="filters"
+  hx-get="/cards"
+  hx-target="#table-wrap"
+  hx-swap="innerHTML"
+  hx-trigger="change, keyup changed delay:250ms from:#search-input"
+  hx-include="#filters"
+  hx-push-url="false"
+>
+  <fieldset class="filter-group">
+    <legend>{{ headers[0] if headers else 'Nation' }}</legend>
+    {% for value, label in facets.factions %}
+      <label class="chip">
+        <input type="checkbox" name="factions" value="{{ value }}"
+          {% if value in filters.factions %}checked{% endif %}>
+        {{ label }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="filter-group">
+    <legend>{{ headers[2] if headers else 'Type' }}</legend>
+    {% for value, label in facets.types %}
+      <label class="chip">
+        <input type="checkbox" name="types" value="{{ value }}"
+          {% if value in filters.types %}checked{% endif %}>
+        {{ label }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="filter-group">
+    <legend>{{ headers[3] if headers else 'Rarity' }}</legend>
+    {% for value, label in facets.rarities %}
+      <label class="chip">
+        <input type="checkbox" name="rarities" value="{{ value }}"
+          {% if value in filters.rarities %}checked{% endif %}>
+        {{ label }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="filter-group">
+    <legend>{{ headers[5] if headers else 'Set' }}</legend>
+    {% for value, label in facets.sets %}
+      <label class="chip">
+        <input type="checkbox" name="sets" value="{{ value }}"
+          {% if value in filters.sets %}checked{% endif %}>
+        {{ label }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset class="filter-group filter-group-narrow">
+    <legend>{{ headers[7] if headers else 'Kredits' }}</legend>
+    {% for value in facets.kredits %}
+      <label class="chip chip-num">
+        <input type="checkbox" name="kredits" value="{{ value }}"
+          {% if value in filters.kredits %}checked{% endif %}>
+        {{ value }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <div class="filter-row">
+    <input
+      id="search-input"
+      type="search"
+      name="q"
+      value="{{ filters.text_query }}"
+      placeholder="search by name…"
+      autocomplete="off">
+
+    <label class="toggle">
+      <input type="checkbox" name="spawnable" value="true"
+        {% if filters.include_spawnable %}checked{% endif %}>
+      spawnable
+    </label>
+    <label class="toggle">
+      <input type="checkbox" name="reserved" value="true"
+        {% if filters.include_reserved %}checked{% endif %}>
+      reserved
+    </label>
+    <label class="toggle">
+      <input type="checkbox" name="owned" value="true"
+        {% if filters.owned_only %}checked{% endif %}>
+      only owned
+    </label>
+  </div>
+
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="direction" value="{{ direction }}">
+</form>

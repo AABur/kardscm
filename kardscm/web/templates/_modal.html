@@ -1,0 +1,25 @@
+<div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
+  <div class="modal-content" hx-on:click="event.stopPropagation()">
+    <button
+      type="button"
+      class="modal-close"
+      aria-label="close"
+      hx-on:click="document.getElementById('modal').replaceChildren()"
+    >×</button>
+    <h2>{{ card.title }}</h2>
+    <div class="modal-meta">
+      <span>{{ card.faction }}</span>
+      <span>·</span>
+      <span>{{ card.type }}</span>
+      <span>·</span>
+      <span>{{ card.rarity }}</span>
+      <span>·</span>
+      <span>{{ card.set }}</span>
+    </div>
+    {% if card.imageUrl %}
+      <img class="modal-image" src="https://www.kards.com{{ card.imageUrl }}" alt="{{ card.title }}">
+    {% endif %}
+    <p class="modal-text">{{ card.text }}</p>
+    <p class="modal-id">cardId: <code>{{ card.cardId }}</code></p>
+  </div>
+</div>

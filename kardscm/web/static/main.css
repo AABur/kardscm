@@ -1,0 +1,239 @@
+:root {
+  --bg: #f7f7f8;
+  --fg: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #d8d8dc;
+  --accent: #2563eb;
+  --row-hover: #eef2ff;
+  --header-bg: #1f2937;
+  --header-fg: #f7f7f8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main { padding: 12px; }
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.counter {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: flex-start;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.filter-group {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 6px 6px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+  max-width: 100%;
+}
+
+.filter-group legend {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 0 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f0f0f3;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chip:hover { background: #e4e4e9; }
+.chip input { margin: 0; }
+.chip-num { min-width: 30px; justify-content: center; }
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+#search-input {
+  flex: 1 1 220px;
+  min-width: 200px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Table */
+.cards-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cards-table th,
+.cards-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cards-table thead th {
+  background: var(--header-bg);
+  color: var(--header-fg);
+  position: sticky;
+  top: 0;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.cards-table th.sortable { cursor: pointer; user-select: none; }
+.cards-table th.sortable:hover { background: #2c3a4d; }
+.cards-table th.sort-asc,
+.cards-table th.sort-desc { background: #2c3a4d; }
+
+.sort-arrow { margin-left: 4px; }
+
+.card-row { cursor: pointer; }
+.card-row:hover { background: var(--row-hover); }
+
+.title-cell { font-weight: 500; }
+.abilities { color: var(--muted); font-size: 12px; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.qty-cell { padding: 2px 4px; cursor: default; }
+.qty-cell input {
+  width: 48px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  text-align: center;
+  font: inherit;
+}
+
+/* Modal */
+#modal:empty { display: none; }
+#modal { display: block; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 16px 20px;
+  border-radius: 8px;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.modal-content h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.modal-meta {
+  display: flex;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.modal-image {
+  display: block;
+  max-width: 100%;
+  margin: 8px auto;
+  border-radius: 4px;
+}
+
+.modal-text {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.modal-id {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.modal-id code {
+  background: #f0f0f3;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--muted);
+  width: 30px;
+  height: 30px;
+}
+
+.modal-close:hover { color: var(--fg); }
