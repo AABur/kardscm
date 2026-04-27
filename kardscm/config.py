@@ -31,6 +31,7 @@ class LanguageConfig:
     collection_sheet_name: str = "Collection"
     ability_names: dict[str, str] = field(default_factory=dict)
     diff_headers: dict[str, str] = field(default_factory=dict)
+    ui_strings: dict[str, str] = field(default_factory=dict)
 
 
 LANGUAGE_EN = LanguageConfig(
@@ -139,6 +140,17 @@ LANGUAGE_EN = LanguageConfig(
         "reserved_in": "Moved to reserve",
         "reserved_out": "Returned from reserve",
         "removed": "Removed cards",
+    },
+    ui_strings={
+        "page_title": "kardscm collection",
+        "search_placeholder": "search by name…",
+        "toggle_spawnable": "spawnable",
+        "toggle_reserved": "reserved",
+        "toggle_owned": "only owned",
+        "col_cost": "Cost",
+        "card_id_label": "cardId",
+        "saved_hint": "saves automatically (Tab/Enter)",
+        "modal_close": "close",
     },
 )
 
@@ -254,6 +266,17 @@ LANGUAGE_RU = LanguageConfig(
         "reserved_in": "Ушли в резерв",
         "reserved_out": "Вернулись из резерва",
         "removed": "Удалённые карты",
+    },
+    ui_strings={
+        "page_title": "Коллекция kardscm",
+        "search_placeholder": "поиск по названию…",
+        "toggle_spawnable": "спаунятся",
+        "toggle_reserved": "в резерве",
+        "toggle_owned": "только мои",
+        "col_cost": "Стоимость",
+        "card_id_label": "cardId",
+        "saved_hint": "сохраняется автоматически (Tab/Enter)",
+        "modal_close": "закрыть",
     },
 )
 

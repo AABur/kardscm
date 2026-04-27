@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from kardscm.config import LanguageConfig, get_language_config
+from kardscm.config import LANGUAGES, LanguageConfig, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH
 from kardscm.storage.database import (
     get_card_quantity_by_id,
@@ -143,6 +143,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
                     "kredits": KREDITS_RANGE,
                 },
                 "headers": cfg.export_headers,
+                "ui": cfg.ui_strings,
                 "lang": cfg.code,
             },
         )
@@ -215,7 +216,9 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         if row is None:
             raise HTTPException(status_code=404, detail="card not found")
         card = to_view(row, cfg)
-        return templates.TemplateResponse(request, "_modal.html", {"card": card})
+        return templates.TemplateResponse(
+            request, "_modal.html", {"card": card, "ui": cfg.ui_strings}
+        )
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
@@ -224,11 +227,23 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
     return app
 
 
+def _resolve_lang(lang_code: str | None) -> LanguageConfig | None:
+    """Map a CLI language code to a LanguageConfig, or None to fall back."""
+    if not lang_code:
+        return None
+    code = lang_code.strip().lower()
+    if code not in LANGUAGES:
+        supported = ", ".join(sorted(LANGUAGES))
+        raise SystemExit(f"Unsupported language '{lang_code}'. Supported: {supported}")
+    return LANGUAGES[code]
+
+
 def run(
     db_path: str | Path | None = None,
     port: int = 8765,
     open_browser: bool = True,
     host: str = "127.0.0.1",
+    lang: str | None = None,
 ) -> None:
     """Start uvicorn after validating the DB exists and is non-empty."""
     import uvicorn
@@ -242,7 +257,7 @@ def run(
         if _total_card_count(conn) == 0:
             raise SystemExit("Card database is empty. Run `kardscm sync` first to populate it.")
 
-    app = create_app(actual_db)
+    app = create_app(actual_db, lang_config=_resolve_lang(lang))
     url = f"http://{host}:{port}"
     print(f"kardscm webUI listening on {url}")
     if open_browser:

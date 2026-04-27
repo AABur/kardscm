@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kardscm.config import LANGUAGE_EN
+from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.storage.database import get_connection, initialize_schema
-from kardscm.web.app import create_app
+from kardscm.web.app import _resolve_lang, create_app
 
 
 @pytest.fixture
@@ -206,3 +206,54 @@ class TestCardModal:
     def test_modal_unknown_card(self, client: TestClient) -> None:
         r = client.get("/cards/no_such_card")
         assert r.status_code == 404
+
+
+class TestI18n:
+    def test_index_uses_en_strings_with_en_config(self, client: TestClient) -> None:
+        r = client.get("/")
+        # English UI strings appear when LANGUAGE_EN is active
+        assert LANGUAGE_EN.ui_strings["page_title"] in r.text
+        assert LANGUAGE_EN.ui_strings["search_placeholder"] in r.text
+        assert LANGUAGE_EN.ui_strings["toggle_owned"] in r.text
+        assert LANGUAGE_EN.ui_strings["col_cost"] in r.text
+        # Russian UI strings should not leak
+        assert LANGUAGE_RU.ui_strings["page_title"] not in r.text
+
+    def test_index_uses_ru_strings_with_ru_config(self, db_path: Path) -> None:
+        ru_app = create_app(db_path, lang_config=LANGUAGE_RU)
+        ru_client = TestClient(ru_app)
+        r = ru_client.get("/")
+        assert LANGUAGE_RU.ui_strings["page_title"] in r.text
+        assert LANGUAGE_RU.ui_strings["search_placeholder"] in r.text
+        assert LANGUAGE_RU.ui_strings["toggle_owned"] in r.text
+        assert LANGUAGE_RU.ui_strings["col_cost"] in r.text
+        # English chrome should not leak
+        assert LANGUAGE_EN.ui_strings["page_title"] not in r.text
+
+    def test_qty_cell_has_settle_delay_for_save_flash(self, client: TestClient) -> None:
+        # The qty cell rendered in the table partial should include the settle
+        # window so the green flash CSS has time to be visible after save.
+        r = client.get("/cards")
+        assert "settle:600ms" in r.text
+
+    def test_modal_uses_translated_card_id_label(self, client: TestClient) -> None:
+        r = client.get("/cards/sov_inf")
+        assert LANGUAGE_EN.ui_strings["card_id_label"] in r.text
+
+
+class TestResolveLang:
+    def test_none_returns_none(self) -> None:
+        assert _resolve_lang(None) is None
+        assert _resolve_lang("") is None
+
+    def test_known_codes_return_configs(self) -> None:
+        assert _resolve_lang("en") is LANGUAGE_EN
+        assert _resolve_lang("ru") is LANGUAGE_RU
+
+    def test_known_codes_case_insensitive(self) -> None:
+        assert _resolve_lang("EN") is LANGUAGE_EN
+        assert _resolve_lang("Ru") is LANGUAGE_RU
+
+    def test_unknown_code_raises_systemexit(self) -> None:
+        with pytest.raises(SystemExit):
+            _resolve_lang("zz")

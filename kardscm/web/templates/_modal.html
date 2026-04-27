@@ -3,7 +3,7 @@
     <button
       type="button"
       class="modal-close"
-      aria-label="close"
+      aria-label="{{ ui.modal_close }}"
       hx-on:click="document.getElementById('modal').replaceChildren()"
     >×</button>
     <h2>{{ card.title }}</h2>
@@ -20,6 +20,6 @@
       <img class="modal-image" src="https://www.kards.com{{ card.imageUrl }}" alt="{{ card.title }}">
     {% endif %}
     <p class="modal-text">{{ card.text }}</p>
-    <p class="modal-id">cardId: <code>{{ card.cardId }}</code></p>
+    <p class="modal-id">{{ ui.card_id_label }}: <code>{{ card.cardId }}</code></p>
   </div>
 </div>

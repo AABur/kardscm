@@ -69,23 +69,23 @@
       type="search"
       name="q"
       value="{{ filters.text_query }}"
-      placeholder="search by name…"
+      placeholder="{{ ui.search_placeholder }}"
       autocomplete="off">
 
     <label class="toggle">
       <input type="checkbox" name="spawnable" value="true"
         {% if filters.include_spawnable %}checked{% endif %}>
-      spawnable
+      {{ ui.toggle_spawnable }}
     </label>
     <label class="toggle">
       <input type="checkbox" name="reserved" value="true"
         {% if filters.include_reserved %}checked{% endif %}>
-      reserved
+      {{ ui.toggle_reserved }}
     </label>
     <label class="toggle">
       <input type="checkbox" name="owned" value="true"
         {% if filters.owned_only %}checked{% endif %}>
-      only owned
+      {{ ui.toggle_owned }}
     </label>
   </div>
 

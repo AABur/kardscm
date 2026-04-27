@@ -279,7 +279,10 @@ def deck_export_cmd(
 
 
 @app.command(
-    epilog="Examples:\n\n* `kards web`\n\n* `kards web --port 9000 --no-browser`",
+    epilog="Examples:\n\n"
+    "* `kards web`\n\n"
+    "* `kards web --port 9000 --no-browser`\n\n"
+    "* `kards web --lang en`",
 )
 def web(
     port: Annotated[
@@ -294,6 +297,14 @@ def web(
         str,
         typer.Option("--host", help="Bind host (default 127.0.0.1)"),
     ] = "127.0.0.1",
+    lang: Annotated[
+        str | None,
+        typer.Option(
+            "--lang",
+            "-l",
+            help="Override config.ini language (en, ru). Default: from config.ini.",
+        ),
+    ] = None,
 ) -> None:
     """Start the local webUI for browsing and editing the collection.
 
@@ -301,7 +312,7 @@ def web(
     table, and supports inline quantity editing autosaved to the local
     database. Run **sync** first to populate the DB.
     """
-    run_web(port=port, open_browser=not no_browser, host=host)
+    run_web(port=port, open_browser=not no_browser, host=host, lang=lang)
 
 
 def run() -> None:

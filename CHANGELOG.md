@@ -21,7 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inline quantity editing on each row, autosaved to the local DB on
   blur/change — replaces the `export → edit xlsx → update` cycle.
 - Card detail modal (description + image) opens on row click.
-- `--port`, `--host`, and `--no-browser` flags on `kardscm web`.
+- `--port`, `--host`, `--no-browser`, and `--lang` flags on
+  `kardscm web`. `--lang en|ru` overrides `config.ini` for one run.
+- Fully translatable UI chrome (page title, filter placeholder,
+  toggle labels, modal labels, "Cost" column header) via the new
+  `LanguageConfig.ui_strings` field. English remains the fallback
+  when no `config.ini` is present.
+- Visual save indicator: the quantity cell flashes green for ~600ms
+  after each autosave so the persistence is no longer invisible.
 
 ## [0.4.0] - 2026-04-25
 
