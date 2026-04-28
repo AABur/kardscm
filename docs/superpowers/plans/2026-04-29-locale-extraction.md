@@ -324,13 +324,11 @@ Create `kardscm/locales/__init__.py` with this exact content:
 
 from __future__ import annotations
 
-import logging
 import sys
 import tomllib
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-
-logger = logging.getLogger(__name__)
+from typing import Any
 
 _LOCALES_DIR = Path(__file__).parent
 
@@ -469,8 +467,7 @@ def _build_registry(locales_dir: Path) -> dict[str, LanguageConfig]:
             cfg = _build_with_fallback(code, {}, en)
             registry[code] = replace(
                 cfg,
-                fallback_warnings=[f"file unreadable: {type(exc).__name__}"]
-                + cfg.fallback_warnings,
+                fallback_warnings=[f"file unreadable: {type(exc).__name__}"],
             )
             continue
         registry[code] = _build_with_fallback(code, raw, en)
