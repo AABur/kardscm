@@ -163,6 +163,13 @@ def _en(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_languages_registry_contains_en_and_ru() -> None:
+    assert "en" in LANGUAGES
+    assert "ru" in LANGUAGES
+    assert LANGUAGES["en"] is LANGUAGE_EN
+    assert LANGUAGES["ru"] is LANGUAGE_RU
+
+
 def test_en_loads_complete() -> None:
     cfg = LANGUAGE_EN
     assert cfg.code == "en"
