@@ -8,6 +8,8 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+__all__ = ["LANGUAGES", "LANGUAGE_EN", "LANGUAGE_RU", "LanguageConfig"]
+
 _LOCALES_DIR = Path(__file__).parent
 
 _SECTION_TO_FIELD: dict[str, str] = {
