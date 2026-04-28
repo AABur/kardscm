@@ -24,7 +24,6 @@ class LanguageConfig:
     type_names: dict[str, str] = field(default_factory=dict)
     rarity_names: dict[str, str] = field(default_factory=dict)
     set_names: dict[str, str] = field(default_factory=dict)
-    deck_nation_to_db: dict[str, str] = field(default_factory=dict)
     nation_display_names: dict[str, str] = field(default_factory=dict)
     deck_headers: list[str] = field(default_factory=list)
     deck_metadata_labels: list[str] = field(default_factory=list)
@@ -88,17 +87,6 @@ LANGUAGE_EN = LanguageConfig(
         "NavalWarfare": "Naval Warfare",
         "Homefront": "Homefront",
         "WinterWar": "Winter War",
-    },
-    deck_nation_to_db={
-        "soviet": "Soviet",
-        "usa": "USA",
-        "britain": "Britain",
-        "germany": "Germany",
-        "japan": "Japan",
-        "france": "France",
-        "italy": "Italy",
-        "poland": "Poland",
-        "finland": "Finland",
     },
     nation_display_names={
         "soviet": "Soviet",
@@ -209,17 +197,6 @@ LANGUAGE_RU = LanguageConfig(
         "NavalWarfare": "Морская война",
         "Homefront": "Тыл",
         "WinterWar": "Зимняя война",
-    },
-    deck_nation_to_db={
-        "soviet": "Soviet",
-        "usa": "USA",
-        "britain": "Britain",
-        "germany": "Germany",
-        "japan": "Japan",
-        "france": "France",
-        "italy": "Italy",
-        "poland": "Poland",
-        "finland": "Finland",
     },
     nation_display_names={
         "soviet": "Советские",

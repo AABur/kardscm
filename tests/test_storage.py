@@ -135,7 +135,6 @@ def test_insert_and_fetch_deck(db_connection, sample_card, storage_deck) -> None
         db_connection,
         deck_id,
         storage_deck["cards"],
-        {"soviet": "Soviet"},
         "en-EN",
     )
     db_connection.commit()
@@ -172,7 +171,6 @@ def test_deck_card_not_found(db_connection, storage_deck) -> None:
             db_connection,
             deck_id,
             [{"nation": "soviet", "name": "MISSING", "quantity": 1, "cost": 1}],
-            {"soviet": "Soviet"},
             "en-EN",
         )
 
@@ -316,7 +314,6 @@ def test_insert_deck_cards_with_exile_fallback(db_connection, exile_card, storag
         db_connection,
         deck_id,
         [{"nation": "soviet", "name": "IL-2M PL", "quantity": 1, "cost": 2}],
-        {"soviet": "Soviet"},
         "en-EN",
         use_exile_fallback=True,
     )
@@ -337,7 +334,6 @@ def test_insert_deck_cards_exile_fallback_disabled_raises(
             db_connection,
             deck_id,
             [{"nation": "soviet", "name": "IL-2M PL", "quantity": 1, "cost": 2}],
-            {"soviet": "Soviet"},
             "en-EN",
             use_exile_fallback=False,
         )

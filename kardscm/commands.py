@@ -11,7 +11,7 @@ import typer
 from openpyxl import load_workbook
 
 from kardscm.config import LanguageConfig, get_language_config
-from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.constants import DECK_NATION_TO_DB, DEFAULT_DB_PATH
 from kardscm.diff import (
     compute_diff,
     format_console_report,
@@ -350,7 +350,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
 
         not_found = []
         for card in deck["cards"]:
-            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             card_id = find_card_id(conn, faction, card["name"], lang_config.locale_key)
             if card_id is None:
                 not_found.append(f"{faction} / {card['name']}")
@@ -364,7 +364,6 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
             conn,
             deck_id,
             deck["cards"],
-            lang_config.deck_nation_to_db,
             lang_config.locale_key,
         )
         conn.commit()
@@ -417,7 +416,7 @@ def add_deck(
         not_found = []
         resolved: list[tuple[DeckCardEntry, str]] = []
         for card in deck["cards"]:
-            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             card_id = find_card_id(conn, faction, card["name"], lang_config.locale_key)
             if card_id is None:
                 card_id = find_card_id_by_exile(conn, faction, card["name"], lang_config.locale_key)
@@ -433,14 +432,14 @@ def add_deck(
         # Quantity check
         mismatches: list[tuple[DeckCardEntry, str, int, int]] = []
         for card, card_id in resolved:
-            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             collection_qty = get_card_quantity_by_id(conn, card_id)
             if card["quantity"] != collection_qty:
                 mismatches.append((card, card_id, card["quantity"], collection_qty))
 
         if mismatches and not update:
             lines = "\n".join(
-                f"  - {lang_config.deck_nation_to_db.get(c['nation'], c['nation'])} / {c['name']}:"
+                f"  - {DECK_NATION_TO_DB.get(c['nation'], c['nation'])} / {c['name']}:"
                 f" deck={deck_qty}, collection={col_qty}"
                 for c, _, deck_qty, col_qty in mismatches
             )
@@ -454,7 +453,6 @@ def add_deck(
             conn,
             deck_id,
             deck["cards"],
-            lang_config.deck_nation_to_db,
             lang_config.locale_key,
             use_exile_fallback=True,
         )
@@ -585,7 +583,6 @@ def export_deck(
             deck_cards,
             lang_config.deck_headers,
             lang_config.deck_metadata_labels,
-            lang_config.deck_nation_to_db,
             lang_config.nation_display_names,
             lang_config,
         )

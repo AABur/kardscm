@@ -398,7 +398,6 @@ class TestExportDeck:
                 conn,
                 deck_id,
                 [{"nation": "usa", "name": "Alpha", "quantity": 2, "cost": 1}],
-                {"usa": "USA"},
                 "en-EN",
             )
             conn.commit()

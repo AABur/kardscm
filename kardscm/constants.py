@@ -96,5 +96,19 @@ DECK_METADATA_KEYS: dict[str, str] = {
     "HQ": "hq",
 }
 
+# Maps lowercase deck-file nation keys to API faction names.
+# Language-agnostic: identical across all locales.
+DECK_NATION_TO_DB: dict[str, str] = {
+    "soviet": "Soviet",
+    "usa": "USA",
+    "britain": "Britain",
+    "germany": "Germany",
+    "japan": "Japan",
+    "france": "France",
+    "italy": "Italy",
+    "poland": "Poland",
+    "finland": "Finland",
+}
+
 # === Deck Export ===
 DECK_COLUMN_WIDTHS: list[int] = [30, 18, 14, 12, 10, 10]

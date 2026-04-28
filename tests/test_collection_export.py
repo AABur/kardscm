@@ -61,7 +61,6 @@ def test_add_deck_sheet(deck_meta, deck_cards) -> None:
         deck_cards,
         lang.deck_headers,
         lang.deck_metadata_labels,
-        lang.deck_nation_to_db,
         lang.nation_display_names,
         lang,
     )
