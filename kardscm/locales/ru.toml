@@ -1,0 +1,98 @@
+code = "ru"
+name = "Russian"
+locale_key = "ru-RU"
+collection_sheet_name = "Коллекция"
+
+export_headers = [
+    "Нация", "Название", "Тип", "Редкость", "Способности", "Сет",
+    "Количество", "Кредиты", "Атака", "Защита", "Описание",
+]
+deck_headers = ["Карта", "Тип", "Количество", "Кредиты", "Атака", "Защита"]
+deck_metadata_labels = ["Название", "Основная нация", "Союзная нация", "Штаб", "Код"]
+
+[factions]
+Soviet = "Советский Союз"
+USA = "США"
+Britain = "Великобритания"
+Germany = "Германия"
+Japan = "Япония"
+France = "Франция"
+Italy = "Италия"
+Poland = "Польша"
+Finland = "Финляндия"
+
+[types]
+infantry = "Пехота"
+tank = "Танк"
+artillery = "Артиллерия"
+fighter = "Истребитель"
+order = "Приказ"
+countermeasure = "Контрмера"
+
+[rarities]
+Standard = "Стандартная"
+Limited = "Лимитированная"
+Special = "Специальная"
+Elite = "Элитная"
+
+[sets]
+Base = "Базовый"
+Allegiance = "Верность"
+TheatersOfWar = "Театры войны"
+Breakthrough = "Прорыв"
+WorldAtWar = "Мировая война"
+CovertOps = "Тайные операции"
+BloodAndIron = "Кровь и железо"
+Legions = "Легионы"
+NavalWarfare = "Морская война"
+Homefront = "Тыл"
+WinterWar = "Зимняя война"
+
+[abilities]
+alpine = "Альпийский"
+ambush = "Засада"
+blitz = "Блиц"
+bond = "Узы"
+covert = "Скрытность"
+fury = "Ярость"
+guard = "Охрана"
+heavyArmor1 = "Тяжёлая броня 1"
+heavyArmor2 = "Тяжёлая броня 2"
+heavyArmor3 = "Тяжёлая броня 3"
+intel1 = "Разведка 1"
+intel2 = "Разведка 2"
+intel3 = "Разведка 3"
+mobilize = "Мобилизация"
+salvage = "Утилизация"
+shock = "Штурм"
+smokescreen = "Дымовая завеса"
+
+[nation_display_names]
+soviet = "Советские"
+usa = "Американские"
+britain = "Британские"
+germany = "Германские"
+japan = "Японские"
+france = "Французские"
+italy = "Итальянские"
+poland = "Польские"
+finland = "Финские"
+
+[ui_strings]
+page_title = "Коллекция kardscm"
+search_placeholder = "поиск по названию…"
+toggle_spawnable = "спаунятся"
+toggle_reserved = "в резерве"
+toggle_owned = "только мои"
+col_cost = "Стоимость"
+card_id_label = "cardId"
+saved_hint = "сохраняется автоматически (Tab/Enter)"
+modal_close = "закрыть"
+
+[diff_headers]
+title = "Изменения синхронизации"
+new = "Новые карты"
+changed = "Изменённые характеристики"
+reserved_in = "Ушли в резерв"
+reserved_out = "Вернулись из резерва"
+removed = "Удалённые карты"
