@@ -31,6 +31,7 @@ class LanguageConfig:
     ability_names: dict[str, str] = field(default_factory=dict)
     diff_headers: dict[str, str] = field(default_factory=dict)
     ui_strings: dict[str, str] = field(default_factory=dict)
+    fallback_warnings: list[str] = field(default_factory=list)
 
 
 LANGUAGE_EN = LanguageConfig(
