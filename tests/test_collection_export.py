@@ -9,8 +9,8 @@ import pytest
 from openpyxl import Workbook
 
 from kardscm.commands import export_collection
-from kardscm.config import LANGUAGE_RU
 from kardscm.export import add_deck_sheet, export_deck_to_json
+from kardscm.locales import LANGUAGE_RU
 
 
 def test_export_requires_data(tmp_path: Path) -> None:

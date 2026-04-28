@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
+from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.storage.database import get_connection, initialize_schema
 from kardscm.web.app import _resolve_lang, create_app
 

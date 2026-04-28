@@ -21,7 +21,7 @@ from kardscm.commands import (
     update_collection,
     validate_file,
 )
-from kardscm.config import LANGUAGE_EN
+from kardscm.locales import LANGUAGE_EN
 from kardscm.storage import (
     fetch_all_decks,
     fetch_cards,

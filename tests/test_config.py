@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from kardscm.config import LANGUAGE_EN, LANGUAGE_RU, get_language_config
+from kardscm.config import get_language_config
+from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 
 
 def _write_ini(tmp_path, content: str) -> str:

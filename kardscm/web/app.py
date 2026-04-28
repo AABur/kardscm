@@ -13,8 +13,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from kardscm.config import LANGUAGES, LanguageConfig, get_language_config
+from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.locales import LANGUAGES
 from kardscm.storage.database import (
     get_card_quantity_by_id,
     get_connection,

@@ -4,34 +4,15 @@ from __future__ import annotations
 
 import configparser
 import logging
-from dataclasses import dataclass, field
 from pathlib import Path
+
+from kardscm.locales import LANGUAGE_EN as _LOCALES_EN
+from kardscm.locales import LANGUAGES as _LOCALES_LANGUAGES
+from kardscm.locales import LanguageConfig
 
 logger = logging.getLogger(__name__)
 
 CONFIG_FILE = "config.ini"
-
-
-@dataclass(frozen=True)
-class LanguageConfig:
-    """Language-specific configuration."""
-
-    code: str
-    name: str
-    locale_key: str
-    export_headers: list[str] = field(default_factory=list)
-    faction_names: dict[str, str] = field(default_factory=dict)
-    type_names: dict[str, str] = field(default_factory=dict)
-    rarity_names: dict[str, str] = field(default_factory=dict)
-    set_names: dict[str, str] = field(default_factory=dict)
-    nation_display_names: dict[str, str] = field(default_factory=dict)
-    deck_headers: list[str] = field(default_factory=list)
-    deck_metadata_labels: list[str] = field(default_factory=list)
-    collection_sheet_name: str = "Collection"
-    ability_names: dict[str, str] = field(default_factory=dict)
-    diff_headers: dict[str, str] = field(default_factory=dict)
-    ui_strings: dict[str, str] = field(default_factory=dict)
-    fallback_warnings: list[str] = field(default_factory=list)
 
 
 LANGUAGE_EN = LanguageConfig(
@@ -274,14 +255,14 @@ def get_language_config(config_path: str = CONFIG_FILE) -> LanguageConfig:
     path = Path(config_path)
 
     if not path.exists():
-        return LANGUAGE_EN
+        return _LOCALES_EN
 
     config = configparser.ConfigParser()
     config.read(path)
 
     code = config.get("settings", "language", fallback="en").strip().lower()
-    if code not in LANGUAGES:
+    if code not in _LOCALES_LANGUAGES:
         logger.warning("Unsupported language '%s', falling back to English", code)
-        return LANGUAGE_EN
+        return _LOCALES_EN
 
-    return LANGUAGES[code]
+    return _LOCALES_LANGUAGES[code]
