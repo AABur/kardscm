@@ -152,14 +152,14 @@ def test_en_incomplete_raises(tmp_path: Path) -> None:
         "en.toml",
         'code = "en"\nname = "English"\nlocale_key = "en-EN"\n'
         'collection_sheet_name = "Collection"\n'
-        'export_headers = []\ndeck_headers = []\ndeck_metadata_labels = []\n'
-        "[factions]\nSoviet = \"Soviet Union\"\n"
-        "[rarities]\nStandard = \"Standard\"\n"
-        "[sets]\nBase = \"Base\"\n"
-        "[abilities]\nalpine = \"Alpine\"\n"
-        "[nation_display_names]\nsoviet = \"Soviet\"\n"
-        "[ui_strings]\npage_title = \"p\"\n"
-        "[diff_headers]\ntitle = \"d\"\n",
+        "export_headers = []\ndeck_headers = []\ndeck_metadata_labels = []\n"
+        '[factions]\nSoviet = "Soviet Union"\n'
+        '[rarities]\nStandard = "Standard"\n'
+        '[sets]\nBase = "Base"\n'
+        '[abilities]\nalpine = "Alpine"\n'
+        '[nation_display_names]\nsoviet = "Soviet"\n'
+        '[ui_strings]\npage_title = "p"\n'
+        '[diff_headers]\ntitle = "d"\n',
     )
     with pytest.raises(SystemExit):
         _build_registry(tmp_path)

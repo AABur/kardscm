@@ -70,8 +70,7 @@ def _emit_locale_warnings(cfg: LanguageConfig) -> None:
     summary = ", ".join(keys[:5])
     suffix = f", … and {len(keys) - 5} more" if len(keys) > 5 else ""
     typer.echo(
-        f"Locale '{cfg.code}': {len(keys)} key(s) fell back to English "
-        f"({summary}{suffix}).",
+        f"Locale '{cfg.code}': {len(keys)} key(s) fell back to English ({summary}{suffix}).",
         err=True,
     )
 
