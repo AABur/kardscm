@@ -54,12 +54,7 @@ Edit `config.ini`:
 language = en
 ```
 
-Supported languages: `en` (English, default), `ru` (Russian).
-
-Changing the language requires deleting `collection.db` and re-running sync.
-
-> Only English and Russian are supported out of the box.
-> See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on adding a new language.
+Supported languages: every `*.toml` file in `kardscm/locales/` ships as a language. To add one, drop `<code>.toml` into that directory and set `language = <code>` in `config.ini`. Missing keys fall back to English with a runtime warning.
 
 ## Usage
 

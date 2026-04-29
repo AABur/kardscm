@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - Unreleased
+
+### Changed
+- Refactored: per-language data extracted from Python literals to TOML files in
+  `kardscm/locales/`. Adding a new language no longer requires editing Python
+  source — drop a `<code>.toml` file into the directory and restart.
+- `LanguageConfig` dataclass moved from `kardscm/config.py` to
+  `kardscm/locales/__init__.py`. `from kardscm.config import LanguageConfig`
+  continues to work via re-export.
+
+### Fixed
+- RU locale: missing `finland` entry added to `nation_display_names`.
+- RU locale: typo `"Моблизация"` corrected to `"Мобилизация"` in
+  `ability_names.mobilize`.
+- RU locale: typo `"Утилизауия"` corrected to `"Утилизация"` in
+  `ability_names.salvage`.
+
+### Added
+- Non-blocking locale diagnostics: missing or malformed locale keys fall back
+  to English and surface a warning on CLI (stderr) and web UI (yellow strip).
+
 ## [0.5.0] - 2026-04-27
 
 ### Added
