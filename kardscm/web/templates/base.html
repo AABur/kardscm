@@ -8,6 +8,16 @@
     <script src="/static/htmx.min.js" defer></script>
   </head>
   <body>
+    {% if fallback_warnings %}
+      <div class="locale-warning-strip" role="status">
+        Locale <code>{{ lang }}</code>:
+        {{ fallback_warnings|length }} key(s) fell back to English.
+        <details>
+          <summary>show keys</summary>
+          <ul>{% for w in fallback_warnings %}<li><code>{{ w }}</code></li>{% endfor %}</ul>
+        </details>
+      </div>
+    {% endif %}
     <main>
       {% block content %}{% endblock %}
     </main>

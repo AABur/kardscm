@@ -114,6 +114,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
     app = FastAPI(title="kardscm webUI", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+    templates.env.globals["fallback_warnings"] = cfg.fallback_warnings
 
     def render_table(
         request: Request,
