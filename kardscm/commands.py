@@ -63,6 +63,19 @@ def _safe_timestamp() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
 
 
+def _emit_locale_warnings(cfg: LanguageConfig) -> None:
+    if not cfg.fallback_warnings:
+        return
+    keys = cfg.fallback_warnings
+    summary = ", ".join(keys[:5])
+    suffix = f", … and {len(keys) - 5} more" if len(keys) > 5 else ""
+    typer.echo(
+        f"Locale '{cfg.code}': {len(keys)} key(s) fell back to English "
+        f"({summary}{suffix}).",
+        err=True,
+    )
+
+
 def _default_diff_report_path() -> Path:
     return Path.cwd() / f"sync-diff-{_safe_timestamp()}.md"
 
@@ -204,6 +217,7 @@ def sync_collection(
             (`./sync-diff-<UTC-iso>.md`).
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
     new_cards = scrape_cards()
 
@@ -256,6 +270,7 @@ def export_collection(
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
@@ -293,6 +308,7 @@ def update_collection(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
     """
     logger.info("Starting update from file: %s", filename)
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
 
     try:
         updates = _read_xlsx_quantities(filename)
@@ -334,6 +350,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
     logger.info("Importing deck from file: %s", filename)
 
     try:
@@ -389,6 +406,7 @@ def add_deck(
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
     logger.info("Adding deck from file: %s", filename)
 
     try:
@@ -564,6 +582,7 @@ def export_deck(
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
