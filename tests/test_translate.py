@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.export.exporters import translate_card_for_export
+from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 
 
 def _make_db_card(

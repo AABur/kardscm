@@ -87,41 +87,12 @@ Language-agnostic constants (KNOWN_MAPPINGS, EXPORT_FIELD_NAMES, DECK_CARD_PATTE
 
 ### Adding a New Language
 
-To add support for a new language (e.g. German):
+1. Create `kardscm/locales/<code>.toml` (e.g. `de.toml` for German).
+2. Use `kardscm/locales/en.toml` as the schema reference. Top-level keys: `code`, `name`, `locale_key`, `collection_sheet_name`, `export_headers`, `deck_headers`, `deck_metadata_labels`. Sections: `[factions]`, `[types]`, `[rarities]`, `[sets]`, `[abilities]`, `[nation_display_names]`, `[ui_strings]`, `[diff_headers]`.
+3. Any key you omit falls back to the English value, and the loader records a warning that surfaces on CLI (stderr) and web UI (yellow strip at the page top). Partially-translated locales are valid.
+4. Set `language = <code>` in `config.ini` to activate the locale.
 
-1. Open `kardscm/config.py`
-2. Create a new `LanguageConfig` instance:
-
-```python
-LANGUAGE_DE = LanguageConfig(
-    code="de",
-    name="German",
-    keys=("de", "de-DE"),
-    lang_index=2,  # find the correct index in the website JS translation arrays
-    collection_url=f"{BASE_URL}/de/decks/collection",
-    export_headers=["Nation", "Name", "Typ", ...],
-    faction_names={"Soviet": "Sowjetunion", ...},
-    deck_nation_to_db={"soviet": "Sowjetunion", ...},
-    nation_display_names={"soviet": "Sowjetisch", ...},
-    deck_headers=["Karte", "Typ", "Anzahl", ...],
-    deck_metadata_labels=["Name", "Hauptmacht", ...],
-    collection_sheet_name="Sammlung",
-)
-```
-
-3. Register it in the `LANGUAGES` dictionary:
-
-```python
-LANGUAGES: dict[str, LanguageConfig] = {
-    "en": LANGUAGE_EN,
-    "ru": LANGUAGE_RU,
-    "de": LANGUAGE_DE,
-}
-```
-
-4. To find `lang_index`: inspect the JS translation file loaded from the KARDS website and locate the position of translations for your language in the arrays.
-
-No other code changes are needed.
+No code changes needed. No tests required for new locale files — the loader is already covered by `tests/test_locales.py`.
 
 ## Makefile Targets
 

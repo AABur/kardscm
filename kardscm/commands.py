@@ -11,7 +11,7 @@ import typer
 from openpyxl import load_workbook
 
 from kardscm.config import LanguageConfig, get_language_config
-from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.constants import DECK_NATION_TO_DB, DEFAULT_DB_PATH
 from kardscm.diff import (
     compute_diff,
     format_console_report,
@@ -61,6 +61,18 @@ def _utc_timestamp() -> str:
 def _safe_timestamp() -> str:
     """Filesystem-safe UTC timestamp (no colons)."""
     return datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
+
+
+def _emit_locale_warnings(cfg: LanguageConfig) -> None:
+    if not cfg.fallback_warnings:
+        return
+    keys = cfg.fallback_warnings
+    summary = ", ".join(keys[:5])
+    suffix = f", … and {len(keys) - 5} more" if len(keys) > 5 else ""
+    typer.echo(
+        f"Locale '{cfg.code}': {len(keys)} key(s) fell back to English ({summary}{suffix}).",
+        err=True,
+    )
 
 
 def _default_diff_report_path() -> Path:
@@ -204,6 +216,7 @@ def sync_collection(
             (`./sync-diff-<UTC-iso>.md`).
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
     new_cards = scrape_cards()
 
@@ -256,6 +269,7 @@ def export_collection(
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
@@ -293,6 +307,7 @@ def update_collection(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
     """
     logger.info("Starting update from file: %s", filename)
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
 
     try:
         updates = _read_xlsx_quantities(filename)
@@ -334,6 +349,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
     logger.info("Importing deck from file: %s", filename)
 
     try:
@@ -350,7 +366,7 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
 
         not_found = []
         for card in deck["cards"]:
-            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             card_id = find_card_id(conn, faction, card["name"], lang_config.locale_key)
             if card_id is None:
                 not_found.append(f"{faction} / {card['name']}")
@@ -364,7 +380,6 @@ def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
             conn,
             deck_id,
             deck["cards"],
-            lang_config.deck_nation_to_db,
             lang_config.locale_key,
         )
         conn.commit()
@@ -390,6 +405,7 @@ def add_deck(
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
     logger.info("Adding deck from file: %s", filename)
 
     try:
@@ -417,7 +433,7 @@ def add_deck(
         not_found = []
         resolved: list[tuple[DeckCardEntry, str]] = []
         for card in deck["cards"]:
-            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             card_id = find_card_id(conn, faction, card["name"], lang_config.locale_key)
             if card_id is None:
                 card_id = find_card_id_by_exile(conn, faction, card["name"], lang_config.locale_key)
@@ -433,14 +449,14 @@ def add_deck(
         # Quantity check
         mismatches: list[tuple[DeckCardEntry, str, int, int]] = []
         for card, card_id in resolved:
-            faction = lang_config.deck_nation_to_db.get(card["nation"], card["nation"])
+            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             collection_qty = get_card_quantity_by_id(conn, card_id)
             if card["quantity"] != collection_qty:
                 mismatches.append((card, card_id, card["quantity"], collection_qty))
 
         if mismatches and not update:
             lines = "\n".join(
-                f"  - {lang_config.deck_nation_to_db.get(c['nation'], c['nation'])} / {c['name']}:"
+                f"  - {DECK_NATION_TO_DB.get(c['nation'], c['nation'])} / {c['name']}:"
                 f" deck={deck_qty}, collection={col_qty}"
                 for c, _, deck_qty, col_qty in mismatches
             )
@@ -454,7 +470,6 @@ def add_deck(
             conn,
             deck_id,
             deck["cards"],
-            lang_config.deck_nation_to_db,
             lang_config.locale_key,
             use_exile_fallback=True,
         )
@@ -566,6 +581,7 @@ def export_deck(
         db_path: SQLite database path.
     """
     lang_config = get_language_config()
+    _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
@@ -585,7 +601,6 @@ def export_deck(
             deck_cards,
             lang_config.deck_headers,
             lang_config.deck_metadata_labels,
-            lang_config.deck_nation_to_db,
             lang_config.nation_display_names,
             lang_config,
         )

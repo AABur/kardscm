@@ -1,4 +1,3 @@
 [settings]
-# Supported languages: en, ru
-# Changing language requires deleting collection.db and re-running sync
+# Supported languages: see kardscm/locales/*.toml
 language = en

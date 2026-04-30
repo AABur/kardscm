@@ -254,3 +254,16 @@ main { padding: 12px; }
 }
 
 .modal-close:hover { color: var(--fg); }
+
+.locale-warning-strip {
+  background: #fff3cd;
+  border-bottom: 1px solid #f0c674;
+  padding: .5rem 1rem;
+  font-size: .9em;
+}
+.locale-warning-strip details { display: inline; }
+.locale-warning-strip summary {
+  display: inline;
+  cursor: pointer;
+  margin-left: .5em;
+}

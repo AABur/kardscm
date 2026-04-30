@@ -7,8 +7,8 @@ import json
 
 from openpyxl import load_workbook
 
-from kardscm.config import LANGUAGE_EN
 from kardscm.export import export_to_csv, export_to_json, export_to_xlsx
+from kardscm.locales import LANGUAGE_EN
 
 
 def _sample_cards() -> list[dict]:

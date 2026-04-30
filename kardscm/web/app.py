@@ -13,8 +13,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from kardscm.config import LANGUAGES, LanguageConfig, get_language_config
+from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.locales import LANGUAGES
 from kardscm.storage.database import (
     get_card_quantity_by_id,
     get_connection,
@@ -113,6 +114,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
     app = FastAPI(title="kardscm webUI", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+    templates.env.globals["fallback_warnings"] = cfg.fallback_warnings
 
     def render_table(
         request: Request,

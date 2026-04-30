@@ -21,7 +21,7 @@ from kardscm.commands import (
     update_collection,
     validate_file,
 )
-from kardscm.config import LANGUAGE_EN
+from kardscm.locales import LANGUAGE_EN
 from kardscm.storage import (
     fetch_all_decks,
     fetch_cards,
@@ -398,7 +398,6 @@ class TestExportDeck:
                 conn,
                 deck_id,
                 [{"nation": "usa", "name": "Alpha", "quantity": 2, "cost": 1}],
-                {"usa": "USA"},
                 "en-EN",
             )
             conn.commit()
@@ -774,3 +773,44 @@ class TestRemoveDeck:
         with patch("builtins.input", return_value="-1"):
             with pytest.raises(SystemExit, match="Invalid choice"):
                 remove_deck(db_path=two_deck_db)
+
+
+# ---------------------------------------------------------------------------
+# Locale warning tests
+# ---------------------------------------------------------------------------
+
+
+def test_emit_locale_warnings_silent_when_no_warnings(capsys) -> None:
+    from kardscm.commands import _emit_locale_warnings
+
+    _emit_locale_warnings(LANGUAGE_EN)
+    assert capsys.readouterr().err == ""
+
+
+def test_emit_locale_warnings_emits_to_stderr(capsys) -> None:
+    from dataclasses import replace
+
+    from kardscm.commands import _emit_locale_warnings
+
+    cfg = replace(
+        LANGUAGE_EN,
+        fallback_warnings=["abilities.mobilize", "ui_strings.modal_close"],
+    )
+    _emit_locale_warnings(cfg)
+    captured = capsys.readouterr()
+    assert "Locale 'en': 2 key(s)" in captured.err
+    assert "abilities.mobilize" in captured.err
+    assert captured.out == ""
+
+
+def test_emit_locale_warnings_truncates_after_five(capsys) -> None:
+    from dataclasses import replace
+
+    from kardscm.commands import _emit_locale_warnings
+
+    keys = [f"section.key{i}" for i in range(8)]
+    cfg = replace(LANGUAGE_EN, fallback_warnings=keys)
+    _emit_locale_warnings(cfg)
+    captured = capsys.readouterr()
+    assert "8 key(s)" in captured.err
+    assert "… and 3 more" in captured.err

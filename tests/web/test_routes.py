@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
+from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.storage.database import get_connection, initialize_schema
 from kardscm.web.app import _resolve_lang, create_app
 
@@ -257,3 +257,21 @@ class TestResolveLang:
     def test_unknown_code_raises_systemexit(self) -> None:
         with pytest.raises(SystemExit):
             _resolve_lang("zz")
+
+
+class TestLocaleWarningStrip:
+    def test_strip_visible_when_warnings_present(self, db_path: Path) -> None:
+        from dataclasses import replace
+
+        cfg = replace(LANGUAGE_EN, fallback_warnings=["abilities.mobilize"])
+        app = create_app(db_path, lang_config=cfg)
+        client = TestClient(app)
+        r = client.get("/")
+        assert r.status_code == 200
+        assert 'class="locale-warning-strip"' in r.text
+        assert "abilities.mobilize" in r.text
+
+    def test_strip_absent_when_no_warnings(self, client: TestClient) -> None:
+        r = client.get("/")
+        assert r.status_code == 200
+        assert "locale-warning-strip" not in r.text

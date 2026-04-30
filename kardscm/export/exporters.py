@@ -12,7 +12,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
 from kardscm.config import LanguageConfig
-from kardscm.constants import DECK_COLUMN_WIDTHS, EXPORT_FIELD_NAMES
+from kardscm.constants import DECK_COLUMN_WIDTHS, DECK_NATION_TO_DB, EXPORT_FIELD_NAMES
 from kardscm.helpers import sanitize_text
 
 logger = logging.getLogger(__name__)
@@ -217,7 +217,6 @@ def add_deck_sheet(
     deck_cards: list[dict],
     deck_headers: list[str],
     metadata_labels: list[str],
-    deck_nation_to_db: dict[str, str],
     nation_display_names: dict[str, str],
     lang_config: LanguageConfig,
 ) -> None:
@@ -229,7 +228,6 @@ def add_deck_sheet(
         deck_cards: List of card dicts with deck_quantity and deck_cost.
         deck_headers: Headers for deck card table.
         metadata_labels: Labels for deck metadata section.
-        deck_nation_to_db: Mapping from deck nation keys to API faction names.
         nation_display_names: Display names for nation sections.
         lang_config: Language configuration for translating card fields.
     """
@@ -242,8 +240,8 @@ def add_deck_sheet(
     ally = deck_meta.get("ally", "")
     meta_values = [
         deck_meta.get("name", ""),
-        lang_config.faction_names.get(deck_nation_to_db.get(major, major), major),
-        lang_config.faction_names.get(deck_nation_to_db.get(ally, ally), ally),
+        lang_config.faction_names.get(DECK_NATION_TO_DB.get(major, major), major),
+        lang_config.faction_names.get(DECK_NATION_TO_DB.get(ally, ally), ally),
         deck_meta.get("hq", ""),
         deck_meta.get("deck_code", ""),
     ]

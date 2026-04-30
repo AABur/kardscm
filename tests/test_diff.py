@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 
-from kardscm.config import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.diff import (
     compute_diff,
     format_console_report,
     format_markdown_report,
     is_empty,
 )
+from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 
 
 def test_empty_when_old_equals_new(make_card):

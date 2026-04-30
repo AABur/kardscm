@@ -7,6 +7,7 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
+from kardscm.constants import DECK_NATION_TO_DB
 from kardscm.helpers import sanitize_text
 from kardscm.models import CardDict, DeckCardEntry, ParsedDeck
 
@@ -380,7 +381,6 @@ def insert_deck_cards(
     conn: sqlite3.Connection,
     deck_id: int,
     cards: list[DeckCardEntry],
-    faction_map: dict[str, str],
     locale_key: str,
     use_exile_fallback: bool = False,
 ) -> None:
@@ -390,7 +390,6 @@ def insert_deck_cards(
         conn: SQLite connection instance.
         deck_id: ID of the deck.
         cards: List of DeckCardEntry dicts.
-        faction_map: Mapping from deck nation key to API faction name.
         locale_key: Locale key for title lookup.
         use_exile_fallback: If True, try exile lookup when faction lookup fails.
 
@@ -398,7 +397,7 @@ def insert_deck_cards(
         ValueError: If a card is not found in the collection.
     """
     for card in cards:
-        faction = faction_map.get(card["nation"], card["nation"])
+        faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
         card_id = find_card_id(conn, faction, card["name"], locale_key)
         if card_id is None and use_exile_fallback:
             card_id = find_card_id_by_exile(conn, faction, card["name"], locale_key)
