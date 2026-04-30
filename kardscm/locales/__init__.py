@@ -123,7 +123,7 @@ def _build_with_fallback(code: str, raw: dict, en: LanguageConfig) -> LanguageCo
             if isinstance(v, str):
                 merged[k] = v
         for k in en_section:
-            if k not in raw_section:
+            if k not in raw_section or not isinstance(raw_section[k], str):
                 warnings.append(f"{section}.{k}")
         sections[field_name] = merged
 
