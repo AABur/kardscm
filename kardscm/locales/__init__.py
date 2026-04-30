@@ -79,7 +79,10 @@ def _build_with_fallback(code: str, raw: dict, en: LanguageConfig) -> LanguageCo
     warnings: list[str] = []
 
     # `code` comes from the file stem, not the TOML body.
-    scalars: dict[str, str] = {"code": raw.get("code", code)}
+    scalars: dict[str, str] = {"code": code}
+    raw_code = raw.get("code")
+    if isinstance(raw_code, str) and raw_code != code:
+        warnings.append("code")
     for key in _TOP_LEVEL_SCALARS:
         if key == "code":
             continue
