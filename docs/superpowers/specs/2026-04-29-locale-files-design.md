@@ -32,7 +32,7 @@ Baseline at branch tip (`faaf91c`): 263 tests green, coverage 94%, ruff/mypy cle
 $ uv run kardscm sync                       # uses language from config.ini
 $ uv run kardscm export --format xlsx --file cards.xlsx
 ```
-If the active locale is missing keys or unreadable, the command runs to completion using English fallbacks. After the command finishes, a single line is printed to **stderr**:
+If the active locale is missing keys or unreadable, the command runs using English fallbacks. At the start of the command, before any other output, a single line is printed to **stderr**:
 ```
 Locale 'ru': 2 key(s) fell back to English (abilities.mobilize, ui_strings.modal_close).
 ```

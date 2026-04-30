@@ -58,8 +58,12 @@ def _load_toml(path: Path) -> dict:
 
 def _build_en(raw: dict) -> LanguageConfig:
     missing: list[str] = []
-    for key in _TOP_LEVEL_SCALARS + _TOP_LEVEL_LISTS:
-        if key not in raw:
+    for key in _TOP_LEVEL_SCALARS:
+        if key not in raw or not isinstance(raw[key], str):
+            missing.append(key)
+    for key in _TOP_LEVEL_LISTS:
+        val = raw.get(key)
+        if not isinstance(val, list) or not all(isinstance(x, str) for x in val):
             missing.append(key)
     for section in _SECTION_TO_FIELD:
         if section not in raw or not isinstance(raw[section], dict):
@@ -78,17 +82,10 @@ def _build_en(raw: dict) -> LanguageConfig:
 def _build_with_fallback(code: str, raw: dict, en: LanguageConfig) -> LanguageConfig:
     warnings: list[str] = []
 
-    # `code` comes from the file stem, not the TOML body.
+    # `code` always comes from the file stem; warn if TOML body has a different value.
     scalars: dict[str, str] = {"code": code}
     raw_code = raw.get("code")
-    # `code` defaults to the file stem; if present in TOML, only accept a string.
-    raw_code = raw.get("code")
-    if raw_code is None:
-        scalars: dict[str, str] = {"code": code}
-    elif isinstance(raw_code, str):
-        scalars = {"code": raw_code}
-    else:
-        scalars = {"code": code}
+    if isinstance(raw_code, str) and raw_code != code:
         warnings.append("code")
 
     for key in _TOP_LEVEL_SCALARS:

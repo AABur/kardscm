@@ -186,3 +186,52 @@ def test_registry_skips_dotfiles(tmp_path: Path) -> None:
     registry = _build_registry(tmp_path)
     assert ".draft" not in registry
     assert "draft" not in registry
+
+
+def test_en_scalar_wrong_type_raises(tmp_path: Path) -> None:
+    # en.toml has a scalar field that is not a string (code = 123)
+    _write(
+        tmp_path,
+        "en.toml",
+        "code = 123\n"
+        'name = "English"\nlocale_key = "en-EN"\ncollection_sheet_name = "Collection"\n'
+        "export_headers = []\ndeck_headers = []\ndeck_metadata_labels = []\n"
+        '[factions]\nSoviet = "Soviet Union"\n[types]\ninfantry = "Infantry"\n'
+        '[rarities]\nStandard = "Standard"\n[sets]\nBase = "Base"\n'
+        '[abilities]\nalpine = "Alpine"\n[nation_display_names]\nsoviet = "Soviet"\n'
+        '[ui_strings]\npage_title = "p"\n[diff_headers]\ntitle = "d"\n',
+    )
+    with pytest.raises(SystemExit):
+        _build_registry(tmp_path)
+
+
+def test_en_list_field_wrong_type_raises(tmp_path: Path) -> None:
+    # en.toml has export_headers as a plain string instead of a list
+    _write(
+        tmp_path,
+        "en.toml",
+        'code = "en"\nname = "English"\nlocale_key = "en-EN"\ncollection_sheet_name = "Collection"\n'
+        'export_headers = "Nation, Name"\ndeck_headers = []\ndeck_metadata_labels = []\n'
+        '[factions]\nSoviet = "Soviet Union"\n[types]\ninfantry = "Infantry"\n'
+        '[rarities]\nStandard = "Standard"\n[sets]\nBase = "Base"\n'
+        '[abilities]\nalpine = "Alpine"\n[nation_display_names]\nsoviet = "Soviet"\n'
+        '[ui_strings]\npage_title = "p"\n[diff_headers]\ntitle = "d"\n',
+    )
+    with pytest.raises(SystemExit):
+        _build_registry(tmp_path)
+
+
+def test_locale_code_body_differs_from_stem_warns(tmp_path: Path) -> None:
+    # Non-EN TOML has `code` in body that differs from the file stem → warning recorded.
+    _en(tmp_path)
+    _write(
+        tmp_path,
+        "xx.toml",
+        'code = "yy"\n'  # body says "yy" but stem is "xx"
+        'name = "Test"\nlocale_key = "xx-XX"\ncollection_sheet_name = "Test"\n'
+        "export_headers = []\ndeck_headers = []\ndeck_metadata_labels = []\n",
+    )
+    registry = _build_registry(tmp_path)
+    cfg = registry["xx"]
+    assert cfg.code == "xx"  # always from file stem
+    assert "code" in cfg.fallback_warnings
