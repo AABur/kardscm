@@ -1,0 +1,107 @@
+code = "fr"
+name = "French"
+locale_key = "fr-FR"
+collection_sheet_name = "Collection"
+
+export_headers = [
+    "Nation",
+    "Name",
+    "Type",
+    "Rarity",
+    "Abilities",
+    "Set",
+    "Quantity",
+    "Credits",
+    "Attack",
+    "Defense",
+    "Description",
+]
+deck_headers = ["Card", "Type", "Quantity", "Credits", "Attack", "Defense"]
+deck_metadata_labels = ["Name", "Major power", "Ally", "HQ", "Code"]
+
+[factions]
+Soviet = "Union soviétique"
+USA = "États-Unis"
+Britain = "Empire britannique"
+Germany = "Allemagne"
+Japan = "Japon"
+France = "France"
+Italy = "Italie"
+Poland = "Pologne"
+Finland = "Finlande"
+
+[types]
+infantry = "Infanterie"
+tank = "Char"
+artillery = "Artillerie"
+fighter = "Chasseur"
+order = "Ordre"
+countermeasure = "Contre-mesure"
+
+[rarities]
+Standard = "Standard"
+Limited = "Limited"
+Special = "Special"
+Elite = "Elite"
+
+[sets]
+Base = ""
+Allegiance = "Allégeance"
+TheatersOfWar = "Théâtres de Guerre"
+Breakthrough = "Percée"
+WorldAtWar = ""
+CovertOps = "Opérations Secrètes"
+BloodAndIron = "Du Fer et du Sang"
+Legions = "Légions"
+NavalWarfare = "GUERRE NAVALE"
+Homefront = "Front Intérieur"
+WinterWar = "Guerre d'Hiver"
+
+[abilities]
+alpine = "Alpine"
+ambush = "Ambush"
+blitz = "Blitz"
+bond = "Bond"
+covert = "Covert"
+fury = "Fury"
+guard = "Guard"
+heavyArmor1 = "Heavy Armor 1"
+heavyArmor2 = "Heavy Armor 2"
+heavyArmor3 = "Heavy Armor 3"
+intel1 = "Intel 1"
+intel2 = "Intel 2"
+intel3 = "Intel 3"
+mobilize = "Mobilize"
+salvage = "Salvage"
+shock = "Shock"
+smokescreen = "Smokescreen"
+
+[nation_display_names]
+soviet = "Soviet"
+usa = "American"
+britain = "British"
+germany = "German"
+japan = "Japanese"
+france = "French"
+italy = "Italian"
+poland = "Polish"
+finland = "Finnish"
+
+[ui_strings]
+page_title = "kardscm collection"
+search_placeholder = "search by name…"
+toggle_spawnable = "spawnable"
+toggle_reserved = "reserved"
+toggle_owned = "only owned"
+col_cost = "Cost"
+card_id_label = "cardId"
+saved_hint = "saves automatically (Tab/Enter)"
+modal_close = "close"
+
+[diff_headers]
+title = "Sync diff"
+new = "New cards"
+changed = "Changed characteristics"
+reserved_in = "Moved to reserve"
+reserved_out = "Returned from reserve"
+removed = "Removed cards"

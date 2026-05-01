@@ -1,0 +1,107 @@
+code = "pl"
+name = "Polish"
+locale_key = "pl-PL"
+collection_sheet_name = "Kolekcja"
+
+export_headers = [
+    "Nation",
+    "Name",
+    "Type",
+    "Rarity",
+    "Abilities",
+    "Set",
+    "Quantity",
+    "Credits",
+    "Attack",
+    "Defense",
+    "Description",
+]
+deck_headers = ["Card", "Type", "Quantity", "Credits", "Attack", "Defense"]
+deck_metadata_labels = ["Name", "Major power", "Ally", "HQ", "Code"]
+
+[factions]
+Soviet = "Związek Radziecki"
+USA = "Stany Zjednoczone"
+Britain = "Imperium Brytyjskie"
+Germany = "Niemcy"
+Japan = "Japonia"
+France = "Francja"
+Italy = "Włochy"
+Poland = "Polska"
+Finland = "Finlandia"
+
+[types]
+infantry = "Piechota"
+tank = "Czołg"
+artillery = "Artyleria"
+fighter = "Myśliwiec"
+order = "Rozkaz"
+countermeasure = "Środek zaradczy"
+
+[rarities]
+Standard = "Standardowy"
+Limited = "Limitowany"
+Special = "Specjalny"
+Elite = "Elitarny"
+
+[sets]
+Base = ""
+Allegiance = "Lojalność"
+TheatersOfWar = "W ogniu wojny"
+Breakthrough = "Przełom"
+WorldAtWar = ""
+CovertOps = "Tajne operacje"
+BloodAndIron = "Krew i żelazo"
+Legions = "Legiony"
+NavalWarfare = "WOJNA MORSKA"
+Homefront = "Front krajowy"
+WinterWar = "Wojna zimowa"
+
+[abilities]
+alpine = "Alpine"
+ambush = "Ambush"
+blitz = "Blitz"
+bond = "Bond"
+covert = "Covert"
+fury = "Fury"
+guard = "Guard"
+heavyArmor1 = "Heavy Armor 1"
+heavyArmor2 = "Heavy Armor 2"
+heavyArmor3 = "Heavy Armor 3"
+intel1 = "Intel 1"
+intel2 = "Intel 2"
+intel3 = "Intel 3"
+mobilize = "Mobilize"
+salvage = "Salvage"
+shock = "Shock"
+smokescreen = "Zasłona dymna"
+
+[nation_display_names]
+soviet = "Radziecki"
+usa = "Amerykański"
+britain = "Brytyjski"
+germany = "Niemiecki"
+japan = "Japoński"
+france = "Francuski"
+italy = "Włoski"
+poland = "Polski"
+finland = "Fiński"
+
+[ui_strings]
+page_title = "kolekcja kardscm"
+search_placeholder = "szukaj po nazwie…"
+toggle_spawnable = "do wystawienia"
+toggle_reserved = "zarezerwowane"
+toggle_owned = "tylko posiadane"
+col_cost = "Koszt"
+card_id_label = "cardId"
+saved_hint = "zapisuje się automatycznie (Tab/Enter)"
+modal_close = "zamknij"
+
+[diff_headers]
+title = "Różnice synchronizacji"
+new = "Nowe karty"
+changed = "Zmienione cechy"
+reserved_in = "Przeniesione do rezerwy"
+reserved_out = "Przywrócone z rezerwy"
+removed = "Usunięte karty"

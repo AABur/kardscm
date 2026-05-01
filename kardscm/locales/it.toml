@@ -1,0 +1,107 @@
+code = "it"
+name = "Italian"
+locale_key = "it-IT"
+collection_sheet_name = "Collezione"
+
+export_headers = [
+    "Nation",
+    "Name",
+    "Type",
+    "Rarity",
+    "Abilities",
+    "Set",
+    "Quantity",
+    "Credits",
+    "Attack",
+    "Defense",
+    "Description",
+]
+deck_headers = ["Card", "Type", "Quantity", "Credits", "Attack", "Defense"]
+deck_metadata_labels = ["Name", "Major power", "Ally", "HQ", "Code"]
+
+[factions]
+Soviet = "Unione Sovietica"
+USA = "Stati Uniti"
+Britain = "Impero britannico"
+Germany = "Germania"
+Japan = "Giappone"
+France = "Francia"
+Italy = "Italia"
+Poland = "Polonia"
+Finland = "Finlandia"
+
+[types]
+infantry = "Fanteria"
+tank = "Carro armato"
+artillery = "Artiglieria"
+fighter = "Caccia"
+order = "Ordine"
+countermeasure = "Contromisura"
+
+[rarities]
+Standard = "Standard"
+Limited = "Limitato"
+Special = "Speciale"
+Elite = "Elite"
+
+[sets]
+Base = ""
+Allegiance = "Fedeltà"
+TheatersOfWar = "Teatri di Guerra"
+Breakthrough = "Breccia"
+WorldAtWar = "Mondo in Guerra"
+CovertOps = "Operazioni Segrete"
+BloodAndIron = "Ferro e Sangue"
+Legions = "Legioni"
+NavalWarfare = "Guerra Navale"
+Homefront = "Fronte Interno"
+WinterWar = "Guerra d'Inverno"
+
+[abilities]
+alpine = "Alpino"
+ambush = "Emboscada"
+blitz = "Blitz"
+bond = "Vínculo"
+covert = "Encubierto"
+fury = "Furia"
+guard = "Guardia"
+heavyArmor1 = "Blindaje pesado 1"
+heavyArmor2 = "Blindaje pesado 2"
+heavyArmor3 = "Blindaje pesado 3"
+intel1 = "Inteligencia 1"
+intel2 = "Inteligencia 2"
+intel3 = "Inteligencia 3"
+mobilize = "Movilización"
+salvage = "Recuperación"
+shock = "Choque"
+smokescreen = "Cortina de humo"
+
+[nation_display_names]
+soviet = "Sovietico"
+usa = "Americano"
+britain = "Britannico"
+germany = "Tedesco"
+japan = "Giapponese"
+france = "Francese"
+italy = "Italiano"
+poland = "Polacco"
+finland = "Finlandese"
+
+[ui_strings]
+page_title = "collezione kardscm"
+search_placeholder = "cerca per nome…"
+toggle_spawnable = "generabile"
+toggle_reserved = "riservato"
+toggle_owned = "solo possedute"
+col_cost = "Costo"
+card_id_label = "ID carta"
+saved_hint = "salvataggio automatico (Tab/Invio)"
+modal_close = "chiudi"
+
+[diff_headers]
+title = "Differenze di sincronizzazione"
+new = "Nuove carte"
+changed = "Caratteristiche modificate"
+reserved_in = "Spostate nella riserva"
+reserved_out = "Rimosse dalla riserva"
+removed = "Carte rimosse"

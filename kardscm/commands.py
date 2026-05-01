@@ -133,14 +133,18 @@ def validate_file(path: str, expected_ext: str, must_exist: bool = False) -> Pat
     return p
 
 
-def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
+def _read_xlsx_quantities(
+    filename: str,
+    lang_config: LanguageConfig,
+) -> list[tuple[str, str, int | None]]:
     """Read faction, title, quantity from XLSX file.
 
-    Column names are determined by the configured language.
+    Column names are determined by the active LanguageConfig.
     Returns (faction_display, localized_title, quantity) tuples.
 
     Args:
         filename: Path to XLSX file.
+        lang_config: Active language configuration (drives column headers).
 
     Returns:
         List of (faction, title, quantity) tuples.
@@ -152,7 +156,6 @@ def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
     if not Path(filename).exists():
         raise FileNotFoundError(f"File not found: {filename}")
 
-    lang_config = get_language_config()
     headers_list = lang_config.export_headers
     header_map = {
         headers_list[0]: "faction",
@@ -196,6 +199,7 @@ def _read_xlsx_quantities(filename: str) -> list[tuple[str, str, int | None]]:
 def sync_collection(
     db_path: str = DEFAULT_DB_PATH,
     *,
+    lang: str | None = None,
     diff_only: bool = False,
     yes: bool = False,
     diff_report_path: Path | None = None,
@@ -209,16 +213,17 @@ def sync_collection(
 
     Args:
         db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
         diff_only: If True, write the report and return without prompting
             or modifying the DB. Useful for previews and CI.
         yes: If True, auto-approve every category without prompting.
         diff_report_path: Override the default report path
             (`./sync-diff-<UTC-iso>.md`).
     """
-    lang_config = get_language_config()
+    lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
-    new_cards = scrape_cards()
+    new_cards = scrape_cards(language=lang_config.code)
 
     with get_connection(db_path) as conn:
         initialize_schema(conn)
@@ -260,6 +265,8 @@ def export_collection(
     export_format: str,
     filename: str,
     db_path: str = DEFAULT_DB_PATH,
+    *,
+    lang: str | None = None,
 ) -> None:
     """Export cards from SQLite to the selected format.
 
@@ -267,8 +274,9 @@ def export_collection(
         export_format: Export format (csv, json, xlsx).
         filename: Output file path.
         db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
     """
-    lang_config = get_language_config()
+    lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
@@ -298,19 +306,25 @@ def export_collection(
     logger.info("Export completed: %s", filename)
 
 
-def update_collection(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
+def update_collection(
+    filename: str,
+    db_path: str = DEFAULT_DB_PATH,
+    *,
+    lang: str | None = None,
+) -> None:
     """Update card quantities from XLSX file.
 
     Args:
         filename: XLSX file path.
         db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
     """
     logger.info("Starting update from file: %s", filename)
-    lang_config = get_language_config()
+    lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
 
     try:
-        updates = _read_xlsx_quantities(filename)
+        updates = _read_xlsx_quantities(filename, lang_config)
     except (FileNotFoundError, ValueError) as e:
         raise SystemExit(f"Failed to read file: {e}") from e
 
@@ -341,14 +355,20 @@ def update_collection(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
             logger.warning("Card not found: %s", key)
 
 
-def import_deck(filename: str, db_path: str = DEFAULT_DB_PATH) -> None:
+def import_deck(
+    filename: str,
+    db_path: str = DEFAULT_DB_PATH,
+    *,
+    lang: str | None = None,
+) -> None:
     """Import a deck from TXT file into the database.
 
     Args:
         filename: Path to deck TXT file.
         db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
     """
-    lang_config = get_language_config()
+    lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
     logger.info("Importing deck from file: %s", filename)
 
@@ -392,6 +412,8 @@ def add_deck(
     update: bool = False,
     replace: bool = False,
     db_path: str = DEFAULT_DB_PATH,
+    *,
+    lang: str | None = None,
 ) -> None:
     """Add a deck from TXT file with exile card support and quantity check.
 
@@ -403,8 +425,9 @@ def add_deck(
         update: If True, update collection quantities to match deck.
         replace: If True, replace existing deck with same name.
         db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
     """
-    lang_config = get_language_config()
+    lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
     logger.info("Adding deck from file: %s", filename)
 
@@ -572,6 +595,8 @@ def export_deck(
     fmt: str | None,
     filename: str,
     db_path: str = DEFAULT_DB_PATH,
+    *,
+    lang: str | None = None,
 ) -> None:
     """Export a deck to XLSX sheet or JSON file.
 
@@ -579,8 +604,9 @@ def export_deck(
         fmt: Export format ('json' or None for xlsx).
         filename: Output file path.
         db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
     """
-    lang_config = get_language_config()
+    lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:

@@ -94,3 +94,40 @@ def test_deck_no_args_shows_help(runner) -> None:
 def test_deck_help_shows_description(runner) -> None:
     result = runner.invoke(app, ["deck", "--help"])
     assert "Import and export saved decks" in result.output
+
+
+def test_lang_flag_forwarded_to_export(runner, tmp_path: Path) -> None:
+    with patch("kardscm.cli.export_collection") as mock_export:
+        result = runner.invoke(
+            app,
+            ["--lang", "ru", "export", "--format", "csv", "--file", str(tmp_path / "out.csv")],
+        )
+    assert result.exit_code == 0
+    assert mock_export.call_args.kwargs.get("lang") == "ru"
+
+
+def test_lang_flag_forwarded_to_sync(runner) -> None:
+    with patch("kardscm.cli.sync_collection") as mock_sync:
+        result = runner.invoke(app, ["--lang", "de", "sync"])
+    assert result.exit_code == 0
+    assert mock_sync.call_args.kwargs.get("lang") == "de"
+
+
+def test_compound_lang_passed_verbatim(runner, tmp_path: Path) -> None:
+    with patch("kardscm.cli.export_collection") as mock_export:
+        result = runner.invoke(
+            app,
+            ["--lang", "zh-Hant", "export", "--format", "csv", "--file", str(tmp_path / "out.csv")],
+        )
+    assert result.exit_code == 0
+    assert mock_export.call_args.kwargs.get("lang") == "zh-Hant"
+
+
+def test_no_lang_flag_passes_none(runner, tmp_path: Path) -> None:
+    with patch("kardscm.cli.export_collection") as mock_export:
+        result = runner.invoke(
+            app,
+            ["export", "--format", "csv", "--file", str(tmp_path / "out.csv")],
+        )
+    assert result.exit_code == 0
+    assert mock_export.call_args.kwargs.get("lang") is None

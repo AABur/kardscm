@@ -1,0 +1,95 @@
+code = "zh-Hant"
+name = "Chinese (Traditional)"
+locale_key = "zh-Hant"
+collection_sheet_name = "收藏"
+
+export_headers = ["", "", "", "", "", "", "", "", "", "", ""]
+deck_headers = ["", "", "", "", "", ""]
+deck_metadata_labels = ["", "", "", "", ""]
+
+[factions]
+Soviet = "蘇聯"
+USA = "美國"
+Britain = "英國"
+Germany = "德国"
+Japan = "日本"
+France = "法國"
+Italy = "義大利"
+Poland = "波蘭"
+Finland = "芬蘭"
+
+[types]
+infantry = ""
+tank = ""
+artillery = ""
+fighter = ""
+order = ""
+countermeasure = ""
+
+[rarities]
+Standard = ""
+Limited = ""
+Special = ""
+Elite = ""
+
+[sets]
+Base = ""
+Allegiance = "戰區"
+TheatersOfWar = "突破"
+Breakthrough = "軍團"
+WorldAtWar = ""
+CovertOps = "血與鐵"
+BloodAndIron = "聯合戰線"
+Legions = "戰友"
+NavalWarfare = "空中霸權"
+Homefront = "早期戰爭"
+WinterWar = "秘密行動"
+
+[abilities]
+alpine = ""
+ambush = ""
+blitz = ""
+bond = ""
+covert = ""
+fury = ""
+guard = ""
+heavyArmor1 = ""
+heavyArmor2 = ""
+heavyArmor3 = ""
+intel1 = ""
+intel2 = ""
+intel3 = ""
+mobilize = ""
+salvage = ""
+shock = ""
+smokescreen = ""
+
+[nation_display_names]
+soviet = ""
+usa = ""
+britain = ""
+germany = ""
+japan = ""
+france = ""
+italy = ""
+poland = ""
+finland = ""
+
+[ui_strings]
+page_title = ""
+search_placeholder = ""
+toggle_spawnable = ""
+toggle_reserved = ""
+toggle_owned = ""
+col_cost = ""
+card_id_label = ""
+saved_hint = ""
+modal_close = ""
+
+[diff_headers]
+title = ""
+new = ""
+changed = ""
+reserved_in = ""
+reserved_out = ""
+removed = ""

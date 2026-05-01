@@ -64,7 +64,6 @@ query getCards(
 }
 """
 GRAPHQL_VARIABLES: dict = {
-    "language": "en",
     "showSpawnables": True,
     "showExiles": False,
     "showReserved": True,

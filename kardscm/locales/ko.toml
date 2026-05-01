@@ -1,0 +1,95 @@
+code = "ko"
+name = "Korean"
+locale_key = "ko-KR"
+collection_sheet_name = "컬렉션"
+
+export_headers = ["", "", "", "", "", "", "", "", "", "", ""]
+deck_headers = ["", "", "", "", "", ""]
+deck_metadata_labels = ["", "", "", "", ""]
+
+[factions]
+Soviet = "소비에트 연방"
+USA = "미국"
+Britain = "대영 제국"
+Germany = "독일"
+Japan = "일본"
+France = "프랑스"
+Italy = "이탈리아"
+Poland = "폴란드"
+Finland = "핀란드"
+
+[types]
+infantry = ""
+tank = ""
+artillery = ""
+fighter = ""
+order = ""
+countermeasure = ""
+
+[rarities]
+Standard = ""
+Limited = ""
+Special = ""
+Elite = ""
+
+[sets]
+Base = ""
+Allegiance = "전쟁"
+TheatersOfWar = "돌파작전"
+Breakthrough = "군단"
+WorldAtWar = ""
+CovertOps = "피와 강철"
+BloodAndIron = "연합 전선"
+Legions = "전우"
+NavalWarfare = "제공권 장악"
+Homefront = "전쟁의 시작"
+WinterWar = "비밀 작전"
+
+[abilities]
+alpine = ""
+ambush = ""
+blitz = ""
+bond = ""
+covert = ""
+fury = ""
+guard = ""
+heavyArmor1 = ""
+heavyArmor2 = ""
+heavyArmor3 = ""
+intel1 = ""
+intel2 = ""
+intel3 = ""
+mobilize = ""
+salvage = ""
+shock = ""
+smokescreen = ""
+
+[nation_display_names]
+soviet = ""
+usa = ""
+britain = ""
+germany = ""
+japan = ""
+france = ""
+italy = ""
+poland = ""
+finland = ""
+
+[ui_strings]
+page_title = ""
+search_placeholder = ""
+toggle_spawnable = ""
+toggle_reserved = ""
+toggle_owned = ""
+col_cost = ""
+card_id_label = ""
+saved_hint = ""
+modal_close = ""
+
+[diff_headers]
+title = ""
+new = ""
+changed = ""
+reserved_in = ""
+reserved_out = ""
+removed = ""

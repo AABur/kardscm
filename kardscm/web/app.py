@@ -15,7 +15,6 @@ from fastapi.templating import Jinja2Templates
 
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH
-from kardscm.locales import LANGUAGES
 from kardscm.storage.database import (
     get_card_quantity_by_id,
     get_connection,
@@ -230,14 +229,10 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
 
 
 def _resolve_lang(lang_code: str | None) -> LanguageConfig | None:
-    """Map a CLI language code to a LanguageConfig, or None to fall back."""
+    """Map a CLI language code to a LanguageConfig (None ⇒ default English)."""
     if not lang_code:
         return None
-    code = lang_code.strip().lower()
-    if code not in LANGUAGES:
-        supported = ", ".join(sorted(LANGUAGES))
-        raise SystemExit(f"Unsupported language '{lang_code}'. Supported: {supported}")
-    return LANGUAGES[code]
+    return get_language_config(lang_code)
 
 
 def run(

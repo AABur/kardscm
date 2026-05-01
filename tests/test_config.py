@@ -5,62 +5,56 @@ from __future__ import annotations
 import logging
 
 from kardscm.config import get_language_config
-from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
+from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU, LANGUAGES
 
 
-def _write_ini(tmp_path, content: str) -> str:
-    """Write a config.ini and return its path."""
-    ini = tmp_path / "config.ini"
-    ini.write_text(content, encoding="utf-8")
-    return str(ini)
+def test_none_returns_english():
+    """No argument -> LANGUAGE_EN."""
+    assert get_language_config() is LANGUAGE_EN
 
 
-def test_missing_config_returns_english(tmp_path):
-    """No config file -> returns LANGUAGE_EN."""
-    result = get_language_config(str(tmp_path / "nonexistent.ini"))
-    assert result is LANGUAGE_EN
+def test_empty_string_returns_english():
+    """Empty/whitespace -> LANGUAGE_EN."""
+    assert get_language_config("") is LANGUAGE_EN
+    assert get_language_config("   ") is LANGUAGE_EN
 
 
-def test_valid_en_config(tmp_path):
-    """language=en -> LANGUAGE_EN."""
-    path = _write_ini(tmp_path, "[settings]\nlanguage=en\n")
-    assert get_language_config(path) is LANGUAGE_EN
+def test_explicit_en():
+    """'en' -> LANGUAGE_EN."""
+    assert get_language_config("en") is LANGUAGE_EN
 
 
-def test_valid_ru_config(tmp_path):
-    """language=ru -> LANGUAGE_RU."""
-    path = _write_ini(tmp_path, "[settings]\nlanguage=ru\n")
-    assert get_language_config(path) is LANGUAGE_RU
+def test_explicit_ru():
+    """'ru' -> LANGUAGE_RU."""
+    assert get_language_config("ru") is LANGUAGE_RU
 
 
-def test_unsupported_language_falls_back(tmp_path, caplog):
-    """language=xx -> LANGUAGE_EN + warning."""
-    path = _write_ini(tmp_path, "[settings]\nlanguage=xx\n")
+def test_de_loads_from_registry():
+    """'de' -> registry entry (regardless of fallback state)."""
+    cfg = get_language_config("de")
+    assert cfg is LANGUAGES["de"]
+    assert cfg.code == "de"
+
+
+def test_unsupported_language_falls_back(caplog):
+    """Unknown code -> LANGUAGE_EN + warning."""
     with caplog.at_level(logging.WARNING, logger="kardscm.config"):
-        result = get_language_config(path)
+        result = get_language_config("xx")
     assert result is LANGUAGE_EN
     assert "Unsupported language 'xx'" in caplog.text
 
 
-def test_language_case_insensitive(tmp_path):
-    """language=RU -> LANGUAGE_RU (strip + lower)."""
-    path = _write_ini(tmp_path, "[settings]\nlanguage=RU\n")
-    assert get_language_config(path) is LANGUAGE_RU
+def test_strip_whitespace():
+    """Surrounding whitespace stripped before lookup."""
+    assert get_language_config("  ru  ") is LANGUAGE_RU
 
 
-def test_language_with_whitespace(tmp_path):
-    """language= ru  -> LANGUAGE_RU."""
-    path = _write_ini(tmp_path, "[settings]\nlanguage= ru \n")
-    assert get_language_config(path) is LANGUAGE_RU
-
-
-def test_missing_settings_section(tmp_path):
-    """INI without [settings] -> fallback to en."""
-    path = _write_ini(tmp_path, "[other]\nkey=value\n")
-    assert get_language_config(path) is LANGUAGE_EN
-
-
-def test_missing_language_key(tmp_path):
-    """[settings] without language key -> fallback to en."""
-    path = _write_ini(tmp_path, "[settings]\nother_key=value\n")
-    assert get_language_config(path) is LANGUAGE_EN
+def test_case_sensitive_for_compound_codes(caplog):
+    """Compound codes (e.g. 'zh-Hant') match exactly; 'zh-hant' would fall back."""
+    if "zh-Hant" in LANGUAGES:
+        assert get_language_config("zh-Hant") is LANGUAGES["zh-Hant"]
+    with caplog.at_level(logging.WARNING, logger="kardscm.config"):
+        result = get_language_config("RU")
+    # 'RU' (uppercase) is not a registry key; fall back warns.
+    if "RU" not in LANGUAGES:
+        assert result is LANGUAGE_EN

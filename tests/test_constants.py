@@ -12,3 +12,8 @@ def test_graphql_variables_include_reserved_and_spawnables():
     assert GRAPHQL_VARIABLES["showReserved"] is True
     assert GRAPHQL_VARIABLES["showSpawnables"] is True
     assert GRAPHQL_VARIABLES["showExiles"] is False
+
+
+def test_graphql_variables_omit_language():
+    """`language` is injected by the caller (per --lang), not hard-coded here."""
+    assert "language" not in GRAPHQL_VARIABLES

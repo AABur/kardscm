@@ -37,14 +37,14 @@ Elite = "Элитная"
 
 [sets]
 Base = "Базовый"
-Allegiance = "Верность"
-TheatersOfWar = "Театры войны"
+Allegiance = "Союз"
+TheatersOfWar = "Театры Войны"
 Breakthrough = "Прорыв"
 WorldAtWar = "Мировая война"
-CovertOps = "Тайные операции"
-BloodAndIron = "Кровь и железо"
+CovertOps = "Тайные Операции"
+BloodAndIron = "Железом и кровью"
 Legions = "Легионы"
-NavalWarfare = "Морская война"
+NavalWarfare = "Морской бой"
 Homefront = "Тыл"
 WinterWar = "Зимняя война"
 
@@ -65,7 +65,7 @@ intel3 = "Разведка 3"
 mobilize = "Мобилизация"
 salvage = "Утилизация"
 shock = "Штурм"
-smokescreen = "Дымовая завеса"
+smokescreen = "Дымовая Завеса"
 
 [nation_display_names]
 soviet = "Советские"

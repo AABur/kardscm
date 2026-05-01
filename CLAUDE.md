@@ -16,6 +16,18 @@
 - Export deck: `uv run kardscm deck export --format xlsx --file deck.xlsx`
 - Short form: `uv run python -m kardscm sync`
 
+### Language selection
+Pass the global `--lang` (or `-l`) flag before the subcommand:
+- `uv run kardscm --lang ru sync`
+- `uv run kardscm --lang de export -f xlsx -o cards.xlsx`
+- `uv run kardscm --lang zh-Hant web`
+
+Default is `en`. Supported codes: `en`, `ru`, `de`, `fr`, `it`, `es`, `pt`,
+`pl`, `ja`, `ko`, `zh`, `zh-Hant`. Unknown codes log a warning and fall back
+to English. Locales other than `en` and `ru` ship as scaffolds: `code`,
+`name`, `locale_key`, `collection_sheet_name` are correct, every other
+section falls back to English with a `fallback_warnings` log on stderr.
+
 ## Useful Commands
 - `make help` — list available commands
 - `make check` — full check (ruff format, ruff check, mypy, pytest)
@@ -56,12 +68,12 @@ tests/                  # pytest tests
 
 ## Architecture
 - **Config**: `kardscm.config` — `LanguageConfig` frozen dataclass with all language-specific data
-  - Registry: `LANGUAGES` dict (`"en"` → `LANGUAGE_EN`, `"ru"` → `LANGUAGE_RU`)
-  - `get_language_config()` reads `config.ini` and returns the active `LanguageConfig`
-  - `locale_key` field (`"en-EN"` / `"ru-RU"`) for extracting from JSON title/text dicts
+  - Registry: `LANGUAGES` dict, built by scanning `kardscm/locales/*.toml` at import
+  - `get_language_config(lang)` looks up `lang or "en"` in the registry. Unknown codes log a warning and return `LANGUAGE_EN`.
+  - `locale_key` field (`"en-EN"` / `"ru-RU"` / `"de-DE"` / `"pt-BR"` / `"zh-Hans"` / …) selects the entry in the JSON title/text dicts.
   - Static translation mappings: `faction_names`, `type_names`, `rarity_names`, `set_names`, `ability_names`
-  - `deck_nation_to_db` maps deck nation keys to API faction names (e.g. `"soviet"` → `"Soviet"`)
-  - Commands call `get_language_config()` internally — no language threading through CLI
+  - `DECK_NATION_TO_DB` (in `kardscm.constants`, not `LanguageConfig`) maps deck nation keys to API faction names (e.g. `"soviet"` → `"Soviet"`).
+  - The active language flows from the global `--lang` CLI flag through `commands.*(lang=...)` to `get_language_config(lang)`. There is no `config.ini`.
 - **Scraping**: `kardscm.scraping` fetches cards via direct GraphQL (synchronous)
   - `probe.py`: One-shot Playwright intercept — opens browser, captures first GraphQL POST
   - `fetcher.py`: httpx paginator — uses probe data to fetch all cards via offset/cursor pagination
@@ -93,7 +105,7 @@ tests/                  # pytest tests
   - Functions: `sync_collection`, `export_collection`, `update_collection`, `import_deck`, `export_deck`
   - `export_collection` fetches raw DB cards, translates each via `translate_card_for_export`, then exports
   - `update_collection` reverse-maps localized faction names to API names for DB lookup
-  - Each command loads `LanguageConfig` via `get_language_config()`
+  - Each command takes a `lang: str | None` keyword and resolves it via `get_language_config(lang)`
 
 ## Code Patterns
 - English originals stored in DB — translation only at export time via static mappings
