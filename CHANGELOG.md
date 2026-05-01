@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Language selection moved from `config.ini` to a global `--lang` CLI flag.
+  `config.ini` is removed entirely; `get_language_config()` now takes a
+  `lang: str | None` argument.
+- `--lang` is declared on the Typer callback, so every subcommand
+  (`sync`, `export`, `update`, `deck import|add|export|delete`, `web`) accepts
+  it: `kardscm --lang ru sync`. Default is `en`. Unknown codes warn and
+  fall back to English.
+
+### Added
+- Locales for all 12 KARDS UI languages: `en`, `ru`, `de`, `fr`, `it`, `es`,
+  `pt`, `pl`, `ja`, `ko`, `zh`, `zh-Hant`. New TOML files ship with
+  authoritative `code`, `name`, `locale_key`, and `collection_sheet_name`
+  values; remaining sections fall back to English with a runtime warning
+  until translators flesh them out.
+- `scripts/generate_locale.py` — developer tool that probes a kards.com
+  localized collection page and writes the scaffold TOML automatically.
+- `scrape_cards(language=...)` and `build_static_probe(language=...)` accept
+  the GraphQL `$language` parameter explicitly; the hard-coded default is
+  gone.
+
+### Removed
+- `config.ini`, `config.ini.example`, and the `configparser` import in
+  `kardscm/config.py`.
+
 ## [0.5.1] - Unreleased
 
 ### Changed

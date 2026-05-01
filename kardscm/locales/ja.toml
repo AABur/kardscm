@@ -1,0 +1,95 @@
+code = "ja"
+name = "Japanese"
+locale_key = "ja-JP"
+collection_sheet_name = "Collection"
+
+export_headers = ["", "", "", "", "", "", "", "", "", "", ""]
+deck_headers = ["", "", "", "", "", ""]
+deck_metadata_labels = ["", "", "", "", ""]
+
+[factions]
+Soviet = "ソビエト連邦"
+USA = "アメリカ合衆国"
+Britain = "大英帝国"
+Germany = "ドイツ"
+Japan = "日本"
+France = "フランス"
+Italy = "イタリア"
+Poland = "ポーランド"
+Finland = "フィンランド"
+
+[types]
+infantry = ""
+tank = ""
+artillery = ""
+fighter = ""
+order = ""
+countermeasure = ""
+
+[rarities]
+Standard = ""
+Limited = ""
+Special = ""
+Elite = ""
+
+[sets]
+Base = ""
+Allegiance = "戦域"
+TheatersOfWar = "突破作戦"
+Breakthrough = "レギオン"
+WorldAtWar = ""
+CovertOps = "鉄血"
+BloodAndIron = "共同戦線"
+Legions = "戦友"
+NavalWarfare = "航空優勢"
+Homefront = "初期戦争"
+WinterWar = "隠密作戦"
+
+[abilities]
+alpine = ""
+ambush = ""
+blitz = ""
+bond = ""
+covert = ""
+fury = ""
+guard = ""
+heavyArmor1 = ""
+heavyArmor2 = ""
+heavyArmor3 = ""
+intel1 = ""
+intel2 = ""
+intel3 = ""
+mobilize = ""
+salvage = ""
+shock = ""
+smokescreen = ""
+
+[nation_display_names]
+soviet = ""
+usa = ""
+britain = ""
+germany = ""
+japan = ""
+france = ""
+italy = ""
+poland = ""
+finland = ""
+
+[ui_strings]
+page_title = ""
+search_placeholder = ""
+toggle_spawnable = ""
+toggle_reserved = ""
+toggle_owned = ""
+col_cost = ""
+card_id_label = ""
+saved_hint = ""
+modal_close = ""
+
+[diff_headers]
+title = ""
+new = ""
+changed = ""
+reserved_in = ""
+reserved_out = ""
+removed = ""

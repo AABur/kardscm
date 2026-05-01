@@ -210,7 +210,8 @@ def test_en_list_field_wrong_type_raises(tmp_path: Path) -> None:
     _write(
         tmp_path,
         "en.toml",
-        'code = "en"\nname = "English"\nlocale_key = "en-EN"\ncollection_sheet_name = "Collection"\n'
+        'code = "en"\nname = "English"\nlocale_key = "en-EN"\n'
+        'collection_sheet_name = "Collection"\n'
         'export_headers = "Nation, Name"\ndeck_headers = []\ndeck_metadata_labels = []\n'
         '[factions]\nSoviet = "Soviet Union"\n[types]\ninfantry = "Infantry"\n'
         '[rarities]\nStandard = "Standard"\n[sets]\nBase = "Base"\n'

@@ -1,0 +1,107 @@
+code = "pt"
+name = "Portuguese"
+locale_key = "pt-BR"
+collection_sheet_name = "Coleção"
+
+export_headers = [
+    "Nação",
+    "Nome",
+    "Tipo",
+    "Raridade",
+    "Habilidades",
+    "Conjunto",
+    "Quantidade",
+    "Créditos",
+    "Ataque",
+    "Defesa",
+    "Descrição",
+]
+deck_headers = ["Carta", "Tipo", "Quantidade", "Créditos", "Ataque", "Defesa"]
+deck_metadata_labels = ["Nome", "Potência principal", "Aliado", "HQ", "Código"]
+
+[factions]
+Soviet = "União Soviética"
+USA = "Estados Unidos"
+Britain = "Império Britânico"
+Germany = "Alemanha"
+Japan = "Japão"
+France = "França"
+Italy = "Itália"
+Poland = "Polônia"
+Finland = "Finlândia"
+
+[types]
+infantry = "infantaria"
+tank = "tanque"
+artillery = "artilharia"
+fighter = "caça"
+order = "ordem"
+countermeasure = "contramedida"
+
+[rarities]
+Standard = "Padrão"
+Limited = "Limitado"
+Special = "Especial"
+Elite = "Elite"
+
+[sets]
+Base = "Base"
+Allegiance = "Fidelidade"
+TheatersOfWar = "Operações de Guerra"
+Breakthrough = "Avanço"
+WorldAtWar = "Mundo em Guerra"
+CovertOps = "Operações Secretas"
+BloodAndIron = "Sangue & Ferro"
+Legions = "Legiões"
+NavalWarfare = "GUERRA NAVAL"
+Homefront = "Frente Interna"
+WinterWar = "Guerra de Inverno"
+
+[abilities]
+alpine = "Alpino"
+ambush = "Emboscada"
+blitz = "Blitz"
+bond = "Vínculo"
+covert = "Encoberto"
+fury = "Fúria"
+guard = "Guarda"
+heavyArmor1 = "Blindagem Pesada 1"
+heavyArmor2 = "Blindagem Pesada 2"
+heavyArmor3 = "Blindagem Pesada 3"
+intel1 = "Inteligência 1"
+intel2 = "Inteligência 2"
+intel3 = "Inteligência 3"
+mobilize = "Mobilizar"
+salvage = "Recuperar"
+shock = "Choque"
+smokescreen = "Cortina de Fumaça"
+
+[nation_display_names]
+soviet = "união soviética"
+usa = "estados unidos"
+britain = "império britânico"
+germany = "alemanha"
+japan = "japão"
+france = "frança"
+italy = "itália"
+poland = "polônia"
+finland = "finlândia"
+
+[ui_strings]
+page_title = "coleção kardscm"
+search_placeholder = "buscar por nome…"
+toggle_spawnable = "gerável"
+toggle_reserved = "reservado"
+toggle_owned = "apenas possuídas"
+col_cost = "Custo"
+card_id_label = "ID da carta"
+saved_hint = "salvamento automático (Tab/Enter)"
+modal_close = "fechar"
+
+[diff_headers]
+title = "Diferenças de sincronização"
+new = "Novas cartas"
+changed = "Características alteradas"
+reserved_in = "Movidas para a reserva"
+reserved_out = "Retornadas da reserva"
+removed = "Cartas removidas"

@@ -58,6 +58,11 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
+def _lang(ctx: typer.Context) -> str | None:
+    """Return the global --lang value from the Typer context, if any."""
+    return (ctx.obj or {}).get("lang") if ctx.obj else None
+
+
 @app.callback(invoke_without_command=True)
 def main_callback(
     ctx: typer.Context,
@@ -71,8 +76,20 @@ def main_callback(
             is_eager=True,
         ),
     ] = None,
+    lang: Annotated[
+        str | None,
+        typer.Option(
+            "--lang",
+            "-l",
+            help=(
+                "UI language code (en, ru, de, fr, it, es, pt, pl, ja, ko, zh, "
+                "zh-Hant). Default: en."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """KARDS card collection manager."""
+    ctx.obj = {"lang": lang}
 
 
 @app.command(
@@ -82,6 +99,7 @@ def main_callback(
     "* `kards sync --yes --diff-report ./diffs/today.md`",
 )
 def sync(
+    ctx: typer.Context,
     diff_only: Annotated[
         bool,
         typer.Option(
@@ -114,7 +132,12 @@ def sync(
     rejection aborts the sync; the DB is left untouched. A Markdown
     diff report is always written when the diff is non-empty.
     """
-    sync_collection(diff_only=diff_only, yes=yes, diff_report_path=diff_report)
+    sync_collection(
+        lang=_lang(ctx),
+        diff_only=diff_only,
+        yes=yes,
+        diff_report_path=diff_report,
+    )
 
 
 @app.command(
@@ -124,6 +147,7 @@ def sync(
     "* `kards export -f json -o cards.json`",
 )
 def export(
+    ctx: typer.Context,
     fmt: Annotated[
         ExportFormat,
         typer.Option("--format", "-f", help="Output file format"),
@@ -139,13 +163,14 @@ def export(
     specified format. Run **sync** first to populate the database.
     """
     validate_file(str(file), f".{fmt.value}")
-    export_collection(fmt.value, str(file))
+    export_collection(fmt.value, str(file), lang=_lang(ctx))
 
 
 @app.command(
     epilog="Examples:\n\n* `kards update -i cards.xlsx`",
 )
 def update(
+    ctx: typer.Context,
     file: Annotated[
         Path,
         typer.Option(
@@ -162,10 +187,10 @@ def update(
 
     Reads the **Quantity** column from the spreadsheet and
     updates matching cards in the local database.
-    Column names depend on the language setting in config.ini.
+    Column names follow the active **--lang** locale.
     """
     validate_file(str(file), ".xlsx", must_exist=True)
-    update_collection(str(file))
+    update_collection(str(file), lang=_lang(ctx))
 
 
 @deck_app.command(
@@ -173,6 +198,7 @@ def update(
     epilog="Examples:\n\n* `kards deck import -i deck.txt`",
 )
 def deck_import(
+    ctx: typer.Context,
     file: Annotated[
         Path,
         typer.Option(
@@ -191,7 +217,7 @@ def deck_import(
     Cards in the file must already exist in the collection.
     """
     validate_file(str(file), ".txt", must_exist=True)
-    import_deck(str(file))
+    import_deck(str(file), lang=_lang(ctx))
 
 
 @deck_app.command(
@@ -202,6 +228,7 @@ def deck_import(
     "* `kards deck add deck.txt -r`",
 )
 def deck_add(
+    ctx: typer.Context,
     files: Annotated[
         list[Path],
         typer.Argument(
@@ -227,11 +254,12 @@ def deck_add(
     Use --replace to overwrite an existing deck with the same name.
     On error, continues with remaining files and prints a summary at the end.
     """
+    lang = _lang(ctx)
     errors: list[tuple[str, str]] = []
     for f in files:
         try:
             validate_file(str(f), ".txt")  # existence guaranteed by Typer
-            add_deck(str(f), update=update, replace=replace)
+            add_deck(str(f), update=update, replace=replace, lang=lang)
         except (RuntimeError, SystemExit) as e:  # SystemExit: validate_file; RuntimeError: add_deck
             errors.append((str(f), str(e)))
 
@@ -260,6 +288,7 @@ def deck_delete() -> None:
     "* `kards deck export -f json -o deck.json`",
 )
 def deck_export_cmd(
+    ctx: typer.Context,
     fmt: Annotated[
         DeckExportFormat,
         typer.Option("--format", "-f", help="Output file format"),
@@ -275,16 +304,17 @@ def deck_export_cmd(
     format. Run **deck import** first to add decks.
     """
     validate_file(str(file), f".{fmt.value}")
-    export_deck(fmt.value, str(file))
+    export_deck(fmt.value, str(file), lang=_lang(ctx))
 
 
 @app.command(
     epilog="Examples:\n\n"
     "* `kards web`\n\n"
     "* `kards web --port 9000 --no-browser`\n\n"
-    "* `kards web --lang en`",
+    "* `kards --lang ru web`",
 )
 def web(
+    ctx: typer.Context,
     port: Annotated[
         int,
         typer.Option("--port", "-p", help="HTTP port (default 8765)"),
@@ -297,14 +327,6 @@ def web(
         str,
         typer.Option("--host", help="Bind host (default 127.0.0.1)"),
     ] = "127.0.0.1",
-    lang: Annotated[
-        str | None,
-        typer.Option(
-            "--lang",
-            "-l",
-            help="Override config.ini language (en, ru). Default: from config.ini.",
-        ),
-    ] = None,
 ) -> None:
     """Start the local webUI for browsing and editing the collection.
 
@@ -312,7 +334,7 @@ def web(
     table, and supports inline quantity editing autosaved to the local
     database. Run **sync** first to populate the DB.
     """
-    run_web(port=port, open_browser=not no_browser, host=host, lang=lang)
+    run_web(port=port, open_browser=not no_browser, host=host, lang=_lang(ctx))
 
 
 def run() -> None:

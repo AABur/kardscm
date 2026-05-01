@@ -250,13 +250,13 @@ class TestResolveLang:
         assert _resolve_lang("en") is LANGUAGE_EN
         assert _resolve_lang("ru") is LANGUAGE_RU
 
-    def test_known_codes_case_insensitive(self) -> None:
-        assert _resolve_lang("EN") is LANGUAGE_EN
-        assert _resolve_lang("Ru") is LANGUAGE_RU
+    def test_unknown_code_falls_back_to_english(self) -> None:
+        # Unknown codes log a warning and fall back to English (no SystemExit).
+        assert _resolve_lang("zz") is LANGUAGE_EN
 
-    def test_unknown_code_raises_systemexit(self) -> None:
-        with pytest.raises(SystemExit):
-            _resolve_lang("zz")
+    def test_compound_code_matches_case_sensitively(self) -> None:
+        # 'RU' (uppercase) is not a registry key — falls back to English.
+        assert _resolve_lang("RU") is LANGUAGE_EN
 
 
 class TestLocaleWarningStrip:

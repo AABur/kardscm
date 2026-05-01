@@ -2,36 +2,30 @@
 
 from __future__ import annotations
 
-import configparser
 import logging
-from pathlib import Path
 
 from kardscm.locales import LANGUAGE_EN, LANGUAGES, LanguageConfig
 
 logger = logging.getLogger(__name__)
 
-CONFIG_FILE = "config.ini"
-
-__all__ = ["LanguageConfig", "get_language_config", "CONFIG_FILE"]
+__all__ = ["LanguageConfig", "get_language_config"]
 
 
-def get_language_config(config_path: str = CONFIG_FILE) -> LanguageConfig:
-    """Load language configuration from config.ini.
+def get_language_config(lang: str | None = None) -> LanguageConfig:
+    """Return the LanguageConfig for the given code.
+
+    Args:
+        lang: Language code (e.g. "en", "ru", "zh-Hant"). When None or empty,
+            English is returned. Unknown codes log a warning and fall back
+            to English.
 
     Returns:
-        LanguageConfig for the configured language. Defaults to English.
+        LanguageConfig from the registry, or LANGUAGE_EN as a fallback.
     """
-    path = Path(config_path)
-
-    if not path.exists():
+    code = (lang or "en").strip()
+    if not code:
         return LANGUAGE_EN
-
-    config = configparser.ConfigParser()
-    config.read(path)
-
-    code = config.get("settings", "language", fallback="en").strip().lower()
     if code not in LANGUAGES:
         logger.warning("Unsupported language '%s', falling back to English", code)
         return LANGUAGE_EN
-
     return LANGUAGES[code]

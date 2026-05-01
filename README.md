@@ -41,20 +41,27 @@ pipx install git+https://github.com/AABur/kardscm.git
 
 ## Configuration
 
-Copy the example configuration and set your language:
+Pick a UI language with the global `--lang` flag — it works on every
+subcommand (default is English):
 
 ```bash
-cp config.ini.example config.ini
+kardscm --lang ru sync
+kardscm --lang de export -f xlsx -o cards.xlsx
+kardscm --lang zh-Hant web
 ```
 
-Edit `config.ini`:
+Supported codes: `en`, `ru`, `de`, `fr`, `it`, `es`, `pt`, `pl`, `ja`,
+`ko`, `zh`, `zh-Hant`. Locales other than `en` and `ru` ship as
+scaffolds. Scaffold files set `code`, `name`, `locale_key`, and
+`collection_sheet_name`; untranslated keys are **omitted** so the
+loader falls back to English and logs them via `fallback_warnings` on
+stderr. Keys present with an empty string value (`""`) are treated as
+valid translations and do **not** trigger fallback — scaffold authors
+should omit keys rather than blank them.
 
-```ini
-[settings]
-language = en
-```
-
-Supported languages: every `*.toml` file in `kardscm/locales/` ships as a language. To add one, drop `<code>.toml` into that directory and set `language = <code>` in `config.ini`. Missing keys fall back to English with a runtime warning.
+To add or refine a locale, drop a `<code>.toml` into
+`kardscm/locales/`. Missing keys fall back to English; the loader
+discovers `*.toml` files at import time.
 
 ## Usage
 

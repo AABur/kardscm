@@ -1,0 +1,108 @@
+code = "de"
+name = "German"
+locale_key = "de-DE"
+collection_sheet_name = "Kollektion"
+
+export_headers = [
+    "Nationen",
+    "Name",
+    "Typen",
+    "Seltenheit",
+    "Fähigkeiten",
+    "Set",
+    "Menge",
+    "Kredits",
+    "Angriff",
+    "Verteidigung",
+    "Beschreibung",
+]
+deck_headers = ["Karte", "Typ", "Menge", "Credits", "Angriff", "Verteidigung"]
+deck_metadata_labels = ["Name", "Hauptmacht", "Verbündeter", "HQ", "Code"]
+
+[factions]
+Soviet = "Sowjetunion"
+USA = "Vereinigte Staaten von Amerika"
+Britain = "Großbritannien"
+Germany = "Deutschland"
+Japan = "Japan"
+France = "Frankreich"
+Italy = "Italien"
+Poland = "Polen"
+Finland = "Finnland"
+
+[types]
+infantry = "Infanterie"
+tank = "Panzer"
+artillery = "Artillerie"
+fighter = "Jäger"
+order = "Befehl"
+countermeasure = "Gegenmaßnahme"
+bomber = "Bomber"
+
+[rarities]
+Standard = "Standard"
+Limited = "Limitiert"
+Special = "Spezial"
+Elite = "Elite"
+
+[sets]
+Base = "Basis"
+Allegiance = "Treue"
+TheatersOfWar = "Kriegsschauplätze"
+Breakthrough = "Durchbruch"
+WorldAtWar = "Welt im Krieg"
+CovertOps = "Verdeckte Operationen"
+BloodAndIron = "Blut und Eisen"
+Legions = "Legionen"
+NavalWarfare = "Krieg zur See"
+Homefront = "Heimatfront"
+WinterWar = "Winterkrieg"
+
+[abilities]
+alpine = "Alpin"
+ambush = "Hinterhalt"
+blitz = "Blitz"
+bond = "Verbindung"
+covert = "Verdeckt"
+fury = "Wut"
+guard = "Wache"
+heavyArmor1 = "Schwere Panzerung 1"
+heavyArmor2 = "Schwere Panzerung 2"
+heavyArmor3 = "Schwere Panzerung 3"
+intel1 = "Aufklärung 1"
+intel2 = "Aufklärung 2"
+intel3 = "Aufklärung 3"
+mobilize = "Mobilisierung"
+salvage = "Bergung"
+shock = "Schock"
+smokescreen = "Rauchwand"
+
+[nation_display_names]
+soviet = "Sowjetisch"
+usa = "Amerikanisch"
+britain = "Britisch"
+germany = "Deutsch"
+japan = "Japanisch"
+france = "Französisch"
+italy = "Italienisch"
+poland = "Polnisch"
+finland = "Finnisch"
+
+[ui_strings]
+page_title = "Kards Kollektion"
+search_placeholder = "nach Name suchen…"
+toggle_spawnable = "Erstellbare"
+toggle_reserved = "Reservierte"
+toggle_owned = "Nur im Besitz"
+col_cost = "Kosten"
+card_id_label = "Karten-ID"
+saved_hint = "Speichert automatisch (Tab/Enter)"
+modal_close = "schließen"
+
+[diff_headers]
+title = "Synchronisationsdifferenz"
+new = "Neue Karten"
+changed = "Geänderte Eigenschaften"
+reserved_in = "In Reserve verschoben"
+reserved_out = "Aus Reserve zurückgekehrt"
+removed = "Entfernte Karten"

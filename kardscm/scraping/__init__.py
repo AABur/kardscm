@@ -12,14 +12,17 @@ from kardscm.scraping.probe import build_static_probe
 logger = logging.getLogger(__name__)
 
 
-def scrape_cards() -> list[CardDict]:
+def scrape_cards(language: str = "en") -> list[CardDict]:
     """Scrape all cards via probe + GraphQL fetch + normalize.
+
+    Args:
+        language: GraphQL `$language` value (short code).
 
     Returns:
         List of normalized CardDict objects.
     """
-    logger.info("Starting card scrape...")
-    probe = build_static_probe()
+    logger.info("Starting card scrape (language=%s)...", language)
+    probe = build_static_probe(language)
     raw_cards = fetch_all_cards(probe)
 
     cards: list[CardDict] = []

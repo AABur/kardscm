@@ -505,16 +505,11 @@ class TestSelectDeck:
 
 
 class TestReadXlsxQuantities:
-    @patch("kardscm.commands.get_language_config")
-    def test_file_not_found(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
+    def test_file_not_found(self, tmp_path):
         with pytest.raises(FileNotFoundError):
-            _read_xlsx_quantities(str(tmp_path / "missing.xlsx"))
+            _read_xlsx_quantities(str(tmp_path / "missing.xlsx"), LANGUAGE_EN)
 
-    @patch("kardscm.commands.get_language_config")
-    def test_missing_columns(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-
+    def test_missing_columns(self, tmp_path):
         xlsx = tmp_path / "bad.xlsx"
         wb = Workbook()
         ws = wb.active
@@ -522,7 +517,7 @@ class TestReadXlsxQuantities:
         wb.save(str(xlsx))
 
         with pytest.raises(ValueError, match="Missing required columns"):
-            _read_xlsx_quantities(str(xlsx))
+            _read_xlsx_quantities(str(xlsx), LANGUAGE_EN)
 
 
 class TestAddDeck:

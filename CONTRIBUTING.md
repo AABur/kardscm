@@ -54,12 +54,12 @@ kardscm/
 └── importing/          # Import functionality
     └── parser.py       # Deck TXT file parser
 tests/                  # pytest suites
-config.ini.example      # Language configuration template
+scripts/                # Developer tools (e.g. generate_locale.py)
 ```
 
 ## Architecture
 
-- **config.py** — `LanguageConfig` frozen dataclass holding all language-specific data (headers, nation names, URLs, translation indices). Registry of language configs (`LANGUAGE_EN`, `LANGUAGE_RU`) and `get_language_config()` reader for `config.ini`
+- **config.py** — `LanguageConfig` frozen dataclass holding all language-specific data (headers, nation names, URLs, translation indices). The registry is built by `kardscm.locales` from `*.toml` files; `get_language_config(lang)` resolves the active locale from the global `--lang` CLI flag.
 - **scraping/** — Playwright browser automation collects GraphQL responses from the KARDS website; parses API data into card dictionaries using `LanguageConfig` for localization
 - **storage/** — SQLite CRUD layer with upsert logic for cards and deck storage
 - **export/** — XLSX (with styling and filters), CSV (UTF-8 BOM), and JSON exporters; deck export as XLSX sheet or JSON. All headers and labels come from `LanguageConfig`
@@ -87,10 +87,19 @@ Language-agnostic constants (KNOWN_MAPPINGS, EXPORT_FIELD_NAMES, DECK_CARD_PATTE
 
 ### Adding a New Language
 
-1. Create `kardscm/locales/<code>.toml` (e.g. `de.toml` for German).
-2. Use `kardscm/locales/en.toml` as the schema reference. Top-level keys: `code`, `name`, `locale_key`, `collection_sheet_name`, `export_headers`, `deck_headers`, `deck_metadata_labels`. Sections: `[factions]`, `[types]`, `[rarities]`, `[sets]`, `[abilities]`, `[nation_display_names]`, `[ui_strings]`, `[diff_headers]`.
-3. Any key you omit falls back to the English value, and the loader records a warning that surfaces on CLI (stderr) and web UI (yellow strip at the page top). Partially-translated locales are valid.
-4. Set `language = <code>` in `config.ini` to activate the locale.
+1. Run `uv run python scripts/generate_locale.py <code>` to bootstrap the file
+   from kards.com — it fills `code`, `name`, `locale_key`, and
+   `collection_sheet_name` automatically (via Playwright + GraphQL probe).
+2. Edit `kardscm/locales/<code>.toml` to add translations. Use
+   `kardscm/locales/en.toml` as the schema reference. Top-level keys:
+   `code`, `name`, `locale_key`, `collection_sheet_name`, `export_headers`,
+   `deck_headers`, `deck_metadata_labels`. Sections: `[factions]`, `[types]`,
+   `[rarities]`, `[sets]`, `[abilities]`, `[nation_display_names]`,
+   `[ui_strings]`, `[diff_headers]`.
+3. Any key you omit falls back to the English value; the loader records a
+   warning that surfaces on CLI (stderr) and web UI (yellow strip at the
+   page top). Partially-translated locales are valid.
+4. Activate via `kardscm --lang <code> <subcommand>` — no other config needed.
 
 No code changes needed. No tests required for new locale files — the loader is already covered by `tests/test_locales.py`.
 
