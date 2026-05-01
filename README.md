@@ -52,9 +52,12 @@ kardscm --lang zh-Hant web
 
 Supported codes: `en`, `ru`, `de`, `fr`, `it`, `es`, `pt`, `pl`, `ja`,
 `ko`, `zh`, `zh-Hant`. Locales other than `en` and `ru` ship as
-scaffolds — `code`, `name`, `locale_key`, and `collection_sheet_name`
-are populated; every other section falls back to English with a
-`fallback_warnings` log on stderr.
+scaffolds. Scaffold files set `code`, `name`, `locale_key`, and
+`collection_sheet_name`; untranslated keys are **omitted** so the
+loader falls back to English and logs them via `fallback_warnings` on
+stderr. Keys present with an empty string value (`""`) are treated as
+valid translations and do **not** trigger fallback — scaffold authors
+should omit keys rather than blank them.
 
 To add or refine a locale, drop a `<code>.toml` into
 `kardscm/locales/`. Missing keys fall back to English; the loader
