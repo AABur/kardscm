@@ -4,8 +4,17 @@ locale_key = "en-EN"
 collection_sheet_name = "Collection"
 
 export_headers = [
-    "Nation", "Name", "Type", "Rarity", "Abilities", "Set",
-    "Quantity", "Credits", "Attack", "Defense", "Description",
+    "Nation",
+    "Name",
+    "Type",
+    "Rarity",
+    "Abilities",
+    "Set",
+    "Quantity",
+    "Credits",
+    "Attack",
+    "Defense",
+    "Description",
 ]
 deck_headers = ["Card", "Type", "Quantity", "Credits", "Attack", "Defense"]
 deck_metadata_labels = ["Name", "Major power", "Ally", "HQ", "Code"]
