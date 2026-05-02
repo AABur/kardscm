@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from kardscm.config import LanguageConfig, get_language_config
-from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.constants import DEFAULT_DB_PATH, KNOWN_ABILITIES
 from kardscm.storage.database import (
     get_card_quantity_by_id,
     get_connection,
@@ -51,9 +51,10 @@ SETS = [
 ]
 KREDITS_RANGE = list(range(0, 11))
 
+_ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
 CARD_COLUMNS = (
     'cardId, importId, imageUrl, thumbUrl, faction, type, rarity, "set", '
-    "title, text, kredits, attack, defense, attributes, operationCost, "
+    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, operationCost, "
     "reserved, image, can_create, exile, quantity, updated_at"
 )
 

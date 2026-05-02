@@ -6,7 +6,7 @@ from typing import Any, TypedDict
 
 
 class CardDict(TypedDict):
-    """Card data structure matching the new DB schema."""
+    """Card data structure matching the DB schema (Stage 2+)."""
 
     cardId: str
     importId: str
@@ -21,12 +21,29 @@ class CardDict(TypedDict):
     kredits: int
     attack: int | None
     defense: int | None
-    attributes: str
     operationCost: int | None
     reserved: int
     image: str
     can_create: str | None
     exile: str | None
+    # Binary ability flags — 1 if the card has the ability, 0 otherwise.
+    ability_alpine: int
+    ability_ambush: int
+    ability_blitz: int
+    ability_bond: int
+    ability_covert: int
+    ability_fury: int
+    ability_guard: int
+    ability_heavyArmor1: int
+    ability_heavyArmor2: int
+    ability_heavyArmor3: int
+    ability_intel1: int
+    ability_intel2: int
+    ability_intel3: int
+    ability_mobilize: int
+    ability_salvage: int
+    ability_shock: int
+    ability_smokescreen: int
 
 
 class ProbeData(TypedDict):

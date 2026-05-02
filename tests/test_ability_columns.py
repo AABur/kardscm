@@ -6,7 +6,6 @@ is complete.
 
 from __future__ import annotations
 
-import shutil
 import sqlite3
 from pathlib import Path
 
@@ -15,7 +14,6 @@ import pytest
 from kardscm.constants import KNOWN_ABILITIES
 from kardscm.locales import LANGUAGE_EN
 from kardscm.storage import get_connection, initialize_schema
-
 
 # ---------------------------------------------------------------------------
 # Schema
@@ -72,8 +70,9 @@ def _make_old_db(db_path: Path) -> None:
         """
     )
     conn.execute(
-        "INSERT INTO cards (cardId, faction, type, rarity, \"set\", title, kredits, attributes) "
-        "VALUES ('abc', 'Soviet', 'infantry', 'Standard', 'Base', '{\"en-EN\":\"X\"}', 1, '[\"blitz\"]')"
+        'INSERT INTO cards (cardId, faction, type, rarity, "set", title, kredits, attributes) '
+        "VALUES ('abc', 'Soviet', 'infantry', 'Standard', 'Base', "
+        '\'{"en-EN":"X"}\', 1, \'["blitz"]\')'
     )
     conn.commit()
     conn.close()
@@ -141,31 +140,37 @@ def test_after_migration_new_schema_is_created(tmp_path):
 # ---------------------------------------------------------------------------
 
 
+def _make_api_node(attributes: list, card_id: str = "n1") -> dict:
+    return {
+        "cardId": card_id,
+        "imageUrl": "",
+        "thumbUrl": "",
+        "json": {
+            "id": card_id,
+            "import_id": f"imp-{card_id}",
+            "faction": "Soviet",
+            "type": "infantry",
+            "rarity": "Standard",
+            "set": "Base",
+            "title": {"en-EN": "T"},
+            "text": {"en-EN": "D"},
+            "kredits": 1,
+            "attack": 1,
+            "defense": 1,
+            "attributes": attributes,
+            "operationCost": None,
+            "reserved": 0,
+            "image": "",
+            "can_create": None,
+            "exile": None,
+        },
+    }
+
+
 def test_normalizer_sets_ability_flags():
     from kardscm.scraping.normalizer import normalize_card
 
-    node = {
-        "cardId": "n1",
-        "importId": "i1",
-        "imageUrl": "",
-        "thumbUrl": "",
-        "faction": {"name": "Soviet"},
-        "cardType": {"name": "infantry"},
-        "rarity": {"name": "Standard"},
-        "set": {"name": "Base"},
-        "title": [{"value": "T", "languageId": "en-EN"}],
-        "text": [],
-        "kredits": 2,
-        "attack": 1,
-        "defense": 1,
-        "attributes": ["blitz", "guard"],
-        "operationCost": None,
-        "reserved": False,
-        "image": "",
-        "canCreate": None,
-        "exile": None,
-    }
-    result = normalize_card(node)
+    result = normalize_card(_make_api_node(["blitz", "guard"]))
 
     assert result["ability_blitz"] == 1
     assert result["ability_guard"] == 1
@@ -177,28 +182,7 @@ def test_normalizer_sets_ability_flags():
 def test_normalizer_unknown_ability_is_silently_ignored():
     from kardscm.scraping.normalizer import normalize_card
 
-    node = {
-        "cardId": "n2",
-        "importId": "i2",
-        "imageUrl": "",
-        "thumbUrl": "",
-        "faction": {"name": "Soviet"},
-        "cardType": {"name": "infantry"},
-        "rarity": {"name": "Standard"},
-        "set": {"name": "Base"},
-        "title": [{"value": "T", "languageId": "en-EN"}],
-        "text": [],
-        "kredits": 1,
-        "attack": 0,
-        "defense": 0,
-        "attributes": ["BecomesVeteran", "unknownAbility"],
-        "operationCost": None,
-        "reserved": False,
-        "image": "",
-        "canCreate": None,
-        "exile": None,
-    }
-    result = normalize_card(node)
+    result = normalize_card(_make_api_node(["BecomesVeteran", "unknownAbility"], card_id="n2"))
     for ability in KNOWN_ABILITIES:
         assert result[f"ability_{ability}"] == 0
 
@@ -263,20 +247,18 @@ def test_translate_card_no_abilities_gives_empty_string():
 
 def test_diff_detects_ability_change(make_card):
     from kardscm.diff import compute_diff
-    from kardscm.locales import LANGUAGE_EN
 
     old = make_card(cardId="c1", ability_guard=0, ability_blitz=0)
     new_card = make_card(cardId="c1", ability_guard=1, ability_blitz=0)
 
-    result = compute_diff([old], [new_card], LANGUAGE_EN)
-    changed_ids = [c["cardId"] for c in result["changed"]]
+    result = compute_diff([old], [new_card], locale_key="en-EN")
+    changed_ids = [c["card"]["cardId"] for c in result["changed"]]
     assert "c1" in changed_ids
 
 
 def test_diff_same_abilities_no_change(make_card):
     from kardscm.diff import compute_diff
-    from kardscm.locales import LANGUAGE_EN
 
     card = make_card(cardId="c1", ability_guard=1)
-    result = compute_diff([card], [card], LANGUAGE_EN)
+    result = compute_diff([card], [card], locale_key="en-EN")
     assert result["changed"] == []

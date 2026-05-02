@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from kardscm.constants import KNOWN_ABILITIES
 from kardscm.export.exporters import translate_card_for_export
 from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 
@@ -18,14 +19,14 @@ def _make_db_card(
     kredits: int = 1,
     attack: int | None = 1,
     defense: int | None = 2,
-    attributes: list | None = None,
     quantity: int = 0,
+    **ability_overrides: int,
 ) -> dict:
     if title is None:
         title = {"en-EN": "Test Card", "ru-RU": "Тестовая карта"}
     if text is None:
         text = {"en-EN": "Description", "ru-RU": "Описание"}
-    return {
+    card: dict = {
         "faction": faction,
         "type": type_,
         "rarity": rarity,
@@ -35,9 +36,11 @@ def _make_db_card(
         "kredits": kredits,
         "attack": attack,
         "defense": defense,
-        "attributes": json.dumps(attributes or []),
         "quantity": quantity,
     }
+    for a in KNOWN_ABILITIES:
+        card[f"ability_{a}"] = ability_overrides.get(f"ability_{a}", 0)
+    return card
 
 
 class TestTranslateCardEN:
@@ -52,12 +55,12 @@ class TestTranslateCardEN:
         assert result["text"] == "Description"
 
     def test_attributes(self):
-        card = _make_db_card(attributes=["blitz", "guard"])
+        card = _make_db_card(ability_blitz=1, ability_guard=1)
         result = translate_card_for_export(card, LANGUAGE_EN)
         assert result["attributes"] == "Blitz, Guard"
 
-    def test_unknown_attribute_filtered(self):
-        card = _make_db_card(attributes=["blitz", "BecomesVeteran:X"])
+    def test_unknown_ability_not_in_output(self):
+        card = _make_db_card(ability_blitz=1)
         result = translate_card_for_export(card, LANGUAGE_EN)
         assert result["attributes"] == "Blitz"
 
@@ -80,7 +83,7 @@ class TestTranslateCardRU:
         assert result["text"] == "Описание"
 
     def test_attributes_ru(self):
-        card = _make_db_card(attributes=["guard"])
+        card = _make_db_card(ability_guard=1)
         result = translate_card_for_export(card, LANGUAGE_RU)
         assert result["attributes"] == "Охрана"
 
@@ -104,7 +107,7 @@ class TestTranslateEdgeCases:
         assert result["title"] == "English Only"
 
     def test_empty_attributes(self):
-        card = _make_db_card(attributes=[])
+        card = _make_db_card()
         result = translate_card_for_export(card, LANGUAGE_EN)
         assert result["attributes"] == ""
 

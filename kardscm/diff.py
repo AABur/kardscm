@@ -6,7 +6,7 @@ the user approves before any DB writes happen.
 
 Compared fields per `cardId`:
 - `kredits`, `attack`, `defense`, `operationCost`: numeric equality
-- `attributes`: JSON array compared as a set (order-independent)
+- ability columns (`ability_*`): binary int equality per KNOWN_ABILITIES
 - `text`: extract value at `LanguageConfig.locale_key`, compare strings
 - `reserved`: routed into `reserved_in` / `reserved_out` categories,
   not the generic `changed` list
@@ -20,6 +20,7 @@ import json
 from collections.abc import Iterable
 
 from kardscm.config import LanguageConfig
+from kardscm.constants import KNOWN_ABILITIES
 from kardscm.models import (
     CardChange,
     CardDict,
@@ -103,14 +104,14 @@ def _card_changes(old: dict, new: CardDict, locale_key: str) -> list[FieldChange
         if old_val != new_val:
             changes.append({"field": field, "old": old_val, "new": new_val})
 
-    old_attrs = _attributes_set(old.get("attributes"))
-    new_attrs = _attributes_set(new.get("attributes"))
-    if old_attrs != new_attrs:
+    old_abilities = frozenset(a for a in KNOWN_ABILITIES if old.get(f"ability_{a}"))
+    new_abilities = frozenset(a for a in KNOWN_ABILITIES if new.get(f"ability_{a}"))
+    if old_abilities != new_abilities:
         changes.append(
             {
                 "field": "attributes",
-                "old": sorted(old_attrs),
-                "new": sorted(new_attrs),
+                "old": sorted(old_abilities),
+                "new": sorted(new_abilities),
             }
         )
 
@@ -130,13 +131,6 @@ def _parse_json(value: object) -> object:
         return json.loads(value)
     except (ValueError, TypeError):
         return None
-
-
-def _attributes_set(value: object) -> frozenset[str]:
-    parsed = _parse_json(value)
-    if not isinstance(parsed, list):
-        return frozenset()
-    return frozenset(str(item) for item in parsed)
 
 
 def _text_for_locale(value: object, locale_key: str) -> str:

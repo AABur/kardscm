@@ -9,6 +9,8 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass, field
 
+from kardscm.constants import KNOWN_ABILITIES
+
 ALLOWED_SORT_COLUMNS: frozenset[str] = frozenset(
     {
         "faction",
@@ -24,9 +26,10 @@ ALLOWED_SORT_COLUMNS: frozenset[str] = frozenset(
     }
 )
 
+_ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
 SELECT_COLUMNS = (
     'cardId, importId, imageUrl, thumbUrl, faction, type, rarity, "set", '
-    "title, text, kredits, attack, defense, attributes, operationCost, "
+    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, operationCost, "
     "reserved, image, can_create, exile, quantity, updated_at"
 )
 

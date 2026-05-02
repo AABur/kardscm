@@ -40,7 +40,7 @@ def deck_cards():
             "title": json.dumps({"en-EN": "16th Rifle Regiment", "ru-RU": "16-й СТРЕЛКОВЫЙ ПОЛК"}),
             "type": "infantry",
             "rarity": "Standard",
-            "attributes": json.dumps(["guard"]),
+            "ability_guard": 1,
             "set": "Base",
             "kredits": 1,
             "attack": 1,

@@ -43,15 +43,15 @@ def test_numeric_field_changes_flagged(make_card):
 
 
 def test_attributes_compared_as_set(make_card):
-    old = make_card(attributes=json.dumps(["blitz", "fury"]))
-    new = make_card(attributes=json.dumps(["fury", "blitz"]))
+    old = make_card(ability_blitz=1, ability_fury=1)
+    new = make_card(ability_blitz=1, ability_fury=1)
     report = compute_diff([dict(old)], [new], locale_key="en-EN")
     assert is_empty(report)
 
 
 def test_attributes_change_flagged(make_card):
-    old = make_card(attributes=json.dumps(["mobilize", "heavyArmor2"]))
-    new = make_card(attributes=json.dumps(["shock", "blitz", "heavyArmor2"]))
+    old = make_card(ability_mobilize=1, ability_heavyArmor2=1)
+    new = make_card(ability_shock=1, ability_blitz=1, ability_heavyArmor2=1)
     report = compute_diff([dict(old)], [new], locale_key="en-EN")
 
     assert len(report["changed"]) == 1
@@ -240,19 +240,17 @@ def test_format_markdown_report_renders_all_sections(make_card):
 
 def test_format_value_attributes_translated_when_known(make_card):
     """Known ability codes get translated via LanguageConfig.ability_names."""
-    old = make_card(cardId="X", attributes=json.dumps([]))
-    new = make_card(
-        cardId="X", attributes=json.dumps(["blitz"]), title=json.dumps({"en-EN": "Xenon"})
-    )
+    old = make_card(cardId="X")
+    new = make_card(cardId="X", ability_blitz=1, title=json.dumps({"en-EN": "Xenon"}))
     report = compute_diff([dict(old)], [new], locale_key="en-EN")
     out = format_console_report(report, LANGUAGE_EN)
     assert "Blitz" in out
 
 
-def test_compute_diff_handles_malformed_json(make_card):
-    """Defensive: a row where attributes/text is unparseable JSON shouldn't crash."""
-    old = make_card(attributes="not-json", text="also-not-json")
-    new = make_card(attributes=json.dumps(["blitz"]), text=json.dumps({"en-EN": "hi"}))
+def test_compute_diff_detects_text_change(make_card):
+    """Verify text-change detection still works after attributes refactor."""
+    old = make_card(text='{"en-EN": "old"}')
+    new = make_card(ability_blitz=1, text='{"en-EN": "new"}')
 
     report = compute_diff([dict(old)], [new], locale_key="en-EN")
     fields = {c["field"] for c in report["changed"][0]["changes"]}
