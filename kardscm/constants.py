@@ -84,6 +84,29 @@ EXPORT_FIELD_NAMES: list[str] = [
     "text",
 ]
 
+# === Abilities ===
+# Canonical ability keys — match [abilities] section of en.toml and DB column names.
+# DB column: f"ability_{key}" (e.g. ability_guard, ability_heavyArmor1).
+KNOWN_ABILITIES: tuple[str, ...] = (
+    "alpine",
+    "ambush",
+    "blitz",
+    "bond",
+    "covert",
+    "fury",
+    "guard",
+    "heavyArmor1",
+    "heavyArmor2",
+    "heavyArmor3",
+    "intel1",
+    "intel2",
+    "intel3",
+    "mobilize",
+    "salvage",
+    "shock",
+    "smokescreen",
+)
+
 # === Database ===
 DEFAULT_DB_PATH = "collection.db"
 

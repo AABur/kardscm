@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-from kardscm.constants import DECK_NATION_TO_DB
+from kardscm.constants import DECK_NATION_TO_DB, KNOWN_ABILITIES
 from kardscm.helpers import sanitize_text
 from kardscm.models import CardDict, DeckCardEntry, ParsedDeck
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_SQL = """
+
+def _ability_columns_sql() -> str:
+    return "\n".join(f"    ability_{a} INTEGER NOT NULL DEFAULT 0," for a in KNOWN_ABILITIES)
+
+
+SCHEMA_SQL = f"""
 CREATE TABLE IF NOT EXISTS cards (
     cardId TEXT PRIMARY KEY,
     importId TEXT,
@@ -28,7 +34,7 @@ CREATE TABLE IF NOT EXISTS cards (
     kredits INTEGER NOT NULL DEFAULT 0,
     attack INTEGER,
     defense INTEGER,
-    attributes TEXT,
+{_ability_columns_sql()}
     operationCost INTEGER,
     reserved INTEGER NOT NULL DEFAULT 0,
     image TEXT,
@@ -81,17 +87,21 @@ def get_connection(db_path: str | Path) -> sqlite3.Connection:
     return conn
 
 
-def initialize_schema(conn: sqlite3.Connection) -> None:
-    """Initialize database schema if missing.
+def initialize_schema(conn: sqlite3.Connection, db_path: str | Path | None = None) -> None:
+    """Initialize database schema, migrating old schemas when detected.
 
-    Detects old schema (with 'nation' column) and raises an error
-    instructing the user to delete the DB and re-sync.
+    Two legacy schemas are recognized:
+    - v1: has a 'nation' column — too old; user must delete manually.
+    - v2: has an 'attributes' TEXT column — Stage 2 migration. The DB is
+      backed up to <db_path>.bak, all tables are dropped, the new schema is
+      created, and SystemExit is raised so the user knows to re-sync.
 
     Args:
         conn: SQLite connection instance.
+        db_path: Path to the DB file; required for backup during v2 migration.
 
     Raises:
-        SystemExit: If old schema is detected.
+        SystemExit: If an incompatible or migrated schema is detected.
     """
     cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='cards'")
     if cursor.fetchone():
@@ -100,6 +110,23 @@ def initialize_schema(conn: sqlite3.Connection) -> None:
             raise SystemExit(
                 "Old database schema detected (has 'nation' column). "
                 "Delete collection.db and run 'kardscm sync' to re-create."
+            )
+        if "attributes" in columns:
+            backup_msg = ""
+            if db_path is not None:
+                backup = Path(str(db_path) + ".bak")
+                shutil.copy2(db_path, backup)
+                backup_msg = f" Backup saved to {backup}."
+            conn.executescript(
+                "DROP TABLE IF EXISTS deck_cards;"
+                "DROP TABLE IF EXISTS decks;"
+                "DROP TABLE IF EXISTS metadata;"
+                "DROP TABLE IF EXISTS cards;"
+            )
+            conn.executescript(SCHEMA_SQL)
+            raise SystemExit(
+                f"Database schema updated (Stage 2: ability columns).{backup_msg} "
+                "Run 'kardscm sync' to rebuild your collection."
             )
     conn.executescript(SCHEMA_SQL)
 
@@ -129,11 +156,19 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[CardDict]) -> None:
         conn: SQLite connection instance.
         cards: Iterable of CardDict objects.
     """
+    _ability_cols = [f"ability_{a}" for a in KNOWN_ABILITIES]
+    ability_update_sql = "\n".join(
+        f"            ability_{a} = excluded.ability_{a}," for a in KNOWN_ABILITIES
+    )
+    insert_cols = ", ".join(_ability_cols)
+    insert_placeholders = ", ".join("?" for _ in KNOWN_ABILITIES)
+
     rows: list[tuple] = []
     for card in cards:
         card_id = card.get("cardId")
         if not card_id:
             continue
+        ability_values = tuple(card.get(f"ability_{a}", 0) for a in KNOWN_ABILITIES)
         rows.append(
             (
                 card_id,
@@ -149,7 +184,7 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[CardDict]) -> None:
                 card.get("kredits", 0),
                 card.get("attack"),
                 card.get("defense"),
-                card.get("attributes"),
+                *ability_values,
                 card.get("operationCost"),
                 card.get("reserved", 0),
                 card.get("image", ""),
@@ -162,14 +197,19 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[CardDict]) -> None:
         return
 
     conn.executemany(
-        """
+        f"""
         INSERT INTO cards (
             cardId, importId, imageUrl, thumbUrl,
             faction, type, rarity, "set",
             title, text, kredits, attack, defense,
-            attributes, operationCost, reserved,
+            {insert_cols},
+            operationCost, reserved,
             image, can_create, exile, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            {insert_placeholders},
+            ?, ?, ?, ?, ?, CURRENT_TIMESTAMP
+        )
         ON CONFLICT(cardId) DO UPDATE SET
             importId = excluded.importId,
             imageUrl = excluded.imageUrl,
@@ -183,7 +223,7 @@ def upsert_cards(conn: sqlite3.Connection, cards: Iterable[CardDict]) -> None:
             kredits = excluded.kredits,
             attack = excluded.attack,
             defense = excluded.defense,
-            attributes = excluded.attributes,
+            {ability_update_sql}
             operationCost = excluded.operationCost,
             reserved = excluded.reserved,
             image = excluded.image,
@@ -205,14 +245,16 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict]:
     Returns:
         List of card dictionaries.
     """
+    ability_cols = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
     conn.row_factory = sqlite3.Row
     cursor = conn.execute(
-        """
+        f"""
         SELECT
             cardId, importId, imageUrl, thumbUrl,
             faction, type, rarity, "set",
             title, text, kredits, attack, defense,
-            attributes, operationCost, reserved,
+            {ability_cols},
+            operationCost, reserved,
             image, can_create, exile, quantity, updated_at
         FROM cards
         ORDER BY title
@@ -491,11 +533,13 @@ def fetch_deck_cards(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
     Returns:
         List of card dicts with deck_quantity and deck_cost added.
     """
+    ability_cols = ", ".join(f"c.ability_{a}" for a in KNOWN_ABILITIES)
     conn.row_factory = sqlite3.Row
     cursor = conn.execute(
-        """
+        f"""
         SELECT
-            c.faction, c.title, c.type, c.rarity, c.attributes,
+            c.faction, c.title, c.type, c.rarity,
+            {ability_cols},
             c."set", c.kredits, c.attack, c.defense, c.text,
             dc.quantity AS deck_quantity, dc.cost AS deck_cost
         FROM deck_cards dc

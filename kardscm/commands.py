@@ -226,7 +226,7 @@ def sync_collection(
     new_cards = scrape_cards(language=lang_config.code)
 
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
         old_cards = fetch_cards(conn)
         report = compute_diff(old_cards, new_cards, lang_config.locale_key)
 
@@ -280,7 +280,7 @@ def export_collection(
     _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
         raw_cards = fetch_cards(conn)
 
     if not raw_cards:
@@ -341,7 +341,7 @@ def update_collection(
         mapped_updates.append((faction_api, title, qty))
 
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
         updated_count, not_found = update_quantity(conn, mapped_updates, lang_config.locale_key)
 
     logger.info(
@@ -378,7 +378,7 @@ def import_deck(
         raise SystemExit(f"Failed to parse deck file: {e}") from e
 
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
 
         existing = find_deck_by_name(conn, deck["name"])
         if existing:
@@ -437,7 +437,7 @@ def add_deck(
         raise RuntimeError(f"Failed to parse deck file: {e}") from e
 
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
 
         existing = find_deck_by_name(conn, deck["name"])
         if existing:
@@ -544,7 +544,7 @@ def remove_deck(db_path: str = DEFAULT_DB_PATH) -> None:
         db_path: SQLite database path.
     """
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
         decks = fetch_all_decks(conn)
         if not decks:
             raise SystemExit("No decks in database. Run 'kards deck import' first.")
@@ -610,7 +610,7 @@ def export_deck(
     _emit_locale_warnings(lang_config)
 
     with get_connection(db_path) as conn:
-        initialize_schema(conn)
+        initialize_schema(conn, db_path)
         deck_meta = _select_deck(conn)
         deck_cards = fetch_deck_cards(conn, deck_meta["deck_id"])
 

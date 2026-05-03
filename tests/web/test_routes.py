@@ -8,9 +8,14 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from kardscm.constants import KNOWN_ABILITIES
 from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 from kardscm.storage.database import get_connection, initialize_schema
 from kardscm.web.app import _resolve_lang, create_app
+
+_ZERO_ABILITIES = tuple(0 for _ in KNOWN_ABILITIES)
+_ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
+_ABILITY_PLACEHOLDERS = ", ".join("?" for _ in KNOWN_ABILITIES)
 
 
 @pytest.fixture
@@ -18,12 +23,13 @@ def db_path(tmp_path: Path) -> Path:
     db_file = tmp_path / "test.db"
     conn = get_connection(db_file)
     initialize_schema(conn)
+    _ha1 = tuple(1 if a == "heavyArmor1" else 0 for a in KNOWN_ABILITIES)
     cards = [
         (
             "sov_inf",
-            "",  # importId
-            "/images/card/sov_inf.avif",  # imageUrl
-            "/images/card/thumb/sov_inf.avif",  # thumbUrl
+            "",
+            "/images/card/sov_inf.avif",
+            "/images/card/thumb/sov_inf.avif",
             "Soviet",
             "infantry",
             "Standard",
@@ -33,7 +39,7 @@ def db_path(tmp_path: Path) -> Path:
             2,
             1,
             2,
-            json.dumps([]),
+            *_ZERO_ABILITIES,
             None,
             0,
             "",
@@ -55,7 +61,7 @@ def db_path(tmp_path: Path) -> Path:
             4,
             3,
             5,
-            json.dumps(["heavyArmor1"]),
+            *_ha1,
             None,
             0,
             "",
@@ -77,9 +83,9 @@ def db_path(tmp_path: Path) -> Path:
             1,
             1,
             1,
-            json.dumps([]),
+            *_ZERO_ABILITIES,
             None,
-            1,  # reserved
+            1,
             "",
             None,
             None,
@@ -87,14 +93,15 @@ def db_path(tmp_path: Path) -> Path:
         ),
     ]
     conn.executemany(
-        """
+        f"""
         INSERT INTO cards (
             cardId, importId, imageUrl, thumbUrl,
             faction, type, rarity, "set",
             title, text, kredits, attack, defense,
-            attributes, operationCost, reserved,
+            {_ABILITY_COLS},
+            operationCost, reserved,
             image, can_create, exile, quantity
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {_ABILITY_PLACEHOLDERS}, ?, ?, ?, ?, ?, ?)
         """,
         cards,
     )

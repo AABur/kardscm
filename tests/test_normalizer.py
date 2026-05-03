@@ -66,8 +66,9 @@ def test_normalize_with_attributes():
     node = _make_node(attributes=["blitz", "guard"])
     result = normalize_card(node)
     assert result is not None
-    attrs = json.loads(result["attributes"])
-    assert attrs == ["blitz", "guard"]
+    assert result["ability_blitz"] == 1
+    assert result["ability_guard"] == 1
+    assert result["ability_alpine"] == 0
 
 
 def test_normalize_no_card_id():

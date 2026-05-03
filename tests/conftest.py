@@ -7,13 +7,20 @@ import sqlite3
 
 import pytest
 
+from kardscm.constants import KNOWN_ABILITIES
 from kardscm.models import CardDict
 from kardscm.storage import get_connection, initialize_schema
+
+
+def _zero_abilities() -> dict:
+    return {f"ability_{a}": 0 for a in KNOWN_ABILITIES}
 
 
 @pytest.fixture()
 def sample_card() -> CardDict:
     """Sample CardDict for reuse across tests."""
+    abilities = _zero_abilities()
+    abilities["ability_guard"] = 1
     return CardDict(
         cardId="card-soviet-1",
         importId="imp-1",
@@ -28,7 +35,7 @@ def sample_card() -> CardDict:
         kredits=1,
         attack=1,
         defense=2,
-        attributes=json.dumps(["guard"]),
+        **abilities,
         operationCost=None,
         reserved=0,
         image="img.png",
@@ -52,7 +59,7 @@ def make_card():
     """Factory fixture for creating test card dicts with defaults."""
 
     def _factory(**overrides):
-        base = {
+        base: dict = {
             "cardId": "card-1",
             "importId": "imp-1",
             "imageUrl": "",
@@ -66,7 +73,7 @@ def make_card():
             "kredits": 2,
             "attack": 3,
             "defense": 2,
-            "attributes": json.dumps([]),
+            **_zero_abilities(),
             "operationCost": None,
             "reserved": 0,
             "image": "",

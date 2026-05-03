@@ -7,8 +7,11 @@ import sqlite3
 
 import pytest
 
+from kardscm.constants import KNOWN_ABILITIES
 from kardscm.storage.database import initialize_schema
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
+
+_ABILITY_COLS = [f"ability_{a}" for a in KNOWN_ABILITIES]
 
 
 def _make_card(
@@ -25,7 +28,6 @@ def _make_card(
     kredits: int = 1,
     attack: int | None = 1,
     defense: int | None = 1,
-    attributes: list[str] | None = None,
     operation_cost: int | None = None,
     reserved: int = 0,
     can_create: str | None = None,
@@ -33,7 +35,6 @@ def _make_card(
 ) -> tuple:
     title = json.dumps({"en-EN": title_en, "ru-RU": title_ru})
     text = json.dumps({"en-EN": text_en, "ru-RU": text_ru})
-    attrs = json.dumps(attributes or [])
     return (
         card_id,
         "",  # importId
@@ -48,7 +49,7 @@ def _make_card(
         kredits,
         attack,
         defense,
-        attrs,
+        *(0 for _ in KNOWN_ABILITIES),
         operation_cost,
         reserved,
         "",  # image
@@ -133,15 +134,18 @@ def conn() -> sqlite3.Connection:
             quantity=0,
         ),
     ]
+    ability_cols = ", ".join(_ABILITY_COLS)
+    ability_placeholders = ", ".join("?" for _ in KNOWN_ABILITIES)
     conn.executemany(
-        """
+        f"""
         INSERT INTO cards (
             cardId, importId, imageUrl, thumbUrl,
             faction, type, rarity, "set",
             title, text, kredits, attack, defense,
-            attributes, operationCost, reserved,
+            {ability_cols},
+            operationCost, reserved,
             image, can_create, exile, quantity
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, {ability_placeholders}, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )

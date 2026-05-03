@@ -71,16 +71,11 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     set_api = card.get("set", "")
     set_name = lang_config.set_names.get(set_api, set_api)
 
-    # Format attributes
-    attributes_raw = card.get("attributes", "[]")
-    try:
-        attributes_list = json.loads(attributes_raw) if attributes_raw else []
-    except (json.JSONDecodeError, TypeError):
-        attributes_list = []
+    # Format abilities from binary columns
+    from kardscm.constants import KNOWN_ABILITIES
+
     abilities = ", ".join(
-        lang_config.ability_names.get(a, a)
-        for a in attributes_list
-        if a in lang_config.ability_names
+        lang_config.ability_names.get(a, a) for a in KNOWN_ABILITIES if card.get(f"ability_{a}", 0)
     )
 
     return {
