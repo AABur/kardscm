@@ -87,7 +87,7 @@ def get_connection(db_path: str | Path) -> sqlite3.Connection:
     return conn
 
 
-def initialize_schema(conn: sqlite3.Connection, db_path: Path | None = None) -> None:
+def initialize_schema(conn: sqlite3.Connection, db_path: str | Path | None = None) -> None:
     """Initialize database schema, migrating old schemas when detected.
 
     Two legacy schemas are recognized:
@@ -114,7 +114,7 @@ def initialize_schema(conn: sqlite3.Connection, db_path: Path | None = None) -> 
         if "attributes" in columns:
             backup_msg = ""
             if db_path is not None:
-                backup = Path(db_path).with_suffix(".db.bak")
+                backup = Path(str(db_path) + ".bak")
                 shutil.copy2(db_path, backup)
                 backup_msg = f" Backup saved to {backup}."
             conn.executescript(

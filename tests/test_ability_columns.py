@@ -1,8 +1,4 @@
-"""Failing tests for Stage 2: binary ability columns replacing attributes JSON.
-
-These tests describe the desired end-state and fail until the implementation
-is complete.
-"""
+"""Tests for Stage 2: binary ability columns replacing attributes JSON."""
 
 from __future__ import annotations
 
@@ -83,9 +79,10 @@ def test_old_schema_creates_backup(tmp_path):
     backup_path = tmp_path / "collection.db.bak"
     _make_old_db(db_path)
 
+    conn = get_connection(db_path)
     with pytest.raises(SystemExit):
-        conn = get_connection(db_path)
         initialize_schema(conn, db_path)
+    conn.close()
 
     assert backup_path.exists(), "backup was not created"
 
@@ -94,9 +91,10 @@ def test_old_schema_backup_contains_original_data(tmp_path):
     db_path = tmp_path / "collection.db"
     _make_old_db(db_path)
 
+    conn = get_connection(db_path)
     with pytest.raises(SystemExit):
-        conn = get_connection(db_path)
         initialize_schema(conn, db_path)
+    conn.close()
 
     bak = sqlite3.connect(str(tmp_path / "collection.db.bak"))
     row = bak.execute("SELECT attributes FROM cards WHERE cardId='abc'").fetchone()
@@ -109,9 +107,10 @@ def test_old_schema_exit_message_mentions_backup(tmp_path):
     db_path = tmp_path / "collection.db"
     _make_old_db(db_path)
 
+    conn = get_connection(db_path)
     with pytest.raises(SystemExit) as exc_info:
-        conn = get_connection(db_path)
         initialize_schema(conn, db_path)
+    conn.close()
 
     message = str(exc_info.value)
     assert "bak" in message.lower() or "backup" in message.lower()
@@ -122,10 +121,10 @@ def test_after_migration_new_schema_is_created(tmp_path):
     db_path = tmp_path / "collection.db"
     _make_old_db(db_path)
 
+    conn = get_connection(db_path)
     with pytest.raises(SystemExit):
-        conn = get_connection(db_path)
         initialize_schema(conn, db_path)
-        conn.close()
+    conn.close()
 
     conn2 = get_connection(db_path)
     initialize_schema(conn2, db_path)
