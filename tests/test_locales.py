@@ -38,6 +38,9 @@ alpine = "Alpine"
 mobilize = "Mobilize"
 salvage = "Salvage"
 
+[extra_abilities]
+pincer = "Pincer"
+
 [nation_display_names]
 soviet = "Soviet"
 finland = "Finnish"

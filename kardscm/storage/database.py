@@ -5,18 +5,27 @@ from __future__ import annotations
 import logging
 import shutil
 import sqlite3
+import tomllib
 from collections.abc import Iterable
 from pathlib import Path
 
-from kardscm.constants import DECK_NATION_TO_DB, KNOWN_ABILITIES
+from kardscm.constants import DECK_NATION_TO_DB, KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
 from kardscm.helpers import sanitize_text
 from kardscm.models import CardDict, DeckCardEntry, ParsedDeck
 
 logger = logging.getLogger(__name__)
 
+_EXTRA_ABILITIES_TOML = Path(__file__).parent.parent / "data" / "extra_abilities.toml"
+
 
 def _ability_columns_sql() -> str:
     return "\n".join(f"    ability_{a} INTEGER NOT NULL DEFAULT 0," for a in KNOWN_ABILITIES)
+
+
+def _extra_ability_columns_sql() -> str:
+    return "\n".join(
+        f"    extra_ability_{a} INTEGER NOT NULL DEFAULT 0," for a in KNOWN_EXTRA_ABILITIES
+    )
 
 
 SCHEMA_SQL = f"""
@@ -35,6 +44,7 @@ CREATE TABLE IF NOT EXISTS cards (
     attack INTEGER,
     defense INTEGER,
 {_ability_columns_sql()}
+{_extra_ability_columns_sql()}
     operationCost INTEGER,
     reserved INTEGER NOT NULL DEFAULT 0,
     image TEXT,
@@ -129,6 +139,59 @@ def initialize_schema(conn: sqlite3.Connection, db_path: str | Path | None = Non
                 "Run 'kardscm sync' to rebuild your collection."
             )
     conn.executescript(SCHEMA_SQL)
+    _ensure_extra_ability_columns(conn)
+
+
+def _ensure_extra_ability_columns(conn: sqlite3.Connection) -> None:
+    """Add any missing extra_ability_* columns via ALTER TABLE (idempotent).
+
+    Allows growing ``KNOWN_EXTRA_ABILITIES`` without forcing re-sync.
+    Called from ``initialize_schema``; safe to call repeatedly.
+    """
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(cards)").fetchall()}
+    for ability in KNOWN_EXTRA_ABILITIES:
+        col = f"extra_ability_{ability}"
+        if col not in existing:
+            conn.execute(f"ALTER TABLE cards ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
+
+
+def _load_extra_abilities_seed() -> dict[str, list[str]]:
+    """Read the bundled TOML seed → {ability_key: [cardId, ...]}."""
+    with _EXTRA_ABILITIES_TOML.open("rb") as f:
+        data = tomllib.load(f)
+    return {
+        key: list(section.get("cards", [])) for key, section in data.get("abilities", {}).items()
+    }
+
+
+def apply_extra_abilities_seed(
+    conn: sqlite3.Connection, seed: dict[str, list[str]] | None = None
+) -> None:
+    """Apply manually-curated extra-ability flags to the cards table.
+
+    For each ability in ``KNOWN_EXTRA_ABILITIES``: reset the column to 0
+    across all cards, then set 1 for cardIds listed in the seed. Unknown
+    ability keys and non-existent cardIds are silently ignored.
+
+    Args:
+        conn: SQLite connection.
+        seed: Mapping ``ability_key → [cardId, ...]``. If None, loads
+            from the bundled ``kardscm/data/extra_abilities.toml``.
+    """
+    if seed is None:
+        seed = _load_extra_abilities_seed()
+    for ability in KNOWN_EXTRA_ABILITIES:
+        col = f"extra_ability_{ability}"
+        conn.execute(f"UPDATE cards SET {col} = 0")
+        card_ids = seed.get(ability, [])
+        if not card_ids:
+            continue
+        placeholders = ", ".join("?" for _ in card_ids)
+        conn.execute(
+            f"UPDATE cards SET {col} = 1 WHERE cardId IN ({placeholders})",
+            tuple(card_ids),
+        )
+    conn.commit()
 
 
 def set_metadata(conn: sqlite3.Connection, key: str, value: str) -> None:

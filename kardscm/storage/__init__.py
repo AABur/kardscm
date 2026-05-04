@@ -1,6 +1,7 @@
 """Storage subpackage for card database management."""
 
 from kardscm.storage.database import (
+    apply_extra_abilities_seed,
     delete_all_decks,
     delete_cards,
     delete_deck,
@@ -22,6 +23,7 @@ from kardscm.storage.database import (
 )
 
 __all__ = [
+    "apply_extra_abilities_seed",
     "delete_all_decks",
     "delete_cards",
     "delete_deck",

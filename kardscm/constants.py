@@ -107,6 +107,19 @@ KNOWN_ABILITIES: tuple[str, ...] = (
     "smokescreen",
 )
 
+# === Extra abilities ===
+# Manually-curated tags that are visible only in the game client UI and don't
+# come from the GraphQL API. Membership of cards-per-ability is stored in
+# kardscm/data/extra_abilities.toml and applied to extra_ability_<key>
+# columns during `kardscm sync`.
+KNOWN_EXTRA_ABILITIES: tuple[str, ...] = (
+    "pincer",
+    "resistance",
+    "legions",
+    "sissi",
+    "destruction",
+)
+
 # === Database ===
 DEFAULT_DB_PATH = "collection.db"
 
