@@ -43,6 +43,7 @@ class CardFilters:
     rarities: list[str] = field(default_factory=list)
     sets: list[str] = field(default_factory=list)
     kredits: list[int] = field(default_factory=list)
+    abilities: list[str] = field(default_factory=list)
     text_query: str = ""
     include_spawnable: bool = False
     include_reserved: bool = False
@@ -87,6 +88,16 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
         placeholders = ",".join("?" for _ in filters.kredits)
         where.append(f"kredits IN ({placeholders})")
         params.extend(filters.kredits)
+
+    if filters.abilities:
+        # Whitelist against KNOWN_ABILITIES — column names cannot be
+        # parameterized so unsafe input must be rejected before string
+        # interpolation. OR semantics: card matches if ANY selected
+        # ability is set.
+        valid = [a for a in filters.abilities if a in KNOWN_ABILITIES]
+        if valid:
+            clauses = " OR ".join(f"ability_{a} = 1" for a in valid)
+            where.append(f"({clauses})")
 
     if filters.text_query:
         where.append(f"LOWER({_title_expr(locale_key)}) LIKE LOWER(?)")
