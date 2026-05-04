@@ -217,6 +217,22 @@ class TestFilters:
         result = query_cards(conn, CardFilters(text_query="RIFLES"), locale_key="en-EN")
         assert _ids(result) == ["sov_inf_1"]
 
+    def test_text_search_matches_text_en(self, conn):
+        # "standard" appears in text_en of sov_inf_1 but not in its title
+        result = query_cards(conn, CardFilters(text_query="standard"), locale_key="en-EN")
+        assert "sov_inf_1" in _ids(result)
+
+    def test_text_search_matches_text_ru(self, conn):
+        # "обычные" appears in text_ru of sov_inf_1 — exact-case (SQLite LOWER is ASCII-only)
+        result = query_cards(conn, CardFilters(text_query="обычные"), locale_key="ru-RU")
+        assert "sov_inf_1" in _ids(result)
+
+    def test_text_search_no_double_count(self, conn):
+        # sov_inf_1 matches both title ("Soviet Rifles") and text ("standard rifles")
+        # via the word "rifles" — must appear exactly once
+        result = query_cards(conn, CardFilters(text_query="rifles"), locale_key="en-EN")
+        assert _ids(result).count("sov_inf_1") == 1
+
     def test_owned_only(self, conn):
         result = query_cards(conn, CardFilters(owned_only=True))
         # quantities: sov_inf_1=2, sov_tank_1=0, ger_inf_1=3, usa_order=1
