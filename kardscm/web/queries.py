@@ -100,8 +100,11 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
             where.append(f"({clauses})")
 
     if filters.text_query:
-        where.append(f"LOWER({_title_expr(locale_key)}) LIKE LOWER(?)")
-        params.append(f"%{filters.text_query}%")
+        text_expr = f"json_extract(text, '$.\"{locale_key}\"')"
+        where.append(
+            f"(LOWER({_title_expr(locale_key)}) LIKE LOWER(?) OR LOWER({text_expr}) LIKE LOWER(?))"
+        )
+        params.extend([f"%{filters.text_query}%", f"%{filters.text_query}%"])
 
     if filters.owned_only:
         where.append("quantity > 0")
