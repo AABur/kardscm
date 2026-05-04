@@ -176,6 +176,12 @@ class TestCardsPartial:
         assert "Panzer" in r.text
         assert "Soviet Rifles" not in r.text
 
+    def test_filter_text_search_by_description(self, client: TestClient) -> None:
+        # "Standard rifles." is in text_en of sov_inf, not in its title
+        r = client.get("/cards", params={"q": "Standard rifles."})
+        assert "Soviet Rifles" in r.text
+        assert "Panzer" not in r.text
+
     def test_owned_only_excludes_zero_qty(self, client: TestClient) -> None:
         r = client.get("/cards", params={"owned": "true"})
         assert "Soviet Rifles" in r.text  # qty=2
