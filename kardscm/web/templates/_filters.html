@@ -63,6 +63,17 @@
     {% endfor %}
   </fieldset>
 
+  <fieldset class="filter-group">
+    <legend>{{ ui.filter_abilities if ui.filter_abilities else 'Abilities' }}</legend>
+    {% for value, label in facets.abilities %}
+      <label class="chip">
+        <input type="checkbox" name="abilities" value="{{ value }}"
+          {% if value in filters.abilities %}checked{% endif %}>
+        {{ label }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
   <div class="filter-row">
     <input
       id="search-input"

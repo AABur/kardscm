@@ -65,6 +65,7 @@ def _read_filters(
     rarities: list[str],
     sets: list[str],
     kredits: list[int],
+    abilities: list[str],
     q: str,
     spawnable: bool,
     reserved: bool,
@@ -76,6 +77,7 @@ def _read_filters(
         rarities=rarities,
         sets=sets,
         kredits=kredits,
+        abilities=abilities,
         text_query=q.strip(),
         include_spawnable=spawnable,
         include_reserved=reserved,
@@ -143,6 +145,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
                     "rarities": [(r, cfg.rarity_names.get(r, r)) for r in RARITIES],
                     "sets": [(s, cfg.set_names.get(s, s)) for s in SETS],
                     "kredits": KREDITS_RANGE,
+                    "abilities": [(a, cfg.ability_names.get(a, a)) for a in KNOWN_ABILITIES],
                 },
                 "headers": cfg.export_headers,
                 "ui": cfg.ui_strings,
@@ -158,6 +161,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         rarities: list[str] = Query(default=[]),
         sets: list[str] = Query(default=[]),
         kredits: list[int] = Query(default=[]),
+        abilities: list[str] = Query(default=[]),
         q: str = Query(default=""),
         spawnable: bool = Query(default=False),
         reserved: bool = Query(default=False),
@@ -166,7 +170,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
         filters = _read_filters(
-            factions, types, rarities, sets, kredits, q, spawnable, reserved, owned
+            factions, types, rarities, sets, kredits, abilities, q, spawnable, reserved, owned
         )
         return render_table(request, filters, sort, direction, "index.html")
 
@@ -178,6 +182,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         rarities: list[str] = Query(default=[]),
         sets: list[str] = Query(default=[]),
         kredits: list[int] = Query(default=[]),
+        abilities: list[str] = Query(default=[]),
         q: str = Query(default=""),
         spawnable: bool = Query(default=False),
         reserved: bool = Query(default=False),
@@ -186,7 +191,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
         filters = _read_filters(
-            factions, types, rarities, sets, kredits, q, spawnable, reserved, owned
+            factions, types, rarities, sets, kredits, abilities, q, spawnable, reserved, owned
         )
         return render_table(request, filters, sort, direction, "_table.html")
 
