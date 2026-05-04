@@ -64,7 +64,7 @@
   </fieldset>
 
   <fieldset class="filter-group">
-    <legend>{{ ui.filter_abilities if ui.filter_abilities else 'Abilities' }}</legend>
+    <legend>{{ ui.filter_abilities }}</legend>
     {% for value, label in facets.abilities %}
       <label class="chip">
         <input type="checkbox" name="abilities" value="{{ value }}"
