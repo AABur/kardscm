@@ -32,6 +32,7 @@ def _make_card(
     reserved: int = 0,
     can_create: str | None = None,
     quantity: int = 0,
+    abilities: frozenset[str] = frozenset(),
 ) -> tuple:
     title = json.dumps({"en-EN": title_en, "ru-RU": title_ru})
     text = json.dumps({"en-EN": text_en, "ru-RU": text_ru})
@@ -49,7 +50,7 @@ def _make_card(
         kredits,
         attack,
         defense,
-        *(0 for _ in KNOWN_ABILITIES),
+        *(1 if a in abilities else 0 for a in KNOWN_ABILITIES),
         operation_cost,
         reserved,
         "",  # image
@@ -76,6 +77,7 @@ def conn() -> sqlite3.Connection:
             text_ru="обычные стрелки",
             kredits=2,
             quantity=2,
+            abilities=frozenset({"blitz"}),
         ),
         _make_card(
             card_id="sov_tank_1",
@@ -89,6 +91,7 @@ def conn() -> sqlite3.Connection:
             attack=3,
             defense=4,
             quantity=0,
+            abilities=frozenset({"guard"}),
         ),
         _make_card(
             card_id="ger_inf_1",
@@ -114,6 +117,7 @@ def conn() -> sqlite3.Connection:
             defense=None,
             operation_cost=2,
             quantity=1,
+            abilities=frozenset({"blitz"}),
         ),
         _make_card(
             card_id="reserved_card",
@@ -232,6 +236,38 @@ class TestFilters:
             CardFilters(factions=["Soviet"], types=["tank"]),
         )
         assert _ids(result) == ["sov_tank_1"]
+
+
+class TestAbilityFilter:
+    def test_no_ability_filter_returns_all(self, conn):
+        result = query_cards(conn, CardFilters())
+        assert len(result) == 4
+
+    def test_filter_by_single_ability(self, conn):
+        result = query_cards(conn, CardFilters(abilities=["guard"]))
+        assert _ids(result) == ["sov_tank_1"]
+
+    def test_filter_by_multiple_abilities_uses_or(self, conn):
+        result = query_cards(conn, CardFilters(abilities=["blitz", "guard"]))
+        # blitz: sov_inf_1, usa_order; guard: sov_tank_1
+        assert set(_ids(result)) == {"sov_inf_1", "sov_tank_1", "usa_order"}
+
+    def test_filter_unknown_ability_silently_ignored(self, conn):
+        # Unknown name not in KNOWN_ABILITIES → treated as if not provided
+        result = query_cards(conn, CardFilters(abilities=["bogus_ability_x"]))
+        assert len(result) == 4
+
+    def test_unknown_mixed_with_known_keeps_known(self, conn):
+        result = query_cards(conn, CardFilters(abilities=["guard", "bogus"]))
+        assert _ids(result) == ["sov_tank_1"]
+
+    def test_ability_combines_with_faction_via_and(self, conn):
+        # Soviet ∩ blitz → only sov_inf_1 (usa_order has blitz but not Soviet)
+        result = query_cards(
+            conn,
+            CardFilters(factions=["Soviet"], abilities=["blitz"]),
+        )
+        assert _ids(result) == ["sov_inf_1"]
 
 
 class TestSort:

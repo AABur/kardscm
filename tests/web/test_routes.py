@@ -24,6 +24,7 @@ def db_path(tmp_path: Path) -> Path:
     conn = get_connection(db_file)
     initialize_schema(conn)
     _ha1 = tuple(1 if a == "heavyArmor1" else 0 for a in KNOWN_ABILITIES)
+    _blitz = tuple(1 if a == "blitz" else 0 for a in KNOWN_ABILITIES)
     cards = [
         (
             "sov_inf",
@@ -39,7 +40,7 @@ def db_path(tmp_path: Path) -> Path:
             2,
             1,
             2,
-            *_ZERO_ABILITIES,
+            *_blitz,
             None,
             0,
             "",
@@ -137,7 +138,14 @@ class TestIndex:
         r = client.get("/")
         assert 'id="filters"' in r.text
         assert 'name="factions"' in r.text
+        assert 'name="abilities"' in r.text
         assert 'name="q"' in r.text
+
+    def test_index_renders_ability_chip_labels(self, client: TestClient) -> None:
+        r = client.get("/")
+        # English labels from LANGUAGE_EN.ability_names
+        assert "Blitz" in r.text
+        assert "Guard" in r.text
 
     def test_index_counter_visible(self, client: TestClient) -> None:
         r = client.get("/")
@@ -176,6 +184,23 @@ class TestCardsPartial:
     def test_include_reserved(self, client: TestClient) -> None:
         r = client.get("/cards", params={"reserved": "true"})
         assert "Reserved" in r.text
+
+    def test_filter_by_single_ability(self, client: TestClient) -> None:
+        r = client.get("/cards", params={"abilities": "blitz"})
+        # sov_inf has blitz; ger_tank has heavyArmor1 only
+        assert "Soviet Rifles" in r.text
+        assert "Panzer" not in r.text
+
+    def test_filter_by_multiple_abilities_or(self, client: TestClient) -> None:
+        r = client.get("/cards", params=[("abilities", "blitz"), ("abilities", "heavyArmor1")])
+        assert "Soviet Rifles" in r.text
+        assert "Panzer" in r.text
+
+    def test_filter_by_unknown_ability_ignored(self, client: TestClient) -> None:
+        r = client.get("/cards", params={"abilities": "bogus"})
+        # Unknown ability → no filter → both visible
+        assert "Soviet Rifles" in r.text
+        assert "Panzer" in r.text
 
 
 class TestQuantityUpdate:
