@@ -140,6 +140,7 @@ def initialize_schema(conn: sqlite3.Connection, db_path: str | Path | None = Non
             )
     conn.executescript(SCHEMA_SQL)
     _ensure_extra_ability_columns(conn)
+    _bootstrap_extra_abilities_if_empty(conn)
 
 
 def _ensure_extra_ability_columns(conn: sqlite3.Connection) -> None:
@@ -153,6 +154,24 @@ def _ensure_extra_ability_columns(conn: sqlite3.Connection) -> None:
         col = f"extra_ability_{ability}"
         if col not in existing:
             conn.execute(f"ALTER TABLE cards ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
+
+
+def _bootstrap_extra_abilities_if_empty(conn: sqlite3.Connection) -> None:
+    """Apply the seed only when no extra_ability_* flag is set anywhere.
+
+    Triggers on the first startup after a fresh install or schema upgrade
+    so users see filter results without having to run a full ``sync``.
+    Skipped on subsequent calls so any user-set flags (future per-card
+    editing) survive restarts. Sync still calls ``apply_extra_abilities_seed``
+    explicitly to re-apply seed authoritatively.
+    """
+    if not KNOWN_EXTRA_ABILITIES:
+        return
+    sum_expr = " + ".join(f"COALESCE(SUM(extra_ability_{a}), 0)" for a in KNOWN_EXTRA_ABILITIES)
+    row = conn.execute(f"SELECT {sum_expr} FROM cards").fetchone()
+    total = (row[0] or 0) if row else 0
+    if total == 0:
+        apply_extra_abilities_seed(conn)
 
 
 def _load_extra_abilities_seed() -> dict[str, list[str]]:
