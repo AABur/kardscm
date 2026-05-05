@@ -118,6 +118,7 @@ KNOWN_EXTRA_ABILITIES: tuple[str, ...] = (
     "legions",
     "sissi",
     "destruction",
+    "naval",
 )
 
 # === Database ===
