@@ -152,5 +152,37 @@ cards = [
 ]
 
 [abilities.naval]
-# Awaiting screenshots from user — no API search term known.
-cards = []
+# Manually entered from in-game screenshots — the "Морская" subtype is
+# not exposed by the public GraphQL API in any structured field.
+cards = [
+  "ijn_mikura",
+  "orp_orze",
+  "rm_bersagliere",
+  "hms_sceptre",
+  "ijn_shirakumo",
+  "u16",
+  "u375",
+  "uss_archerfish",
+  "uss_yorktown",
+  "blockade",
+  "km_admiral_hipper",
+  "km_tirpitz",
+  "hms_hermes",
+  "orp_general_haller",
+  "ijn_yamato",
+  "uss_the_sullivans",
+  "bpf",
+  "1st_san_marco",
+  "hms_illustrious",
+  "ijn_shinano",
+  "orp_byskawica",
+  "u48",
+  "km_bismarck",
+  "uss_fitch",
+  "uss_missouri",
+  "hms_belfast",
+  "hms_formidable",
+  "ijn_akagi",
+  "rm_roma",
+  "km_prinz_eugen",
+]
