@@ -36,25 +36,40 @@ def _check_api_drift(raw_cards: list[dict], lang_config: LanguageConfig) -> None
     """Compare observed snapshot vs committed baseline; write drift report on changes.
 
     On first run (no baseline file) — initialize the baseline silently.
+    All disk writes are wrapped: any IO failure is logged and swallowed
+    so drift detection cannot abort the sync (per design intent).
     """
     observed = build_snapshot(raw_cards)
     baseline = load_baseline()
     if baseline is None:
-        save_baseline(observed)
-        logger.info("API baseline initialized from current sync (first run).")
+        try:
+            save_baseline(observed)
+            logger.info("API baseline initialized from current sync (first run).")
+        except OSError as exc:
+            logger.warning(
+                "Failed to write initial baseline (%s); drift detection disabled for this run.",
+                exc,
+            )
         return
     drift = diff_snapshots(baseline, observed)
     if not drift.has_changes():
         return
     report_path, observed_path = _drift_report_paths()
-    report_path.write_text(format_drift_report_md(drift, lang_config), encoding="utf-8")
-    write_observed(observed, observed_path)
-    logger.warning(
-        "API drift detected (%d items). Report: %s | Observed: %s",
-        drift.count(),
-        report_path,
-        observed_path,
-    )
+    try:
+        report_path.write_text(format_drift_report_md(drift, lang_config), encoding="utf-8")
+        write_observed(observed, observed_path)
+        logger.warning(
+            "API drift detected (%d items). Report: %s | Observed: %s",
+            drift.count(),
+            report_path,
+            observed_path,
+        )
+    except OSError as exc:
+        logger.warning(
+            "API drift detected (%d items) but report write failed (%s).",
+            drift.count(),
+            exc,
+        )
 
 
 def scrape_cards(language: str = "en", lang_config: LanguageConfig | None = None) -> list[CardDict]:

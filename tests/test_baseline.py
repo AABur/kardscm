@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
+
+import pytest
 
 from kardscm.scraping.baseline import (
     DriftReport,
@@ -242,5 +245,129 @@ class TestDriftReportSemantics:
         report.added_node_keys.append("foo")
         assert report.has_changes()
 
+    def test_has_changes_true_when_presence_dropped(self) -> None:
+        report = DriftReport()
+        report.presence_dropped_json_keys.append("attack: 100% -> 70%")
+        assert report.has_changes()
+
     def test_has_changes_false_when_empty(self) -> None:
         assert not DriftReport().has_changes()
+
+
+class TestPresenceDropDetection:
+    def test_key_drops_from_full_to_partial(self) -> None:
+        # baseline: attack on all 10 cards. observed: attack on only 5.
+        baseline = build_snapshot([_node(card_id=f"c{i}") for i in range(10)])
+        # Build observed where half of cards lack `attack` in their json
+        nodes = [_node(card_id=f"c{i}") for i in range(10)]
+        for n in nodes[:5]:
+            del n["json"]["attack"]
+        observed = build_snapshot(nodes)
+        report = diff_snapshots(baseline, observed)
+        assert any("attack" in s for s in report.presence_dropped_json_keys)
+
+    def test_no_drop_when_ratio_below_threshold(self) -> None:
+        # 100% baseline → 99% observed (1 missing of 100). Below 5pp threshold.
+        baseline = build_snapshot([_node(card_id=f"c{i}") for i in range(100)])
+        nodes = [_node(card_id=f"c{i}") for i in range(100)]
+        del nodes[0]["json"]["attack"]
+        observed = build_snapshot(nodes)
+        report = diff_snapshots(baseline, observed)
+        assert not any("attack" in s for s in report.presence_dropped_json_keys)
+
+
+class TestBaselineCommands:
+    def test_accept_no_observed_files_exits(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(SystemExit, match="No sync-schema-observed"):
+            baseline_accept()
+
+    def test_accept_malformed_json_exits(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "sync-schema-observed-2026.json").write_text("{not json")
+        with pytest.raises(SystemExit, match="Cannot parse"):
+            baseline_accept()
+
+    def test_accept_non_dict_root_exits(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "sync-schema-observed-2026.json").write_text("[]")
+        with pytest.raises(SystemExit, match="not a snapshot object"):
+            baseline_accept()
+
+    def test_accept_missing_required_keys_exits(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "sync-schema-observed-2026.json").write_text(
+            json.dumps({"card_count": 10, "node_keys": []})
+        )
+        with pytest.raises(SystemExit, match="missing required keys"):
+            baseline_accept()
+
+    def test_accept_wrong_type_for_card_count_exits(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "sync-schema-observed-2026.json").write_text(
+            json.dumps(
+                {
+                    "card_count": "ten",  # wrong type
+                    "node_keys": [],
+                    "json_keys": {},
+                    "enum_values": {},
+                }
+            )
+        )
+        with pytest.raises(SystemExit, match="card_count must be an int"):
+            baseline_accept()
+
+    def test_accept_picks_latest_observed_file(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+        from kardscm.scraping import baseline as bm
+
+        monkeypatch.chdir(tmp_path)
+        baseline_path = tmp_path / "baseline.json"
+        monkeypatch.setattr(bm, "BASELINE_PATH", baseline_path)
+
+        valid = {
+            "card_count": 10,
+            "node_keys": ["cardId"],
+            "json_keys": {"title": 10},
+            "enum_values": {"faction": ["Soviet"]},
+        }
+        # Older file
+        (tmp_path / "sync-schema-observed-2026-01-01T00-00-00Z.json").write_text(
+            json.dumps({**valid, "card_count": 1})
+        )
+        # Newer file (chosen)
+        (tmp_path / "sync-schema-observed-2026-12-31T23-59-59Z.json").write_text(
+            json.dumps({**valid, "card_count": 999})
+        )
+        baseline_accept()
+        promoted = json.loads(baseline_path.read_text())
+        assert promoted["card_count"] == 999
+
+    def test_init_writes_baseline_from_live_fetch(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_init
+        from kardscm.scraping import baseline as bm
+
+        baseline_path = tmp_path / "baseline.json"
+        monkeypatch.setattr(bm, "BASELINE_PATH", baseline_path)
+
+        fake_nodes = [_node(card_id="a"), _node(card_id="b")]
+        # baseline_init imports these locally — patch at their source modules.
+        with (
+            patch("kardscm.scraping.fetcher.fetch_all_cards", return_value=fake_nodes),
+            patch("kardscm.scraping.probe.build_static_probe"),
+        ):
+            baseline_init(lang="en")
+
+        assert baseline_path.exists()
+        loaded = json.loads(baseline_path.read_text())
+        assert loaded["card_count"] == 2

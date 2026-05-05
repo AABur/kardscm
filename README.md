@@ -83,6 +83,26 @@ single y/N. Any "no" aborts the sync — the DB is left untouched. A
 Markdown diff report (`./sync-diff-<UTC-iso>.md` by default) is written
 whenever the diff is non-empty.
 
+Sync also runs **API contract drift detection**: it compares the observed
+shape of the GraphQL response (top-level node keys, JSON keys with
+presence ratios, distinct enum values for faction/type/rarity/set/
+attributes, card count) against `kardscm/data/api_baseline.json`. On any
+divergence, sync writes a `sync-schema-diff-<UTC-iso>.md` report and a
+companion `sync-schema-observed-*.json` snapshot to the current directory
+and continues — drift never aborts a sync.
+
+### Manage the API baseline
+
+```bash
+kardscm baseline init      # fetch live API → overwrite the committed baseline
+kardscm baseline accept    # promote the latest sync-schema-observed-*.json
+```
+
+Use `init` once after cloning the repo or after intentional API changes.
+Use `accept` after reviewing a `sync-schema-diff-*.md` report and updating
+any constants/translations to acknowledge the new API shape — the latest
+observed snapshot in cwd is validated and copied to the baseline file.
+
 ### Export collection
 
 ```bash

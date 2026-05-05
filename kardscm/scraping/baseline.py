@@ -24,6 +24,11 @@ if TYPE_CHECKING:
 _TRACKED_ENUM_FIELDS: tuple[str, ...] = ("faction", "type", "rarity", "set")
 # Threshold for INFO-level card-count delta.
 _CARD_COUNT_DELTA_PCT_THRESHOLD = 5.0
+# A JSON key whose presence ratio (count / card_count) drops by at least
+# this many percentage points is flagged as drift — catches "field
+# disappeared from some cards" without false-positives from card-count
+# fluctuation alone.
+_PRESENCE_RATIO_DROP_THRESHOLD = 0.05
 
 BASELINE_PATH: Path = Path(__file__).parent.parent / "data" / "api_baseline.json"
 
@@ -46,6 +51,9 @@ class DriftReport:
     removed_node_keys: list[str] = field(default_factory=list)
     added_json_keys: list[str] = field(default_factory=list)
     removed_json_keys: list[str] = field(default_factory=list)
+    # JSON keys whose presence ratio dropped (was on most cards, now on fewer)
+    # — formatted as "<key>: <baseline_pct>% -> <observed_pct>%".
+    presence_dropped_json_keys: list[str] = field(default_factory=list)
     added_enum_values: dict[str, list[str]] = field(default_factory=dict)
     removed_enum_values: dict[str, list[str]] = field(default_factory=dict)
     card_count_baseline: int = 0
@@ -58,6 +66,7 @@ class DriftReport:
             or self.removed_node_keys
             or self.added_json_keys
             or self.removed_json_keys
+            or self.presence_dropped_json_keys
             or any(self.added_enum_values.values())
             or any(self.removed_enum_values.values())
             or self.card_count_delta_pct is not None
@@ -69,6 +78,7 @@ class DriftReport:
             + len(self.removed_node_keys)
             + len(self.added_json_keys)
             + len(self.removed_json_keys)
+            + len(self.presence_dropped_json_keys)
             + sum(len(v) for v in self.added_enum_values.values())
             + sum(len(v) for v in self.removed_enum_values.values())
             + (1 if self.card_count_delta_pct is not None else 0)
@@ -120,10 +130,24 @@ def diff_snapshots(baseline: Snapshot, observed: Snapshot) -> DriftReport:
     report.added_node_keys = sorted(obs_node - base_node)
     report.removed_node_keys = sorted(base_node - obs_node)
 
-    base_json = set(baseline.get("json_keys", {}).keys())
-    obs_json = set(observed.get("json_keys", {}).keys())
+    base_json_counts = baseline.get("json_keys", {})
+    obs_json_counts = observed.get("json_keys", {})
+    base_json = set(base_json_counts.keys())
+    obs_json = set(obs_json_counts.keys())
     report.added_json_keys = sorted(obs_json - base_json)
     report.removed_json_keys = sorted(base_json - obs_json)
+
+    # Presence-ratio drop: key still exists on both sides, but appears on
+    # fewer cards. Catches "field is becoming optional" or partial data loss.
+    base_total = baseline.get("card_count", 0) or 1
+    obs_total = observed.get("card_count", 0) or 1
+    for key in sorted(base_json & obs_json):
+        base_ratio = base_json_counts[key] / base_total
+        obs_ratio = obs_json_counts[key] / obs_total
+        if base_ratio - obs_ratio >= _PRESENCE_RATIO_DROP_THRESHOLD:
+            report.presence_dropped_json_keys.append(
+                f"{key}: {round(base_ratio * 100)}% -> {round(obs_ratio * 100)}%"
+            )
 
     base_enums = baseline.get("enum_values", {})
     obs_enums = observed.get("enum_values", {})
@@ -164,6 +188,7 @@ def format_drift_report_md(report: DriftReport, lang_config: LanguageConfig) -> 
     section_count = ui.get("schema_drift_section_card_count", "Card count")
     label_added = ui.get("schema_drift_added", "Added")
     label_removed = ui.get("schema_drift_removed", "Removed")
+    label_presence_dropped = ui.get("schema_drift_presence_dropped", "Presence dropped")
 
     lines: list[str] = [f"# {title}", ""]
     lines.append(f"_{report.card_count_baseline} → {report.card_count_observed} cards_")
@@ -177,12 +202,14 @@ def format_drift_report_md(report: DriftReport, lang_config: LanguageConfig) -> 
             lines.append(f"- **{label_removed}:** `{k}`")
         lines.append("")
 
-    if report.added_json_keys or report.removed_json_keys:
+    if report.added_json_keys or report.removed_json_keys or report.presence_dropped_json_keys:
         lines.append(f"## {section_json}")
         for k in report.added_json_keys:
             lines.append(f"- **{label_added}:** `{k}`")
         for k in report.removed_json_keys:
             lines.append(f"- **{label_removed}:** `{k}`")
+        for entry in report.presence_dropped_json_keys:
+            lines.append(f"- **{label_presence_dropped}:** {entry}")
         lines.append("")
 
     if report.added_enum_values or report.removed_enum_values:

@@ -30,7 +30,18 @@ WEB_DIR = Path(__file__).parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
 
-FACTIONS = ["Soviet", "USA", "Britain", "Germany", "Japan", "France", "Italy", "Poland", "Finland"]
+FACTIONS = [
+    "Soviet",
+    "USA",
+    "Britain",
+    "Germany",
+    "Japan",
+    "France",
+    "Italy",
+    "Poland",
+    "Finland",
+    "Neutral",
+]
 TYPES = ["infantry", "tank", "artillery", "fighter", "bomber", "order", "countermeasure"]
 RARITIES = ["Standard", "Limited", "Special", "Elite"]
 SETS = [

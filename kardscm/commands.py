@@ -291,12 +291,16 @@ def baseline_init(*, lang: str | None = None) -> None:
     )
 
 
+_BASELINE_REQUIRED_KEYS = ("card_count", "node_keys", "json_keys", "enum_values")
+
+
 def baseline_accept() -> None:
     """Promote the most recent ``sync-schema-observed-*.json`` to baseline.
 
     Looks for files matching the pattern in cwd, picks the lexicographically
-    latest (timestamps are ISO-like and sort correctly), and copies its
-    content to the committed baseline location.
+    latest (timestamps are ISO-like and sort correctly), validates its
+    structural shape (must be a dict with all required snapshot keys of
+    the correct types), and copies it to the committed baseline location.
     """
     import json
     import shutil
@@ -310,11 +314,25 @@ def baseline_accept() -> None:
             "Run `kardscm sync` first."
         )
     latest = candidates[-1]
-    # Validate JSON before copying
     try:
-        json.loads(latest.read_text(encoding="utf-8"))
+        parsed = json.loads(latest.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         raise SystemExit(f"Cannot parse {latest}: {exc}") from exc
+
+    if not isinstance(parsed, dict):
+        raise SystemExit(f"{latest} is not a snapshot object (got {type(parsed).__name__}).")
+    missing = [k for k in _BASELINE_REQUIRED_KEYS if k not in parsed]
+    if missing:
+        raise SystemExit(f"{latest} is missing required keys: {', '.join(missing)}")
+    if not isinstance(parsed["card_count"], int):
+        raise SystemExit(f"{latest}: card_count must be an int")
+    if not isinstance(parsed["node_keys"], list):
+        raise SystemExit(f"{latest}: node_keys must be a list")
+    if not isinstance(parsed["json_keys"], dict):
+        raise SystemExit(f"{latest}: json_keys must be a dict")
+    if not isinstance(parsed["enum_values"], dict):
+        raise SystemExit(f"{latest}: enum_values must be a dict")
+
     shutil.copy2(latest, BASELINE_PATH)
     logger.info("Baseline updated from %s.", latest.name)
 
