@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import shutil
 import sqlite3
@@ -140,7 +141,7 @@ def initialize_schema(conn: sqlite3.Connection, db_path: str | Path | None = Non
             )
     conn.executescript(SCHEMA_SQL)
     _ensure_extra_ability_columns(conn)
-    _bootstrap_extra_abilities_if_empty(conn)
+    _bootstrap_extra_abilities_if_stale(conn)
 
 
 def _ensure_extra_ability_columns(conn: sqlite3.Connection) -> None:
@@ -156,22 +157,35 @@ def _ensure_extra_ability_columns(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE cards ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
 
 
-def _bootstrap_extra_abilities_if_empty(conn: sqlite3.Connection) -> None:
-    """Apply the seed only when no extra_ability_* flag is set anywhere.
+_SEED_HASH_METADATA_KEY = "extra_abilities_seed_sha256"
 
-    Triggers on the first startup after a fresh install or schema upgrade
-    so users see filter results without having to run a full ``sync``.
-    Skipped on subsequent calls so any user-set flags (future per-card
-    editing) survive restarts. Sync still calls ``apply_extra_abilities_seed``
-    explicitly to re-apply seed authoritatively.
+
+def _seed_file_hash() -> str:
+    """SHA-256 of the bundled seed TOML — invalidates DB state on edit."""
+    return hashlib.sha256(_EXTRA_ABILITIES_TOML.read_bytes()).hexdigest()
+
+
+def _bootstrap_extra_abilities_if_stale(conn: sqlite3.Connection) -> None:
+    """Apply the seed when the bundled file differs from what's stored in DB.
+
+    Detection via SHA-256 of the seed TOML stored in the metadata table.
+    Applies on:
+      - fresh install (no hash stored)
+      - upgrade adding new abilities or correcting cardId lists
+    Skips when the seed is already up-to-date — preserves any future
+    per-card UI edits across restarts. Sync still calls
+    ``apply_extra_abilities_seed`` explicitly to re-apply authoritatively.
     """
     if not KNOWN_EXTRA_ABILITIES:
         return
-    sum_expr = " + ".join(f"COALESCE(SUM(extra_ability_{a}), 0)" for a in KNOWN_EXTRA_ABILITIES)
-    row = conn.execute(f"SELECT {sum_expr} FROM cards").fetchone()
-    total = (row[0] or 0) if row else 0
-    if total == 0:
-        apply_extra_abilities_seed(conn)
+    current_hash = _seed_file_hash()
+    row = conn.execute(
+        "SELECT value FROM metadata WHERE key = ?", (_SEED_HASH_METADATA_KEY,)
+    ).fetchone()
+    stored_hash = row[0] if row else None
+    if stored_hash == current_hash:
+        return
+    apply_extra_abilities_seed(conn)
 
 
 def _load_extra_abilities_seed() -> dict[str, list[str]]:
@@ -216,6 +230,7 @@ def apply_extra_abilities_seed(
         seed: Mapping ``ability_key → [cardId, ...]``. If None, loads
             from the bundled ``kardscm/data/extra_abilities.toml``.
     """
+    seed_provided = seed is not None
     if seed is None:
         seed = _load_extra_abilities_seed()
     if KNOWN_EXTRA_ABILITIES:
@@ -230,6 +245,10 @@ def apply_extra_abilities_seed(
             f"UPDATE cards SET extra_ability_{ability} = 1 WHERE cardId IN ({placeholders})",
             tuple(card_ids),
         )
+    if not seed_provided:
+        # Track the bundled seed file's hash so subsequent startups can
+        # detect changes and re-apply automatically.
+        set_metadata(conn, _SEED_HASH_METADATA_KEY, _seed_file_hash())
     conn.commit()
 
 

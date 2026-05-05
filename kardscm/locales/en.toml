@@ -82,6 +82,7 @@ resistance = "Resistance"
 legions = "Legions"
 sissi = "Sissi"
 destruction = "Destruction"
+naval = "Naval"
 
 [nation_display_names]
 soviet = "Soviet"

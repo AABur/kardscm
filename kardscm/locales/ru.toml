@@ -73,6 +73,7 @@ resistance = "Сопротивление"
 legions = "Легионы"
 sissi = "SISSI"
 destruction = "Уничтожение"
+naval = "Морская"
 
 [nation_display_names]
 soviet = "Советские"

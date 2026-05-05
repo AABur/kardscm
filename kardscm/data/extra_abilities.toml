@@ -1,13 +1,18 @@
 # Manually-curated extra abilities — visible only in the game client UI,
-# not present in the GraphQL API. Edit and re-run `kardscm sync` to apply.
+# not present in the GraphQL API. Edit this file and re-launch
+# `kardscm web` (or `kardscm sync`) to apply: changes are detected via
+# file hash and re-applied automatically.
 #
 # Each section is `[abilities.<key>]` where `<key>` must appear in
 # KNOWN_EXTRA_ABILITIES (kardscm/constants.py). The `cards` array lists
 # cardId values that have this ability.
 #
-# Source: GraphQL `q=<key>` search via scripts/discover_extra_abilities.py.
+# Source: GraphQL `q=<russian-stem>` search via
+# scripts/discover_extra_abilities.py — Russian stems match what the
+# in-game deck-builder URL returns and serve as the source of truth.
 
 [abilities.pincer]
+# q=клещи (ru) → 16 cards
 cards = [
   "128th_rifles",
   "56_jger_regiment",
@@ -25,10 +30,10 @@ cards = [
   "zis2",
   "tupolev_sb2",
   "222nd_guard_rifles",
-  "protect_the_pocket",
 ]
 
 [abilities.resistance]
+# q=Сопротивл (ru) → 9 cards
 cards = [
   "resistance_b",
   "unexpected_resistance",
@@ -42,6 +47,7 @@ cards = [
 ]
 
 [abilities.legions]
+# q=ЛЕГИОН (ru) → 9 cards
 cards = [
   "5th_legions_regiment",
   "first_to_fight",
@@ -55,6 +61,7 @@ cards = [
 ]
 
 [abilities.sissi]
+# q=SISSI → 11 cards
 cards = [
   "dark_deeds",
   "heartland_defense",
@@ -70,6 +77,7 @@ cards = [
 ]
 
 [abilities.destruction]
+# q=уничтожение (ru) → 70 cards
 cards = [
   "164th_infantry_regiment",
   "321st_rifle_regiment",
@@ -78,7 +86,6 @@ cards = [
   "97th_rifles",
   "l640",
   "m20_scout_car",
-  "out_with_the_old",
   "polikarpov_po2ii",
   "wakamatsu_regiment",
   "106th_infantry_regiment",
@@ -91,11 +98,9 @@ cards = [
   "akita_regiment",
   "bryansk_irregulars",
   "i15_chaika",
-  "ita_regiment",
   "kfu_regiment",
   "ki27_nate",
   "kurume_regiment",
-  "patrol",
   "persian_corridor",
   "retribution_j",
   "t80",
@@ -109,15 +114,11 @@ cards = [
   "9th_bersaglieri",
   "9th_guards_regiment",
   "aichi_d3a1",
-  "fortunes_of_war",
   "ilyushin_il10",
-  "matsumoto_regiment",
   "mito_regiment",
-  "motherland_calls",
   "shoge_detachment",
   "type_96_aa_gun",
   "victory_garden",
-  "114th_infantry_regiment",
   "1st_rifles",
   "5th_bersaglieri",
   "61st_infantry_regiment",
@@ -138,9 +139,7 @@ cards = [
   "p38h_lightning",
   "yak_9",
   "36th_cavalry",
-  "73rd_infantry_regiment",
   "corsair_f4u1d",
-  "duty_is_a_mountain",
   "ki61itei",
   "179th_tomahawks",
   "kikka",
@@ -151,3 +150,7 @@ cards = [
   "ijn_yamato",
   "is_ii_1944_early",
 ]
+
+[abilities.naval]
+# Awaiting screenshots from user — no API search term known.
+cards = []
