@@ -155,3 +155,26 @@ class TestApplyExtraAbilitiesSeed:
         cols = _table_columns(conn, "cards")
         for ability in KNOWN_EXTRA_ABILITIES:
             assert f"extra_ability_{ability}" in cols
+
+
+class TestSeedLoaderValidation:
+    """_load_extra_abilities_seed must fail fast on malformed TOML."""
+
+    def test_rejects_string_in_cards_field(self, tmp_path, monkeypatch):
+        # cards = "abc" would silently coerce to ['a','b','c'] without validation
+        bad = tmp_path / "extra_abilities.toml"
+        bad.write_text('[abilities.pincer]\ncards = "abc"\n')
+        from kardscm.storage import database as db_mod
+
+        monkeypatch.setattr(db_mod, "_EXTRA_ABILITIES_TOML", bad)
+        with pytest.raises(ValueError, match="cards must be an array of strings"):
+            db_mod._load_extra_abilities_seed()
+
+    def test_rejects_non_string_element_in_cards(self, tmp_path, monkeypatch):
+        bad = tmp_path / "extra_abilities.toml"
+        bad.write_text("[abilities.pincer]\ncards = [123]\n")
+        from kardscm.storage import database as db_mod
+
+        monkeypatch.setattr(db_mod, "_EXTRA_ABILITIES_TOML", bad)
+        with pytest.raises(ValueError, match="cards must be an array of strings"):
+            db_mod._load_extra_abilities_seed()

@@ -156,12 +156,30 @@ def _ensure_extra_ability_columns(conn: sqlite3.Connection) -> None:
 
 
 def _load_extra_abilities_seed() -> dict[str, list[str]]:
-    """Read the bundled TOML seed → {ability_key: [cardId, ...]}."""
+    """Read the bundled TOML seed → {ability_key: [cardId, ...]}.
+
+    Raises ValueError on structural mismatch — fail-fast on hand-edit typos
+    that would otherwise silently corrupt flags (e.g. ``cards = "abc"``
+    coerced into ``["a", "b", "c"]``).
+    """
     with _EXTRA_ABILITIES_TOML.open("rb") as f:
         data = tomllib.load(f)
-    return {
-        key: list(section.get("cards", [])) for key, section in data.get("abilities", {}).items()
-    }
+    abilities = data.get("abilities", {})
+    if not isinstance(abilities, dict):
+        raise ValueError(
+            f"{_EXTRA_ABILITIES_TOML}: [abilities] must be a table, got {type(abilities).__name__}"
+        )
+    seed: dict[str, list[str]] = {}
+    for key, section in abilities.items():
+        if not isinstance(section, dict):
+            raise ValueError(f"{_EXTRA_ABILITIES_TOML}: [abilities.{key}] must be a table")
+        cards = section.get("cards", [])
+        if not isinstance(cards, list) or not all(isinstance(c, str) for c in cards):
+            raise ValueError(
+                f"{_EXTRA_ABILITIES_TOML}: [abilities.{key}].cards must be an array of strings"
+            )
+        seed[key] = list(cards)
+    return seed
 
 
 def apply_extra_abilities_seed(
@@ -169,9 +187,10 @@ def apply_extra_abilities_seed(
 ) -> None:
     """Apply manually-curated extra-ability flags to the cards table.
 
-    For each ability in ``KNOWN_EXTRA_ABILITIES``: reset the column to 0
-    across all cards, then set 1 for cardIds listed in the seed. Unknown
-    ability keys and non-existent cardIds are silently ignored.
+    Resets every ``extra_ability_*`` column to 0 in a single UPDATE, then
+    sets 1 for cardIds listed in the seed (one UPDATE per ability with a
+    populated list). Unknown ability keys and non-existent cardIds are
+    silently ignored.
 
     Args:
         conn: SQLite connection.
@@ -180,15 +199,16 @@ def apply_extra_abilities_seed(
     """
     if seed is None:
         seed = _load_extra_abilities_seed()
+    if KNOWN_EXTRA_ABILITIES:
+        reset_clause = ", ".join(f"extra_ability_{a} = 0" for a in KNOWN_EXTRA_ABILITIES)
+        conn.execute(f"UPDATE cards SET {reset_clause}")
     for ability in KNOWN_EXTRA_ABILITIES:
-        col = f"extra_ability_{ability}"
-        conn.execute(f"UPDATE cards SET {col} = 0")
         card_ids = seed.get(ability, [])
         if not card_ids:
             continue
         placeholders = ", ".join("?" for _ in card_ids)
         conn.execute(
-            f"UPDATE cards SET {col} = 1 WHERE cardId IN ({placeholders})",
+            f"UPDATE cards SET extra_ability_{ability} = 1 WHERE cardId IN ({placeholders})",
             tuple(card_ids),
         )
     conn.commit()
