@@ -224,7 +224,7 @@ def sync_collection(
     lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
-    new_cards = scrape_cards(language=lang_config.code)
+    new_cards = scrape_cards(language=lang_config.code, lang_config=lang_config)
 
     with get_connection(db_path) as conn:
         initialize_schema(conn, db_path)
@@ -261,6 +261,80 @@ def sync_collection(
         _write_diff_report(report_path, report, lang_config, report_timestamp)
 
     logger.info("Sync completed. Stored %s cards. Report: %s", len(new_cards), report_path)
+
+
+def baseline_init(*, lang: str | None = None) -> None:
+    """Pull from live API and overwrite the committed baseline.
+
+    For one-off use after cloning the repo or after intentional API changes.
+    Always overwrites; use ``baseline_accept`` to promote a sync-generated
+    observed snapshot instead.
+    """
+    from kardscm.scraping.baseline import (
+        BASELINE_PATH,
+        build_snapshot,
+        save_baseline,
+    )
+    from kardscm.scraping.fetcher import fetch_all_cards
+    from kardscm.scraping.probe import build_static_probe
+
+    lang_config = get_language_config(lang)
+    logger.info("Fetching cards from API to rebuild baseline...")
+    raw = fetch_all_cards(build_static_probe(language=lang_config.code))
+    snapshot = build_snapshot(raw)
+    save_baseline(snapshot)
+    logger.info(
+        "Baseline written to %s (%d cards, %d enum value sets).",
+        BASELINE_PATH,
+        snapshot["card_count"],
+        len(snapshot["enum_values"]),
+    )
+
+
+_BASELINE_REQUIRED_KEYS = ("card_count", "node_keys", "json_keys", "enum_values")
+
+
+def baseline_accept() -> None:
+    """Promote the most recent ``sync-schema-observed-*.json`` to baseline.
+
+    Looks for files matching the pattern in cwd, picks the lexicographically
+    latest (timestamps are ISO-like and sort correctly), validates its
+    structural shape (must be a dict with all required snapshot keys of
+    the correct types), and copies it to the committed baseline location.
+    """
+    import json
+    import shutil
+
+    from kardscm.scraping.baseline import BASELINE_PATH
+
+    candidates = sorted(Path.cwd().glob("sync-schema-observed-*.json"))
+    if not candidates:
+        raise SystemExit(
+            "No sync-schema-observed-*.json files found in current directory. "
+            "Run `kardscm sync` first."
+        )
+    latest = candidates[-1]
+    try:
+        parsed = json.loads(latest.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise SystemExit(f"Cannot parse {latest}: {exc}") from exc
+
+    if not isinstance(parsed, dict):
+        raise SystemExit(f"{latest} is not a snapshot object (got {type(parsed).__name__}).")
+    missing = [k for k in _BASELINE_REQUIRED_KEYS if k not in parsed]
+    if missing:
+        raise SystemExit(f"{latest} is missing required keys: {', '.join(missing)}")
+    if not isinstance(parsed["card_count"], int):
+        raise SystemExit(f"{latest}: card_count must be an int")
+    if not isinstance(parsed["node_keys"], list):
+        raise SystemExit(f"{latest}: node_keys must be a list")
+    if not isinstance(parsed["json_keys"], dict):
+        raise SystemExit(f"{latest}: json_keys must be a dict")
+    if not isinstance(parsed["enum_values"], dict):
+        raise SystemExit(f"{latest}: enum_values must be a dict")
+
+    shutil.copy2(latest, BASELINE_PATH)
+    logger.info("Baseline updated from %s.", latest.name)
 
 
 def export_collection(

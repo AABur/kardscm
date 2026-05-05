@@ -13,6 +13,8 @@ import typer
 from kardscm import __version__
 from kardscm.commands import (
     add_deck,
+    baseline_accept,
+    baseline_init,
     export_collection,
     export_deck,
     import_deck,
@@ -39,6 +41,13 @@ deck_app = typer.Typer(
     rich_markup_mode="markdown",
 )
 app.add_typer(deck_app, name="deck")
+
+baseline_app = typer.Typer(
+    help="Manage the API contract baseline used for drift detection",
+    no_args_is_help=True,
+    rich_markup_mode="markdown",
+)
+app.add_typer(baseline_app, name="baseline")
 
 
 class ExportFormat(StrEnum):
@@ -335,6 +344,27 @@ def web(
     database. Run **sync** first to populate the DB.
     """
     run_web(port=port, open_browser=not no_browser, host=host, lang=_lang(ctx))
+
+
+@baseline_app.command("init")
+def baseline_init_cmd(ctx: typer.Context) -> None:
+    """Pull from the live API and overwrite the committed baseline.
+
+    Use after cloning the repo or after intentional API changes. The
+    baseline file at `kardscm/data/api_baseline.json` is the source of
+    truth for drift detection during sync.
+    """
+    baseline_init(lang=_lang(ctx))
+
+
+@baseline_app.command("accept")
+def baseline_accept_cmd() -> None:
+    """Promote the latest `sync-schema-observed-*.json` to baseline.
+
+    After reviewing a `sync-schema-diff-*.md` report and updating any
+    constants/translations, run this to acknowledge the new API shape.
+    """
+    baseline_accept()
 
 
 def run() -> None:
