@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass, field
 
-from kardscm.constants import KNOWN_ABILITIES
+from kardscm.constants import KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
 
 ALLOWED_SORT_COLUMNS: frozenset[str] = frozenset(
     {
@@ -27,9 +27,11 @@ ALLOWED_SORT_COLUMNS: frozenset[str] = frozenset(
 )
 
 _ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
+_EXTRA_ABILITY_COLS = ", ".join(f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES)
 SELECT_COLUMNS = (
     'cardId, importId, imageUrl, thumbUrl, faction, type, rarity, "set", '
-    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, operationCost, "
+    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, "
+    f"{_EXTRA_ABILITY_COLS}, operationCost, "
     "reserved, image, can_create, exile, quantity, updated_at"
 )
 
@@ -44,6 +46,7 @@ class CardFilters:
     sets: list[str] = field(default_factory=list)
     kredits: list[int] = field(default_factory=list)
     abilities: list[str] = field(default_factory=list)
+    extra_abilities: list[str] = field(default_factory=list)
     text_query: str = ""
     include_spawnable: bool = False
     include_reserved: bool = False
@@ -97,6 +100,12 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
         valid = [a for a in filters.abilities if a in KNOWN_ABILITIES]
         if valid:
             clauses = " OR ".join(f"ability_{a} = 1" for a in valid)
+            where.append(f"({clauses})")
+
+    if filters.extra_abilities:
+        valid_extra = [a for a in filters.extra_abilities if a in KNOWN_EXTRA_ABILITIES]
+        if valid_extra:
+            clauses = " OR ".join(f"extra_ability_{a} = 1" for a in valid_extra)
             where.append(f"({clauses})")
 
     if filters.text_query:

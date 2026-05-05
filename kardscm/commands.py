@@ -31,6 +31,7 @@ from kardscm.importing import parse_deck_file
 from kardscm.models import DeckCardEntry, DiffReport
 from kardscm.scraping import scrape_cards
 from kardscm.storage import (
+    apply_extra_abilities_seed,
     delete_all_decks,
     delete_cards,
     delete_deck,
@@ -254,6 +255,7 @@ def sync_collection(
         upsert_cards(conn, new_cards)
         if report["removed"]:
             delete_cards(conn, [r["cardId"] for r in report["removed"]])
+        apply_extra_abilities_seed(conn)
         set_metadata(conn, "last_sync", _utc_timestamp())
         set_metadata(conn, "language", lang_config.code)
         _write_diff_report(report_path, report, lang_config, report_timestamp)

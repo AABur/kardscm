@@ -286,6 +286,55 @@ class TestAbilityFilter:
         assert _ids(result) == ["sov_inf_1"]
 
 
+class TestExtraAbilityFilter:
+    @pytest.fixture
+    def conn_with_extras(self, conn):
+        # Mark sov_inf_1 with pincer; sov_tank_1 with resistance; usa_order with pincer
+        conn.execute("UPDATE cards SET extra_ability_pincer = 1 WHERE cardId = ?", ("sov_inf_1",))
+        conn.execute(
+            "UPDATE cards SET extra_ability_resistance = 1 WHERE cardId = ?", ("sov_tank_1",)
+        )
+        conn.execute("UPDATE cards SET extra_ability_pincer = 1 WHERE cardId = ?", ("usa_order",))
+        conn.commit()
+        return conn
+
+    def test_no_extra_ability_filter_returns_all(self, conn_with_extras):
+        result = query_cards(conn_with_extras, CardFilters())
+        assert len(result) == 4
+
+    def test_filter_by_single_extra_ability(self, conn_with_extras):
+        result = query_cards(conn_with_extras, CardFilters(extra_abilities=["resistance"]))
+        assert _ids(result) == ["sov_tank_1"]
+
+    def test_filter_by_multiple_extra_abilities_uses_or(self, conn_with_extras):
+        result = query_cards(
+            conn_with_extras, CardFilters(extra_abilities=["pincer", "resistance"])
+        )
+        # pincer: sov_inf_1, usa_order; resistance: sov_tank_1
+        assert set(_ids(result)) == {"sov_inf_1", "sov_tank_1", "usa_order"}
+
+    def test_filter_unknown_extra_ability_silently_ignored(self, conn_with_extras):
+        result = query_cards(conn_with_extras, CardFilters(extra_abilities=["bogus_extra_x"]))
+        assert len(result) == 4
+
+    def test_extra_ability_combines_with_faction_via_and(self, conn_with_extras):
+        # Soviet ∩ pincer → only sov_inf_1 (usa_order has pincer but not Soviet)
+        result = query_cards(
+            conn_with_extras,
+            CardFilters(factions=["Soviet"], extra_abilities=["pincer"]),
+        )
+        assert _ids(result) == ["sov_inf_1"]
+
+    def test_extra_ability_independent_from_ability(self, conn_with_extras):
+        # ability=blitz (sov_inf_1, usa_order) AND extra=resistance (sov_tank_1):
+        # intersection empty (no card has both)
+        result = query_cards(
+            conn_with_extras,
+            CardFilters(abilities=["blitz"], extra_abilities=["resistance"]),
+        )
+        assert _ids(result) == []
+
+
 class TestSort:
     def test_sort_by_kredits_asc(self, conn):
         result = query_cards(conn, CardFilters(), sort_col="kredits", sort_dir="asc")

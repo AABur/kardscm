@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from kardscm.config import LanguageConfig, get_language_config
-from kardscm.constants import DEFAULT_DB_PATH, KNOWN_ABILITIES
+from kardscm.constants import DEFAULT_DB_PATH, KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
 from kardscm.storage.database import (
     get_card_quantity_by_id,
     get_connection,
@@ -52,9 +52,11 @@ SETS = [
 KREDITS_RANGE = list(range(0, 11))
 
 _ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
+_EXTRA_ABILITY_COLS = ", ".join(f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES)
 CARD_COLUMNS = (
     'cardId, importId, imageUrl, thumbUrl, faction, type, rarity, "set", '
-    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, operationCost, "
+    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, "
+    f"{_EXTRA_ABILITY_COLS}, operationCost, "
     "reserved, image, can_create, exile, quantity, updated_at"
 )
 
@@ -66,6 +68,7 @@ def _read_filters(
     sets: list[str],
     kredits: list[int],
     abilities: list[str],
+    extra_abilities: list[str],
     q: str,
     spawnable: bool,
     reserved: bool,
@@ -78,6 +81,7 @@ def _read_filters(
         sets=sets,
         kredits=kredits,
         abilities=abilities,
+        extra_abilities=extra_abilities,
         text_query=q.strip(),
         include_spawnable=spawnable,
         include_reserved=reserved,
@@ -146,6 +150,9 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
                     "sets": [(s, cfg.set_names.get(s, s)) for s in SETS],
                     "kredits": KREDITS_RANGE,
                     "abilities": [(a, cfg.ability_names.get(a, a)) for a in KNOWN_ABILITIES],
+                    "extra_abilities": [
+                        (a, cfg.extra_ability_names.get(a, a)) for a in KNOWN_EXTRA_ABILITIES
+                    ],
                 },
                 "headers": cfg.export_headers,
                 "ui": cfg.ui_strings,
@@ -162,6 +169,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         sets: list[str] = Query(default=[]),
         kredits: list[int] = Query(default=[]),
         abilities: list[str] = Query(default=[]),
+        extra_abilities: list[str] = Query(default=[]),
         q: str = Query(default=""),
         spawnable: bool = Query(default=False),
         reserved: bool = Query(default=False),
@@ -170,7 +178,17 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
         filters = _read_filters(
-            factions, types, rarities, sets, kredits, abilities, q, spawnable, reserved, owned
+            factions,
+            types,
+            rarities,
+            sets,
+            kredits,
+            abilities,
+            extra_abilities,
+            q,
+            spawnable,
+            reserved,
+            owned,
         )
         return render_table(request, filters, sort, direction, "index.html")
 
@@ -183,6 +201,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         sets: list[str] = Query(default=[]),
         kredits: list[int] = Query(default=[]),
         abilities: list[str] = Query(default=[]),
+        extra_abilities: list[str] = Query(default=[]),
         q: str = Query(default=""),
         spawnable: bool = Query(default=False),
         reserved: bool = Query(default=False),
@@ -191,7 +210,17 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
         filters = _read_filters(
-            factions, types, rarities, sets, kredits, abilities, q, spawnable, reserved, owned
+            factions,
+            types,
+            rarities,
+            sets,
+            kredits,
+            abilities,
+            extra_abilities,
+            q,
+            spawnable,
+            reserved,
+            owned,
         )
         return render_table(request, filters, sort, direction, "_table.html")
 

@@ -67,6 +67,13 @@ salvage = "Утилизация"
 shock = "Штурм"
 smokescreen = "Дымовая Завеса"
 
+[extra_abilities]
+pincer = "Клещи"
+resistance = "Сопротивление"
+legions = "Легионы"
+sissi = "SISSI"
+destruction = "Уничтожение"
+
 [nation_display_names]
 soviet = "Советские"
 usa = "Американские"
@@ -85,6 +92,7 @@ toggle_spawnable = "спаунятся"
 toggle_reserved = "в резерве"
 toggle_owned = "только мои"
 filter_abilities = "Способности"
+filter_extra_abilities = "Доп-способности"
 col_cost = "Стоимость"
 card_id_label = "cardId"
 saved_hint = "сохраняется автоматически (Tab/Enter)"

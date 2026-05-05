@@ -18,6 +18,7 @@ _SECTION_TO_FIELD: dict[str, str] = {
     "rarities": "rarity_names",
     "sets": "set_names",
     "abilities": "ability_names",
+    "extra_abilities": "extra_ability_names",
     "nation_display_names": "nation_display_names",
     "ui_strings": "ui_strings",
     "diff_headers": "diff_headers",
@@ -44,6 +45,7 @@ class LanguageConfig:
     deck_metadata_labels: list[str] = field(default_factory=list)
     collection_sheet_name: str = "Collection"
     ability_names: dict[str, str] = field(default_factory=dict)
+    extra_ability_names: dict[str, str] = field(default_factory=dict)
     diff_headers: dict[str, str] = field(default_factory=dict)
     ui_strings: dict[str, str] = field(default_factory=dict)
     # Populated by the TOML loader for keys missing or malformed in a non-EN

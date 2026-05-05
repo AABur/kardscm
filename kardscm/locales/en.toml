@@ -76,6 +76,13 @@ salvage = "Salvage"
 shock = "Shock"
 smokescreen = "Smokescreen"
 
+[extra_abilities]
+pincer = "Pincer"
+resistance = "Resistance"
+legions = "Legions"
+sissi = "Sissi"
+destruction = "Destruction"
+
 [nation_display_names]
 soviet = "Soviet"
 usa = "American"
@@ -94,6 +101,7 @@ toggle_spawnable = "spawnable"
 toggle_reserved = "reserved"
 toggle_owned = "only owned"
 filter_abilities = "Abilities"
+filter_extra_abilities = "Extra abilities"
 col_cost = "Cost"
 card_id_label = "cardId"
 saved_hint = "saves automatically (Tab/Enter)"

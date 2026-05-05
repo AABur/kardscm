@@ -139,7 +139,14 @@ class TestIndex:
         assert 'id="filters"' in r.text
         assert 'name="factions"' in r.text
         assert 'name="abilities"' in r.text
+        assert 'name="extra_abilities"' in r.text
         assert 'name="q"' in r.text
+
+    def test_index_renders_extra_ability_chip_labels(self, client: TestClient) -> None:
+        r = client.get("/")
+        # English labels from LANGUAGE_EN.extra_ability_names
+        assert "Pincer" in r.text
+        assert "Resistance" in r.text
 
     def test_index_renders_ability_chip_labels(self, client: TestClient) -> None:
         r = client.get("/")
@@ -205,6 +212,29 @@ class TestCardsPartial:
     def test_filter_by_unknown_ability_ignored(self, client: TestClient) -> None:
         r = client.get("/cards", params={"abilities": "bogus"})
         # Unknown ability → no filter → both visible
+        assert "Soviet Rifles" in r.text
+        assert "Panzer" in r.text
+
+    def test_filter_by_extra_ability(self, client: TestClient, db_path: Path) -> None:
+        # Mark sov_inf with pincer extra ability
+        with get_connection(db_path) as conn:
+            conn.execute("UPDATE cards SET extra_ability_pincer = 1 WHERE cardId = ?", ("sov_inf",))
+            conn.commit()
+        r = client.get("/cards", params={"extra_abilities": "pincer"})
+        assert "Soviet Rifles" in r.text
+        assert "Panzer" not in r.text
+
+    def test_filter_by_multiple_extra_abilities_or(self, client: TestClient, db_path: Path) -> None:
+        with get_connection(db_path) as conn:
+            conn.execute("UPDATE cards SET extra_ability_pincer = 1 WHERE cardId = ?", ("sov_inf",))
+            conn.execute(
+                "UPDATE cards SET extra_ability_resistance = 1 WHERE cardId = ?", ("ger_tank",)
+            )
+            conn.commit()
+        r = client.get(
+            "/cards",
+            params=[("extra_abilities", "pincer"), ("extra_abilities", "resistance")],
+        )
         assert "Soviet Rifles" in r.text
         assert "Panzer" in r.text
 
