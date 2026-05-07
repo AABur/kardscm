@@ -43,16 +43,17 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
-# Local artifacts
-config.ini
+# Local user data (per-machine collection + auto-backup from breaking migrations)
 collection.db
+collection.db.bak
 
-# Playwright MCP
+# Playwright MCP runtime artifacts
 .playwright-mcp/
 
-# Claude Code (local only) — settings, worktrees, session caches
-.claude/
+# Claude Code — commit settings.json + skills/, ignore the rest
+.claude/settings.local.json
+.claude/worktrees/
 
-# Local-only work areas
+# Local research sandbox + personal deck/xlsx fixtures
 experiments/
 test_data/
