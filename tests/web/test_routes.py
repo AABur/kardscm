@@ -473,6 +473,27 @@ class TestResolveLang:
         assert _resolve_lang("RU") is LANGUAGE_EN
 
 
+class TestAdminHostGuard:
+    def test_admin_blocked_on_non_loopback_host(self, db_path: Path) -> None:
+        from kardscm.web.app import run
+
+        with pytest.raises(SystemExit, match="not allowed"):
+            run(db_path=db_path, host="0.0.0.0", admin=True, open_browser=False)
+
+    def test_admin_allowed_on_loopback(self, db_path: Path, monkeypatch) -> None:
+        import kardscm.web.app as app_mod
+
+        monkeypatch.setattr(app_mod, "backup_database", lambda p: p.with_suffix(".bak.test"))
+        started = []
+
+        def fake_uvicorn_run(app, **kwargs):
+            started.append(kwargs.get("host"))
+
+        monkeypatch.setattr("uvicorn.run", fake_uvicorn_run)
+        app_mod.run(db_path=db_path, host="127.0.0.1", admin=True, open_browser=False)
+        assert started == ["127.0.0.1"]
+
+
 class TestLocaleWarningStrip:
     def test_strip_visible_when_warnings_present(self, db_path: Path) -> None:
         from dataclasses import replace

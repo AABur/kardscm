@@ -67,6 +67,11 @@ class TestBackupDatabase:
         with pytest.raises(FileNotFoundError):
             backup_database(tmp_path / "missing.db")
 
+    def test_rapid_backups_produce_unique_names(self, db_path: Path) -> None:
+        b1 = backup_database(db_path)
+        b2 = backup_database(db_path)
+        assert b1 != b2
+
 
 class TestUpdateCardAdmin:
     def test_updates_scalar_columns(self, db_path: Path) -> None:

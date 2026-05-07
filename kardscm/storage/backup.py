@@ -21,7 +21,7 @@ def backup_database(db_path: Path) -> Path:
     """
     if not db_path.exists():
         raise FileNotFoundError(f"DB not found at {db_path}")
-    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     backup_path = db_path.with_suffix(db_path.suffix + f".bak.{ts}")
     shutil.copy2(db_path, backup_path)
     return backup_path

@@ -567,6 +567,12 @@ def run(
         if _total_card_count(conn) == 0:
             raise SystemExit("Card database is empty. Run `kardscm sync` first to populate it.")
 
+    if admin and host not in {"127.0.0.1", "localhost", "::1"}:
+        raise SystemExit(
+            f"Admin mode is not allowed with --host {host!r}. "
+            "Bind to 127.0.0.1 (default) to use --admin."
+        )
+
     backup_path: Path | None = None
     if admin:
         backup_path = backup_database(actual_db)
