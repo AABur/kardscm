@@ -8,7 +8,7 @@ import sqlite3
 import pytest
 
 from kardscm.constants import KNOWN_ABILITIES
-from kardscm.storage.database import initialize_schema
+from kardscm.storage.database import get_connection, initialize_schema
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
 
 _ABILITY_COLS = [f"ability_{a}" for a in KNOWN_ABILITIES]
@@ -62,7 +62,7 @@ def _make_card(
 
 @pytest.fixture
 def conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(":memory:")
+    conn = get_connection(":memory:")
     initialize_schema(conn)
     rows = [
         _make_card(
@@ -132,9 +132,9 @@ def conn() -> sqlite3.Connection:
             card_id="spawnable_card",
             faction="Soviet",
             card_type="tank",
+            card_set="OnlySpawnable",
             title_en="Spawned Card",
             title_ru="Спаунованная карта",
-            can_create='["sov_tank_1"]',
             quantity=0,
         ),
     ]

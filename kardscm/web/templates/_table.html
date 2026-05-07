@@ -25,6 +25,7 @@
       {{ sort_header('type',          headers[2]) }}
       {{ sort_header('rarity',        headers[3]) }}
       <th>{{ headers[4] }}</th>
+      <th>{{ ui.filter_extra_abilities }}</th>
       {{ sort_header('set',           headers[5]) }}
       {{ sort_header('quantity',      headers[6]) }}
       {{ sort_header('kredits',       headers[7]) }}
@@ -46,6 +47,7 @@
         <td>{{ card.type }}</td>
         <td>{{ card.rarity }}</td>
         <td class="abilities">{{ card.attributes }}</td>
+        <td class="abilities">{{ card.extra_attributes }}</td>
         <td>{{ card.set }}</td>
         {% include "_qty_cell.html" %}
         <td class="num">{{ card.kredits }}</td>

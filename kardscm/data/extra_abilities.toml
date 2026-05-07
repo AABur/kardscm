@@ -12,7 +12,7 @@
 # in-game deck-builder URL returns and serve as the source of truth.
 
 [abilities.pincer]
-# q=клещи (ru) → 16 cards
+# q=клещи (ru) / q=pincer (en) → 17 cards, confirmed 2026-05-07 (en authoritative; ru misses protect_the_pocket)
 cards = [
   "128th_rifles",
   "56_jger_regiment",
@@ -30,10 +30,11 @@ cards = [
   "zis2",
   "tupolev_sb2",
   "222nd_guard_rifles",
+  "protect_the_pocket",
 ]
 
 [abilities.resistance]
-# q=Сопротивл (ru) → 9 cards
+# q=resistance (en) / q=сопротивл (ru) → 9 cards, confirmed 2026-05-07, both locales match
 cards = [
   "resistance_b",
   "unexpected_resistance",
@@ -47,7 +48,7 @@ cards = [
 ]
 
 [abilities.legions]
-# q=ЛЕГИОН (ru) → 9 cards
+# q=легион (ru) / q=legions (en) → 9 cards, confirmed 2026-05-07, both locales match
 cards = [
   "5th_legions_regiment",
   "first_to_fight",
@@ -61,7 +62,7 @@ cards = [
 ]
 
 [abilities.sissi]
-# q=SISSI → 11 cards
+# q=sissi (ru+en) → 11 cards, confirmed 2026-05-07, both locales match
 cards = [
   "dark_deeds",
   "heartland_defense",
@@ -77,7 +78,7 @@ cards = [
 ]
 
 [abilities.destruction]
-# q=уничтожение (ru) → 70 cards
+# q=destruction (en) → 79 cards, confirmed 2026-05-07 (en authoritative; ru gives 82 due to translation noise)
 cards = [
   "164th_infantry_regiment",
   "321st_rifle_regiment",
@@ -149,6 +150,15 @@ cards = [
   "ki49_storm_dragon",
   "ijn_yamato",
   "is_ii_1944_early",
+  "out_with_the_old",
+  "ita_regiment",
+  "patrol",
+  "fortunes_of_war",
+  "matsumoto_regiment",
+  "motherland_calls",
+  "114th_infantry_regiment",
+  "73rd_infantry_regiment",
+  "duty_is_a_mountain",
 ]
 
 [abilities.naval]

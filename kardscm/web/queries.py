@@ -65,7 +65,7 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
     if not filters.include_reserved:
         where.append("reserved = 0")
     if not filters.include_spawnable:
-        where.append("(can_create IS NULL OR can_create = '[]')")
+        where.append('"set" != \'OnlySpawnable\'')
 
     if filters.factions:
         placeholders = ",".join("?" for _ in filters.factions)
@@ -109,11 +109,15 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
             where.append(f"({clauses})")
 
     if filters.text_query:
+        q_fold = filters.text_query.casefold()
         text_expr = f"json_extract(text, '$.\"{locale_key}\"')"
+        en_title_expr = "json_extract(title, '$.\"en-EN\"')"
         where.append(
-            f"(LOWER({_title_expr(locale_key)}) LIKE LOWER(?) OR LOWER({text_expr}) LIKE LOWER(?))"
+            f"(uni_lower({_title_expr(locale_key)}) LIKE ?"
+            f" OR uni_lower({en_title_expr}) LIKE ?"
+            f" OR uni_lower({text_expr}) LIKE ?)"
         )
-        params.extend([f"%{filters.text_query}%", f"%{filters.text_query}%"])
+        params.extend([f"%{q_fold}%", f"%{q_fold}%", f"%{q_fold}%"])
 
     if filters.owned_only:
         where.append("quantity > 0")
