@@ -95,6 +95,8 @@ def get_connection(db_path: str | Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path))
     conn.execute("PRAGMA foreign_keys = ON")
     conn.create_function("sanitize_text", 1, sanitize_text, deterministic=True)
+    # Unicode-aware case folding for Cyrillic/non-ASCII text search
+    conn.create_function("uni_lower", 1, lambda s: s.casefold() if s else "", deterministic=True)
     return conn
 
 
