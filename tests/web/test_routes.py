@@ -239,30 +239,6 @@ class TestCardsPartial:
         assert "Panzer" in r.text
 
 
-class TestQuantityUpdate:
-    def test_update_quantity_persists(self, client: TestClient, db_path: Path) -> None:
-        r = client.post("/cards/sov_inf/quantity", data={"quantity": 3})
-        assert r.status_code == 200
-        # Response is the updated <td>
-        assert 'value="3"' in r.text
-        assert 'name="quantity"' in r.text
-        # Persistence
-        with get_connection(db_path) as conn:
-            row = conn.execute(
-                "SELECT quantity FROM cards WHERE cardId = ?", ("sov_inf",)
-            ).fetchone()
-        assert row[0] == 3
-
-    def test_update_quantity_clamps_negative_to_zero(self, client: TestClient) -> None:
-        r = client.post("/cards/sov_inf/quantity", data={"quantity": -5})
-        assert r.status_code == 200
-        assert 'value="0"' in r.text
-
-    def test_update_quantity_unknown_card(self, client: TestClient) -> None:
-        r = client.post("/cards/no_such_card/quantity", data={"quantity": 1})
-        assert r.status_code == 404
-
-
 class TestCardModal:
     def test_modal_renders(self, client: TestClient) -> None:
         r = client.get("/cards/sov_inf")
@@ -297,12 +273,6 @@ class TestI18n:
         assert LANGUAGE_RU.ui_strings["col_cost"] in r.text
         # English chrome should not leak
         assert LANGUAGE_EN.ui_strings["page_title"] not in r.text
-
-    def test_qty_cell_has_settle_delay_for_save_flash(self, client: TestClient) -> None:
-        # The qty cell rendered in the table partial should include the settle
-        # window so the green flash CSS has time to be visible after save.
-        r = client.get("/cards")
-        assert "settle:600ms" in r.text
 
     def test_modal_uses_translated_card_id_label(self, client: TestClient) -> None:
         r = client.get("/cards/sov_inf")

@@ -1,13 +1,1 @@
-<td class="qty-cell" hx-on:click="event.stopPropagation()">
-  <input
-    type="number"
-    name="quantity"
-    min="0"
-    max="3"
-    value="{{ card.quantity }}"
-    hx-post="/cards/{{ card.cardId }}/quantity"
-    hx-trigger="change"
-    hx-target="closest td"
-    hx-swap="outerHTML settle:600ms"
-  >
-</td>
+<td class="num">{{ card.quantity }}</td>

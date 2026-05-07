@@ -8,7 +8,7 @@ import webbrowser
 from contextlib import closing
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -16,10 +16,8 @@ from fastapi.templating import Jinja2Templates
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH, KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
 from kardscm.storage.database import (
-    get_card_quantity_by_id,
     get_connection,
     initialize_schema,
-    update_card_quantity_by_id,
 )
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
 from kardscm.web.translate import to_view
@@ -234,27 +232,6 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
             owned,
         )
         return render_table(request, filters, sort, direction, "_table.html")
-
-    @app.post("/cards/{card_id}/quantity", response_class=HTMLResponse)
-    def update_quantity(
-        request: Request,
-        card_id: str,
-        quantity: int = Form(...),
-    ) -> HTMLResponse:
-        if quantity < 0:
-            quantity = 0
-        with closing(_open_conn(db_path_resolved)) as conn:
-            exists = conn.execute("SELECT 1 FROM cards WHERE cardId = ?", (card_id,)).fetchone()
-            if exists is None:
-                raise HTTPException(status_code=404, detail="card not found")
-            update_card_quantity_by_id(conn, card_id, quantity)
-            conn.commit()
-            persisted = get_card_quantity_by_id(conn, card_id)
-        return templates.TemplateResponse(
-            request,
-            "_qty_cell.html",
-            {"card": {"cardId": card_id, "quantity": persisted}},
-        )
 
     @app.get("/cards/{card_id}", response_class=HTMLResponse)
     def card_modal(request: Request, card_id: str) -> HTMLResponse:
