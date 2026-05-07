@@ -165,7 +165,7 @@ def create_app(
         lang_config: Active language configuration; defaults to English.
         admin: If True, register admin-only edit routes and force edit_mode on.
         backup_path: Path of the auto-backup created before admin start;
-            displayed in the admin banner. Required when admin=True.
+            displayed in the admin banner. Pass when admin=True.
     """
     cfg = lang_config or get_language_config()
     db_path_resolved = Path(db_path)
@@ -326,24 +326,26 @@ def create_app(
         )
 
     @app.post("/confirm-save")
-    def confirm_save() -> Response:
+    def confirm_save(request: Request) -> Response:
         edit_snapshot.clear()
+        target = request.headers.get("HX-Current-URL") or request.headers.get("referer") or "/"
         response = Response(content="", status_code=200)
         response.set_cookie(EDIT_MODE_COOKIE, "0", samesite="lax", httponly=False)
-        response.headers["HX-Redirect"] = "/"
+        response.headers["HX-Redirect"] = target
         return response
 
     @app.post("/undo-save")
-    def undo_save() -> Response:
+    def undo_save(request: Request) -> Response:
         if edit_snapshot:
             with closing(_open_conn(db_path_resolved)) as conn:
                 for card_id, qty in edit_snapshot.items():
                     update_card_quantity_by_id(conn, card_id, qty)
                 conn.commit()
         edit_snapshot.clear()
+        target = request.headers.get("HX-Current-URL") or request.headers.get("referer") or "/"
         response = Response(content="", status_code=200)
         response.set_cookie(EDIT_MODE_COOKIE, "0", samesite="lax", httponly=False)
-        response.headers["HX-Redirect"] = "/"
+        response.headers["HX-Redirect"] = target
         return response
 
     @app.post("/close-save-modal", response_class=HTMLResponse)

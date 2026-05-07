@@ -266,7 +266,6 @@ main { padding: 12px; }
 }
 
 /* Edit-mode toggle */
-.edit-toggle-form { margin: 0; }
 .edit-toggle {
   padding: 4px 10px;
   border: 1px solid var(--border);

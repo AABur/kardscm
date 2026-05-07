@@ -364,18 +364,19 @@ class TestEditToggle:
         assert "4" in r.text  # qty_after
 
     def test_confirm_save_clears_cookie(self, client: TestClient) -> None:
-        r = client.post("/confirm-save")
+        r = client.post("/confirm-save", headers={"HX-Current-URL": "/?factions=Soviet"})
         assert r.status_code == 200
         assert "kardscm_edit=0" in r.headers.get("set-cookie", "")
-        assert r.headers.get("HX-Redirect") == "/"
+        assert r.headers.get("HX-Redirect") == "/?factions=Soviet"
 
     def test_undo_save_restores_quantities(self, client: TestClient, db_path: Path) -> None:
         # Snapshot at qty=2, change to 4, then undo → back to 2.
         client.post("/start-edit", headers={"HX-Current-URL": "/"})
         client.post("/cards/sov_inf/quantity", data={"quantity": 4})
-        r = client.post("/undo-save")
+        r = client.post("/undo-save", headers={"HX-Current-URL": "/?factions=Soviet"})
         assert r.status_code == 200
         assert "kardscm_edit=0" in r.headers.get("set-cookie", "")
+        assert r.headers.get("HX-Redirect") == "/?factions=Soviet"
         with get_connection(db_path) as conn:
             row = conn.execute(
                 "SELECT quantity FROM cards WHERE cardId = ?", ("sov_inf",)
