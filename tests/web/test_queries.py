@@ -233,6 +233,16 @@ class TestFilters:
         result = query_cards(conn, CardFilters(text_query="rifles"), locale_key="en-EN")
         assert _ids(result).count("sov_inf_1") == 1
 
+    def test_text_search_cyrillic_case_insensitive(self, conn):
+        # "Т-34" title in ru-RU; lowercase query "т-34" must match (SQLite LOWER is ASCII-only)
+        result = query_cards(conn, CardFilters(text_query="т-34"), locale_key="ru-RU")
+        assert "sov_tank_1" in _ids(result)
+
+    def test_text_search_en_title_fallback_in_ru_locale(self, conn):
+        # sov_tank_1 title_en="T-34" — searching "T-34" with ru-RU locale must still find it
+        result = query_cards(conn, CardFilters(text_query="T-34"), locale_key="ru-RU")
+        assert "sov_tank_1" in _ids(result)
+
     def test_owned_only(self, conn):
         result = query_cards(conn, CardFilters(owned_only=True))
         # quantities: sov_inf_1=2, sov_tank_1=0, ger_inf_1=3, usa_order=1
@@ -245,6 +255,17 @@ class TestFilters:
     def test_include_spawnable_adds_spawnable(self, conn):
         result = query_cards(conn, CardFilters(include_spawnable=True))
         assert "spawnable_card" in _ids(result)
+
+    def test_card_with_can_create_not_filtered_as_spawnable(self, conn):
+        # sov_tank_1 has can_create=None in fixture; insert a card with can_create
+        # set but set != OnlySpawnable — it must still appear without include_spawnable
+        conn.execute(
+            "UPDATE cards SET can_create = ? WHERE cardId = ?",
+            ('["spawnable_card"]', "sov_tank_1"),
+        )
+        conn.commit()
+        result = query_cards(conn, CardFilters())
+        assert "sov_tank_1" in _ids(result)
 
     def test_filters_combined_with_and(self, conn):
         result = query_cards(

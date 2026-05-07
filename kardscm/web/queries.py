@@ -65,7 +65,8 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
     if not filters.include_reserved:
         where.append("reserved = 0")
     if not filters.include_spawnable:
-        where.append('"set" != \'OnlySpawnable\'')
+        where.append('"set" != ?')
+        params.append("OnlySpawnable")
 
     if filters.factions:
         placeholders = ",".join("?" for _ in filters.factions)
