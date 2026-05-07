@@ -239,6 +239,181 @@ class TestCardsPartial:
         assert "Panzer" in r.text
 
 
+class TestQuantityUpdate:
+    def test_update_quantity_persists(self, client: TestClient, db_path: Path) -> None:
+        # Quantity edits must work regardless of edit_mode cookie — the toggle
+        # is a UI affordance, not a server-side gate (localhost only).
+        r = client.post(
+            "/cards/sov_inf/quantity",
+            data={"quantity": 3},
+            cookies={"kardscm_edit": "1"},
+        )
+        assert r.status_code == 200
+        assert 'value="3"' in r.text
+        assert 'name="quantity"' in r.text
+        with get_connection(db_path) as conn:
+            row = conn.execute(
+                "SELECT quantity FROM cards WHERE cardId = ?", ("sov_inf",)
+            ).fetchone()
+        assert row[0] == 3
+
+    def test_update_quantity_clamps_negative_to_zero(self, client: TestClient) -> None:
+        r = client.post(
+            "/cards/sov_inf/quantity",
+            data={"quantity": -5},
+            cookies={"kardscm_edit": "1"},
+        )
+        assert r.status_code == 200
+        assert 'value="0"' in r.text
+
+    def test_update_quantity_unknown_card(self, client: TestClient) -> None:
+        r = client.post("/cards/no_such_card/quantity", data={"quantity": 1})
+        assert r.status_code == 404
+
+    def test_update_quantity_clamps_above_rarity_max(
+        self, client: TestClient, db_path: Path
+    ) -> None:
+        # sov_inf is Standard (max 4) — posting 99 should clamp to 4.
+        r = client.post(
+            "/cards/sov_inf/quantity",
+            data={"quantity": 99},
+            cookies={"kardscm_edit": "1"},
+        )
+        assert r.status_code == 200
+        assert 'value="4"' in r.text
+        with get_connection(db_path) as conn:
+            row = conn.execute(
+                "SELECT quantity FROM cards WHERE cardId = ?", ("sov_inf",)
+            ).fetchone()
+        assert row[0] == 4
+
+    def test_update_quantity_clamps_limited_to_three(
+        self, client: TestClient, db_path: Path
+    ) -> None:
+        # ger_tank is Limited (max 3) — posting 99 should clamp to 3.
+        r = client.post(
+            "/cards/ger_tank/quantity",
+            data={"quantity": 99},
+            cookies={"kardscm_edit": "1"},
+        )
+        assert r.status_code == 200
+        assert 'value="3"' in r.text
+        with get_connection(db_path) as conn:
+            row = conn.execute(
+                "SELECT quantity FROM cards WHERE cardId = ?", ("ger_tank",)
+            ).fetchone()
+        assert row[0] == 3
+
+    def test_qty_cell_max_attr_reflects_rarity(self, client: TestClient) -> None:
+        # Standard card — input max should be 4.
+        r = client.get("/", cookies={"kardscm_edit": "1"})
+        assert 'max="4"' in r.text
+
+    def test_qty_cell_is_readonly_without_cookie(self, client: TestClient) -> None:
+        # Default page: edit_mode is off, qty cells render as plain numbers.
+        r = client.get("/")
+        assert 'name="quantity"' not in r.text
+
+    def test_qty_cell_is_editable_with_cookie(self, client: TestClient) -> None:
+        r = client.get("/", cookies={"kardscm_edit": "1"})
+        assert 'name="quantity"' in r.text
+        assert "settle:600ms" in r.text
+
+
+class TestEditToggle:
+    def test_start_edit_sets_cookie(self, client: TestClient) -> None:
+        r = client.post("/start-edit", headers={"HX-Current-URL": "/"})
+        assert r.status_code == 200
+        assert "kardscm_edit=1" in r.headers.get("set-cookie", "")
+
+    def test_start_edit_hx_redirects_to_current_url(self, client: TestClient) -> None:
+        r = client.post(
+            "/start-edit",
+            headers={"HX-Current-URL": "/?factions=Soviet"},
+        )
+        assert r.headers.get("HX-Redirect") == "/?factions=Soviet"
+
+    def test_request_save_redirects_when_no_changes(self, client: TestClient) -> None:
+        # Enter edit mode (takes snapshot), then immediately request save → no diff.
+        client.post("/start-edit", headers={"HX-Current-URL": "/"})
+        r = client.post(
+            "/request-save",
+            headers={"HX-Current-URL": "/"},
+            cookies={"kardscm_edit": "1"},
+        )
+        assert r.status_code == 200
+        assert "kardscm_edit=0" in r.headers.get("set-cookie", "")
+        assert r.headers.get("HX-Redirect") == "/"
+
+    def test_request_save_returns_modal_when_changes_exist(
+        self, client: TestClient, db_path: Path
+    ) -> None:
+        # Start edit (snapshot: sov_inf qty=2), change it, then request-save.
+        client.post("/start-edit", headers={"HX-Current-URL": "/"})
+        client.post("/cards/sov_inf/quantity", data={"quantity": 4})
+        r = client.post(
+            "/request-save",
+            headers={"HX-Current-URL": "/"},
+            cookies={"kardscm_edit": "1"},
+        )
+        assert r.status_code == 200
+        assert "modal-backdrop" in r.text
+        assert "Soviet Rifles" in r.text
+        # Before/after columns present
+        assert "2" in r.text  # qty_before
+        assert "4" in r.text  # qty_after
+
+    def test_confirm_save_clears_cookie(self, client: TestClient) -> None:
+        r = client.post("/confirm-save")
+        assert r.status_code == 200
+        assert "kardscm_edit=0" in r.headers.get("set-cookie", "")
+        assert r.headers.get("HX-Redirect") == "/"
+
+    def test_undo_save_restores_quantities(self, client: TestClient, db_path: Path) -> None:
+        # Snapshot at qty=2, change to 4, then undo → back to 2.
+        client.post("/start-edit", headers={"HX-Current-URL": "/"})
+        client.post("/cards/sov_inf/quantity", data={"quantity": 4})
+        r = client.post("/undo-save")
+        assert r.status_code == 200
+        assert "kardscm_edit=0" in r.headers.get("set-cookie", "")
+        with get_connection(db_path) as conn:
+            row = conn.execute(
+                "SELECT quantity FROM cards WHERE cardId = ?", ("sov_inf",)
+            ).fetchone()
+        assert row[0] == 2
+
+    def test_close_save_modal_returns_empty(self, client: TestClient) -> None:
+        r = client.post("/close-save-modal")
+        assert r.status_code == 200
+        assert r.text == ""
+
+
+class TestEditToggleButtonRender:
+    def test_toggle_button_visible_in_user_mode(self, client: TestClient) -> None:
+        r = client.get("/")
+        assert "/start-edit" in r.text
+        assert "edit-toggle" in r.text
+
+    def test_save_button_visible_in_edit_mode(self, client: TestClient) -> None:
+        r = client.get("/", cookies={"kardscm_edit": "1"})
+        assert "/request-save" in r.text
+        assert "edit-toggle on" in r.text
+
+    def test_toggle_button_hidden_in_admin_mode(self, db_path: Path) -> None:
+        from kardscm.web.app import create_app
+
+        admin_app = create_app(
+            db_path,
+            lang_config=LANGUAGE_EN,
+            admin=True,
+            backup_path=db_path.with_suffix(".db.bak.test"),
+        )
+        admin_client = TestClient(admin_app)
+        r = admin_client.get("/")
+        assert "/start-edit" not in r.text
+        assert "/request-save" not in r.text
+
+
 class TestCardModal:
     def test_modal_renders(self, client: TestClient) -> None:
         r = client.get("/cards/sov_inf")

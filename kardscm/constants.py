@@ -146,5 +146,14 @@ DECK_NATION_TO_DB: dict[str, str] = {
     "finland": "Finland",
 }
 
+# === Rarity limits ===
+# Maximum copies of a card per rarity tier (API values, language-agnostic).
+RARITY_MAX_QUANTITY: dict[str, int] = {
+    "Standard": 4,
+    "Limited": 3,
+    "Special": 2,
+    "Elite": 1,
+}
+
 # === Deck Export ===
 DECK_COLUMN_WIDTHS: list[int] = [30, 18, 14, 12, 10, 10]

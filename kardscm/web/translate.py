@@ -24,4 +24,5 @@ def to_view(card: dict, lang_config: LanguageConfig) -> dict:
         for a in KNOWN_EXTRA_ABILITIES
         if card.get(f"extra_ability_{a}", 0)
     )
+    base["rarity_raw"] = card.get("rarity", "")
     return base

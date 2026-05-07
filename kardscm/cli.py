@@ -320,7 +320,8 @@ def deck_export_cmd(
     epilog="Examples:\n\n"
     "* `kards web`\n\n"
     "* `kards web --port 9000 --no-browser`\n\n"
-    "* `kards --lang ru web`",
+    "* `kards --lang ru web`\n\n"
+    "* `kards --lang ru web --admin`",
 )
 def web(
     ctx: typer.Context,
@@ -336,14 +337,29 @@ def web(
         str,
         typer.Option("--host", help="Bind host (default 127.0.0.1)"),
     ] = "127.0.0.1",
+    admin: Annotated[
+        bool,
+        typer.Option(
+            "--admin",
+            "-A",
+            help="Enable admin editing of all card fields. Backs up the DB and shows a red banner.",
+        ),
+    ] = False,
 ) -> None:
     """Start the local webUI for browsing and editing the collection.
 
-    Mirrors the kards.com filter set, lays cards out as an Excel-like
-    table, and supports inline quantity editing autosaved to the local
-    database. Run **sync** first to populate the DB.
+    Without --admin, only the user mode is available: the in-page Edit
+    toggle exposes per-card quantity editing. With --admin, every editable
+    column becomes available via a modal form, and the database is backed
+    up to a timestamped sibling file before the server starts.
     """
-    run_web(port=port, open_browser=not no_browser, host=host, lang=_lang(ctx))
+    run_web(
+        port=port,
+        open_browser=not no_browser,
+        host=host,
+        lang=_lang(ctx),
+        admin=admin,
+    )
 
 
 @baseline_app.command("init")

@@ -1,0 +1,51 @@
+<div class="modal-backdrop save-modal-backdrop">
+  <div class="modal-content save-modal-content">
+    <h2 class="save-modal-title">{{ ui.save_confirm_title }}</h2>
+    {% if changes %}
+    <div class="save-diff-wrap">
+      <table class="save-diff-table">
+        <thead>
+          <tr>
+            <th>{{ ui.save_col_card }}</th>
+            <th class="num">{{ ui.save_col_before }}</th>
+            <th class="num">{{ ui.save_col_after }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in changes %}
+          <tr>
+            <td class="save-card-name">{{ c.title }}</td>
+            <td class="num save-qty-old">{{ c.qty_before }}</td>
+            <td class="num save-qty-new {{ 'qty-delta-up' if c.qty_after > c.qty_before else 'qty-delta-down' }}">
+              {{ c.qty_after }}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="save-no-changes">{{ ui.save_no_changes }}</p>
+    {% endif %}
+    <div class="save-modal-actions">
+      <button class="btn-save-confirm"
+              hx-post="/confirm-save"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+        {{ ui.save_yes }}
+      </button>
+      <button class="btn-save-continue"
+              hx-post="/close-save-modal"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+        {{ ui.save_continue }}
+      </button>
+      <button class="btn-save-undo"
+              hx-post="/undo-save"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+        {{ ui.save_no }}
+      </button>
+    </div>
+  </div>
+</div>

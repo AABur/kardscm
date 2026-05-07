@@ -4,6 +4,23 @@
 <header class="page-header">
   <h1>{{ ui.page_title }}</h1>
   <span id="counter" class="counter">{{ shown }} / {{ total }}</span>
+  {% if not admin %}
+    {% if not edit_mode %}
+      <button class="edit-toggle"
+              hx-post="/start-edit"
+              hx-target="#modal"
+              hx-swap="none">
+        {{ ui.edit_toggle_label }}: {{ ui.edit_toggle_state_off }}
+      </button>
+    {% else %}
+      <button class="edit-toggle on"
+              hx-post="/request-save"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+        {{ ui.edit_toggle_label }}: {{ ui.edit_toggle_state_on }}
+      </button>
+    {% endif %}
+  {% endif %}
   <small class="qty-hint">{{ ui.saved_hint }}</small>
 </header>
 
