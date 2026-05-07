@@ -36,25 +36,7 @@
   </thead>
   <tbody id="card-tbody">
     {% for card in cards %}
-      <tr
-        class="card-row"
-        hx-get="/cards/{{ card.cardId }}"
-        hx-target="#modal"
-        hx-swap="innerHTML"
-      >
-        <td>{{ card.faction }}</td>
-        <td class="title-cell">{{ card.title }}</td>
-        <td>{{ card.type }}</td>
-        <td>{{ card.rarity }}</td>
-        <td class="abilities">{{ card.attributes }}</td>
-        <td class="abilities">{{ card.extra_attributes }}</td>
-        <td>{{ card.set }}</td>
-        {% include "_qty_cell.html" %}
-        <td class="num">{{ card.kredits }}</td>
-        <td class="num">{{ card.operationCost if card.operationCost is not none else '' }}</td>
-        <td class="num">{{ card.attack if card.attack is not none else '' }}</td>
-        <td class="num">{{ card.defense if card.defense is not none else '' }}</td>
-      </tr>
+      {% include "_table_row.html" %}
     {% endfor %}
   </tbody>
 </table>

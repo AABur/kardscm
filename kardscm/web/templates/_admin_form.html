@@ -1,0 +1,127 @@
+{# Admin edit form. Renders inside #modal; submits to POST /admin/cards/{id} and
+   replaces the corresponding table row via #card-row-<id>. #}
+<div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
+  <div class="modal-content admin-form-wrap" hx-on:click="event.stopPropagation()">
+    <button
+      type="button"
+      class="modal-close"
+      aria-label="{{ ui.modal_close }}"
+      hx-on:click="document.getElementById('modal').replaceChildren()"
+    >×</button>
+    <h2>{{ ui.admin_edit_title or "Edit card" }} — <code>{{ card.cardId }}</code></h2>
+
+    <form
+      class="admin-form"
+      hx-post="/admin/cards/{{ card.cardId }}"
+      hx-target="#card-row-{{ card.cardId }}"
+      hx-swap="outerHTML"
+    >
+      <fieldset>
+        <legend>{{ ui.admin_section_text or "Localized text" }} ({{ locale_key }})</legend>
+        <label>
+          <span>{{ ui.admin_field_title or "Title" }}</span>
+          <input type="text" name="title_localized" value="{{ card.title_localized }}" required>
+        </label>
+        <label class="full-width">
+          <span>{{ ui.admin_field_text or "Text" }}</span>
+          <textarea name="text_localized" rows="3">{{ card.text_localized }}</textarea>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ ui.admin_section_categories or "Categories" }}</legend>
+        <label>
+          <span>{{ ui.admin_field_faction or "Faction" }}</span>
+          <select name="faction">
+            {% for f in factions %}
+              <option value="{{ f }}"{% if f == card.faction %} selected{% endif %}>{{ faction_labels.get(f, f) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>{{ ui.admin_field_type or "Type" }}</span>
+          <select name="type">
+            {% for t in types %}
+              <option value="{{ t }}"{% if t == card.type %} selected{% endif %}>{{ type_labels.get(t, t) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>{{ ui.admin_field_rarity or "Rarity" }}</span>
+          <select name="rarity">
+            {% for r in rarities %}
+              <option value="{{ r }}"{% if r == card.rarity %} selected{% endif %}>{{ rarity_labels.get(r, r) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>{{ ui.admin_field_set or "Set" }}</span>
+          <select name="set">
+            {% for s in sets %}
+              <option value="{{ s }}"{% if s == card['set'] %} selected{% endif %}>{{ set_labels.get(s, s) }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ ui.admin_section_stats or "Stats" }}</legend>
+        <label>
+          <span>{{ ui.admin_field_kredits or "Kredits" }}</span>
+          <input type="number" name="kredits" min="0" value="{{ card.kredits }}">
+        </label>
+        <label>
+          <span>{{ ui.admin_field_attack or "Attack" }}</span>
+          <input type="number" name="attack" min="0" value="{{ card.attack if card.attack is not none else '' }}">
+        </label>
+        <label>
+          <span>{{ ui.admin_field_defense or "Defense" }}</span>
+          <input type="number" name="defense" min="0" value="{{ card.defense if card.defense is not none else '' }}">
+        </label>
+        <label>
+          <span>{{ ui.admin_field_cost or "Operation cost" }}</span>
+          <input type="number" name="operationCost" min="0" value="{{ card.operationCost if card.operationCost is not none else '' }}">
+        </label>
+        <label class="check">
+          <input type="checkbox" name="reserved" value="1"{% if card.reserved %} checked{% endif %}>
+          <span>{{ ui.admin_field_reserved or "Reserved" }}</span>
+        </label>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ ui.admin_section_abilities or "Abilities" }}</legend>
+        <div class="checks">
+          {% for ability in abilities %}
+            {% set col = 'ability_' ~ ability %}
+            <label class="check">
+              <input type="checkbox" name="{{ col }}" value="1"{% if card[col] %} checked{% endif %}>
+              <span>{{ ability_labels.get(ability, ability) }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>{{ ui.admin_section_extra_abilities or "Extra abilities" }}</legend>
+        <div class="checks">
+          {% for ability in extra_abilities %}
+            {% set col = 'extra_ability_' ~ ability %}
+            <label class="check">
+              <input type="checkbox" name="{{ col }}" value="1"{% if card[col] %} checked{% endif %}>
+              <span>{{ extra_ability_labels.get(ability, ability) }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <div class="admin-form-actions">
+        <button type="submit" class="primary">{{ ui.admin_save or "Save" }}</button>
+        <button
+          type="button"
+          class="secondary"
+          hx-on:click="document.getElementById('modal').replaceChildren()"
+        >{{ ui.admin_cancel or "Cancel" }}</button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -7,7 +7,16 @@
     <link rel="stylesheet" href="/static/main.css">
     <script src="/static/htmx.min.js" defer></script>
   </head>
-  <body>
+  <body{% if admin %} class="admin-mode"{% endif %}>
+    {% if admin %}
+      <div class="admin-banner" role="alert">
+        <strong>{{ ui.admin_banner_label or "ADMIN MODE" }}</strong>
+        {% if backup_path %}
+          — {{ ui.admin_banner_backup or "DB backed up to" }}
+          <code>{{ backup_path }}</code>
+        {% endif %}
+      </div>
+    {% endif %}
     {% if fallback_warnings %}
       <div class="locale-warning-strip" role="status">
         Locale <code>{{ lang }}</code>:

@@ -1,6 +1,8 @@
 """Storage subpackage for card database management."""
 
+from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
+    ADMIN_EDITABLE_SCALARS,
     apply_extra_abilities_seed,
     delete_all_decks,
     delete_cards,
@@ -17,13 +19,16 @@ from kardscm.storage.database import (
     insert_deck,
     insert_deck_cards,
     set_metadata,
+    update_card_admin,
     update_card_quantity_by_id,
     update_quantity,
     upsert_cards,
 )
 
 __all__ = [
+    "ADMIN_EDITABLE_SCALARS",
     "apply_extra_abilities_seed",
+    "backup_database",
     "delete_all_decks",
     "delete_cards",
     "delete_deck",
@@ -39,6 +44,7 @@ __all__ = [
     "insert_deck",
     "insert_deck_cards",
     "set_metadata",
+    "update_card_admin",
     "update_card_quantity_by_id",
     "update_quantity",
     "upsert_cards",

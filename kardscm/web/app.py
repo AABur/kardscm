@@ -2,23 +2,33 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 import webbrowser
+from collections.abc import Mapping
 from contextlib import closing
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Query, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from kardscm.config import LanguageConfig, get_language_config
-from kardscm.constants import DEFAULT_DB_PATH, KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
+from kardscm.constants import (
+    DEFAULT_DB_PATH,
+    KNOWN_ABILITIES,
+    KNOWN_EXTRA_ABILITIES,
+    RARITY_MAX_QUANTITY,
+)
+from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
+    ADMIN_EDITABLE_SCALARS,
     get_card_quantity_by_id,
     get_connection,
     initialize_schema,
+    update_card_admin,
     update_card_quantity_by_id,
 )
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
@@ -29,6 +39,8 @@ logger = logging.getLogger(__name__)
 WEB_DIR = Path(__file__).parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
+
+EDIT_MODE_COOKIE = "kardscm_edit"
 
 FACTIONS = [
     "Soviet",
@@ -123,15 +135,49 @@ def _fetch_card(conn: sqlite3.Connection, card_id: str) -> dict | None:
         conn.row_factory = prev
 
 
-def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -> FastAPI:
-    """Build a FastAPI app bound to the given DB path and language config."""
+def _is_edit_mode(request: Request, *, admin: bool) -> bool:
+    if admin:
+        return True
+    return bool(request.cookies.get(EDIT_MODE_COOKIE) == "1")
+
+
+def _decoded_locale_value(raw: object, locale_key: str) -> str:
+    if not raw:
+        return ""
+    try:
+        decoded = json.loads(raw) if isinstance(raw, str) else {}
+    except json.JSONDecodeError:
+        return ""
+    return decoded.get(locale_key, "") or ""
+
+
+def create_app(
+    db_path: str | Path,
+    lang_config: LanguageConfig | None = None,
+    *,
+    admin: bool = False,
+    backup_path: Path | None = None,
+) -> FastAPI:
+    """Build a FastAPI app bound to the given DB path and language config.
+
+    Args:
+        db_path: Path to the SQLite collection database.
+        lang_config: Active language configuration; defaults to English.
+        admin: If True, register admin-only edit routes and force edit_mode on.
+        backup_path: Path of the auto-backup created before admin start;
+            displayed in the admin banner. Pass when admin=True.
+    """
     cfg = lang_config or get_language_config()
     db_path_resolved = Path(db_path)
+    edit_snapshot: dict[str, int] = {}
 
     app = FastAPI(title="kardscm webUI", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
     templates.env.globals["fallback_warnings"] = cfg.fallback_warnings
+    templates.env.globals["admin"] = admin
+    templates.env.globals["backup_path"] = str(backup_path) if backup_path else ""
+    templates.env.globals["rarity_max_quantity"] = RARITY_MAX_QUANTITY
 
     def render_table(
         request: Request,
@@ -140,6 +186,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         direction: str,
         template: str,
     ) -> HTMLResponse:
+        edit_mode = _is_edit_mode(request, admin=admin)
         with closing(_open_conn(db_path_resolved)) as conn:
             rows = query_cards(conn, filters, sort, direction, cfg.locale_key)
             total = _total_card_count(conn)
@@ -168,6 +215,7 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
                 "headers": cfg.export_headers,
                 "ui": cfg.ui_strings,
                 "lang": cfg.code,
+                "edit_mode": edit_mode,
             },
         )
 
@@ -235,6 +283,75 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         )
         return render_table(request, filters, sort, direction, "_table.html")
 
+    @app.post("/start-edit")
+    def start_edit(request: Request) -> Response:
+        with closing(_open_conn(db_path_resolved)) as conn:
+            rows = conn.execute("SELECT cardId, quantity FROM cards").fetchall()
+        edit_snapshot.clear()
+        edit_snapshot.update({row[0]: row[1] for row in rows})
+        target = request.headers.get("HX-Current-URL") or request.headers.get("referer") or "/"
+        response = Response(content="", status_code=200)
+        response.set_cookie(EDIT_MODE_COOKIE, "1", samesite="lax", httponly=False)
+        response.headers["HX-Redirect"] = target
+        return response
+
+    @app.post("/request-save", response_class=HTMLResponse)
+    def request_save(request: Request) -> Response:
+        with closing(_open_conn(db_path_resolved)) as conn:
+            rows = conn.execute("SELECT cardId, title, quantity FROM cards").fetchall()
+        target = request.headers.get("HX-Current-URL") or "/"
+        if not edit_snapshot:
+            response = Response(content="", status_code=200)
+            response.set_cookie(EDIT_MODE_COOKIE, "0", samesite="lax", httponly=False)
+            response.headers["HX-Redirect"] = target
+            return response
+        changes = []
+        for row in rows:
+            card_id, title_raw, current_qty = row[0], row[1], row[2]
+            original_qty = edit_snapshot.get(card_id)
+            if original_qty is None or current_qty == original_qty:
+                continue
+            try:
+                title = json.loads(title_raw or "{}").get(cfg.locale_key, card_id) or card_id
+            except (json.JSONDecodeError, TypeError):
+                title = card_id
+            changes.append({"title": title, "qty_before": original_qty, "qty_after": current_qty})
+        if not changes:
+            response = Response(content="", status_code=200)
+            response.set_cookie(EDIT_MODE_COOKIE, "0", samesite="lax", httponly=False)
+            response.headers["HX-Redirect"] = target
+            return response
+        return templates.TemplateResponse(
+            request, "_save_modal.html", {"changes": changes, "ui": cfg.ui_strings}
+        )
+
+    @app.post("/confirm-save")
+    def confirm_save(request: Request) -> Response:
+        edit_snapshot.clear()
+        target = request.headers.get("HX-Current-URL") or request.headers.get("referer") or "/"
+        response = Response(content="", status_code=200)
+        response.set_cookie(EDIT_MODE_COOKIE, "0", samesite="lax", httponly=False)
+        response.headers["HX-Redirect"] = target
+        return response
+
+    @app.post("/undo-save")
+    def undo_save(request: Request) -> Response:
+        if edit_snapshot:
+            with closing(_open_conn(db_path_resolved)) as conn:
+                for card_id, qty in edit_snapshot.items():
+                    update_card_quantity_by_id(conn, card_id, qty)
+                conn.commit()
+        edit_snapshot.clear()
+        target = request.headers.get("HX-Current-URL") or request.headers.get("referer") or "/"
+        response = Response(content="", status_code=200)
+        response.set_cookie(EDIT_MODE_COOKIE, "0", samesite="lax", httponly=False)
+        response.headers["HX-Redirect"] = target
+        return response
+
+    @app.post("/close-save-modal", response_class=HTMLResponse)
+    def close_save_modal() -> HTMLResponse:
+        return HTMLResponse("")
+
     @app.post("/cards/{card_id}/quantity", response_class=HTMLResponse)
     def update_quantity(
         request: Request,
@@ -244,16 +361,23 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
         if quantity < 0:
             quantity = 0
         with closing(_open_conn(db_path_resolved)) as conn:
-            exists = conn.execute("SELECT 1 FROM cards WHERE cardId = ?", (card_id,)).fetchone()
-            if exists is None:
+            row = conn.execute("SELECT rarity FROM cards WHERE cardId = ?", (card_id,)).fetchone()
+            if row is None:
                 raise HTTPException(status_code=404, detail="card not found")
+            rarity_raw = row[0] or ""
+            max_qty = RARITY_MAX_QUANTITY.get(rarity_raw, 4)
+            quantity = min(quantity, max_qty)
             update_card_quantity_by_id(conn, card_id, quantity)
             conn.commit()
             persisted = get_card_quantity_by_id(conn, card_id)
+        edit_mode = _is_edit_mode(request, admin=admin)
         return templates.TemplateResponse(
             request,
             "_qty_cell.html",
-            {"card": {"cardId": card_id, "quantity": persisted}},
+            {
+                "card": {"cardId": card_id, "quantity": persisted, "rarity_raw": rarity_raw},
+                "edit_mode": edit_mode,
+            },
         )
 
     @app.get("/cards/{card_id}", response_class=HTMLResponse)
@@ -267,11 +391,153 @@ def create_app(db_path: str | Path, lang_config: LanguageConfig | None = None) -
             request, "_modal.html", {"card": card, "ui": cfg.ui_strings}
         )
 
+    if admin:
+
+        @app.get("/admin/cards/{card_id}/edit", response_class=HTMLResponse)
+        def admin_edit_form(request: Request, card_id: str) -> HTMLResponse:
+            with closing(_open_conn(db_path_resolved)) as conn:
+                row = _fetch_card(conn, card_id)
+            if row is None:
+                raise HTTPException(status_code=404, detail="card not found")
+            row["title_localized"] = _decoded_locale_value(row.get("title"), cfg.locale_key)
+            row["text_localized"] = _decoded_locale_value(row.get("text"), cfg.locale_key)
+            return templates.TemplateResponse(
+                request,
+                "_admin_form.html",
+                {
+                    "card": row,
+                    "ui": cfg.ui_strings,
+                    "lang": cfg.code,
+                    "locale_key": cfg.locale_key,
+                    "abilities": KNOWN_ABILITIES,
+                    "extra_abilities": KNOWN_EXTRA_ABILITIES,
+                    "factions": FACTIONS,
+                    "types": TYPES,
+                    "rarities": RARITIES,
+                    "sets": SETS,
+                    "ability_labels": cfg.ability_names,
+                    "extra_ability_labels": cfg.extra_ability_names,
+                    "faction_labels": cfg.faction_names,
+                    "type_labels": cfg.type_names,
+                    "rarity_labels": cfg.rarity_names,
+                    "set_labels": cfg.set_names,
+                },
+            )
+
+        @app.post("/admin/cards/{card_id}", response_class=HTMLResponse)
+        async def admin_save(request: Request, card_id: str) -> HTMLResponse:
+            form = await request.form()
+            try:
+                fields = _parse_admin_form(form)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+            with closing(_open_conn(db_path_resolved)) as conn:
+                try:
+                    update_card_admin(conn, card_id, fields, cfg.locale_key)
+                except KeyError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                conn.commit()
+                row = _fetch_card(conn, card_id)
+            assert row is not None
+            card = to_view(row, cfg)
+            return templates.TemplateResponse(
+                request,
+                "_table_row.html",
+                {
+                    "card": card,
+                    "edit_mode": True,
+                    "admin": True,
+                    "include_oob_modal_clear": True,
+                },
+            )
+
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok"}
 
     return app
+
+
+def _parse_admin_form(form: Mapping[str, str]) -> dict:
+    """Parse the admin edit form into a fields dict for update_card_admin.
+
+    Validates ranges and categorical values. Empty number inputs map to None.
+    Title is required non-empty; text may be empty.
+
+    Args:
+        form: A Starlette FormData (or any mapping-like object exposing .get).
+    """
+    fields: dict = {}
+
+    # Categorical
+    for key, allowed in (
+        ("faction", FACTIONS),
+        ("type", TYPES),
+        ("rarity", RARITIES),
+        ("set", SETS),
+    ):
+        value = form.get(key)
+        if value is None:
+            continue
+        if value not in allowed:
+            raise ValueError(f"invalid {key}: {value}")
+        fields[key] = value
+
+    # Integers (kredits required >=0; others may be None on empty)
+    for key in ("kredits", "attack", "defense", "operationCost"):
+        raw = form.get(key)
+        if raw is None or raw == "":
+            if key == "kredits":
+                continue
+            fields[key] = None
+            continue
+        try:
+            num = int(raw)
+        except ValueError as exc:
+            raise ValueError(f"{key} must be an integer") from exc
+        if num < 0:
+            raise ValueError(f"{key} must be >= 0")
+        fields[key] = num
+
+    # Boolean reserved (checkbox is absent when unchecked)
+    fields["reserved"] = 1 if form.get("reserved") in ("1", "on", "true") else 0
+
+    # Abilities (binary checkboxes)
+    for ability in KNOWN_ABILITIES:
+        col = f"ability_{ability}"
+        fields[col] = 1 if form.get(col) in ("1", "on", "true") else 0
+    for ability in KNOWN_EXTRA_ABILITIES:
+        col = f"extra_ability_{ability}"
+        fields[col] = 1 if form.get(col) in ("1", "on", "true") else 0
+
+    # Localized title/text (active locale)
+    title = form.get("title_localized")
+    if title is not None:
+        title_str = str(title).strip()
+        if not title_str:
+            raise ValueError("title must not be empty")
+        fields["title"] = title_str
+
+    text = form.get("text_localized")
+    if text is not None:
+        # Empty text is allowed.
+        fields["text"] = str(text)
+
+    # Filter out admin-only fields the storage layer doesn't accept (none currently).
+    # Sanity: nothing outside the documented allow-list.
+    allowed_keys = (
+        set(ADMIN_EDITABLE_SCALARS)
+        | {f"ability_{a}" for a in KNOWN_ABILITIES}
+        | {f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES}
+        | {"title", "text"}
+    )
+    for key in fields:
+        if key not in allowed_keys:
+            raise ValueError(f"unsupported admin field: {key}")
+    return fields
 
 
 def _resolve_lang(lang_code: str | None) -> LanguageConfig | None:
@@ -287,6 +553,7 @@ def run(
     open_browser: bool = True,
     host: str = "127.0.0.1",
     lang: str | None = None,
+    admin: bool = False,
 ) -> None:
     """Start uvicorn after validating the DB exists and is non-empty."""
     import uvicorn
@@ -300,7 +567,23 @@ def run(
         if _total_card_count(conn) == 0:
             raise SystemExit("Card database is empty. Run `kardscm sync` first to populate it.")
 
-    app = create_app(actual_db, lang_config=_resolve_lang(lang))
+    if admin and host not in {"127.0.0.1", "localhost", "::1"}:
+        raise SystemExit(
+            f"Admin mode is not allowed with --host {host!r}. "
+            "Bind to 127.0.0.1 (default) to use --admin."
+        )
+
+    backup_path: Path | None = None
+    if admin:
+        backup_path = backup_database(actual_db)
+        print(f"ADMIN MODE — DB backed up to {backup_path}")
+
+    app = create_app(
+        actual_db,
+        lang_config=_resolve_lang(lang),
+        admin=admin,
+        backup_path=backup_path,
+    )
     url = f"http://{host}:{port}"
     print(f"kardscm webUI listening on {url}")
     if open_browser:
