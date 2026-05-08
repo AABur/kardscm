@@ -1,117 +1,20 @@
 @AGENTS.md
 
-# Card Collection
+# Claude Notes
 
-## Environment
-- Python managed via `uv` (not pip directly)
-- Package name: `kardscm` (version 0.2.0)
-- Entry points: `python -m kardscm` or `kardscm` (console script)
-- Tests: `uv run pytest` or `make test`
+Use `AGENTS.md` as the source of truth for project rules.
 
-## Usage Commands
-- Sync: `uv run kardscm sync`
-- Export: `uv run kardscm export --format xlsx --file cards.xlsx`
-- Update: `uv run kardscm update --file cards.xlsx`
-- Import deck: `uv run kardscm deck import --file deck.txt`
-- Export deck: `uv run kardscm deck export --format xlsx --file deck.xlsx`
-- Short form: `uv run python -m kardscm sync`
+Tracked Claude assets in this repository:
 
-### Language selection
-Pass the global `--lang` (or `-l`) flag before the subcommand:
-- `uv run kardscm --lang ru sync`
-- `uv run kardscm --lang de export -f xlsx -o cards.xlsx`
-- `uv run kardscm --lang zh-Hant web`
+- `.claude/settings.json`: shared hooks and plugin settings
+- `.claude/skills/check/SKILL.md`: project check helper
+- `.claude/skills/gen-test/SKILL.md`: pytest generation helper
 
-Default is `en`. Supported codes: `en`, `ru`, `de`, `fr`, `it`, `es`, `pt`,
-`pl`, `ja`, `ko`, `zh`, `zh-Hant`. Unknown codes log a warning and fall back
-to English. Locales other than `en` and `ru` ship as scaffolds: `code`,
-`name`, `locale_key`, `collection_sheet_name` are correct, every other
-section falls back to English with a `fallback_warnings` log on stderr.
+Local Claude files are ignored:
 
-## Useful Commands
-- `make help` — list available commands
-- `make check` — full check (ruff format, ruff check, mypy, pytest)
-- `make lint` — check code (ruff, mypy)
-- `make format` — format code
-- `make run` — run the application
+- `.claude/settings.local.json`
+- `.claude/worktrees/`
 
-## Gotchas
-- `uv sync` alone skips dev deps; use `uv sync --dev` before running tests
-
-## Project Structure
-```
-kardscm/
-├── __init__.py         # Package initialization (__version__)
-├── __main__.py         # Entry point for python -m kardscm
-├── cli.py              # Typer CLI declarations
-├── commands.py         # Business logic (sync, export, import, deck)
-├── config.py           # Language configuration (LanguageConfig dataclass)
-├── constants.py        # Language-agnostic constants (URLs, defaults)
-├── models.py           # TypedDict definitions (CardDict, ProbeData)
-├── helpers.py          # Utility functions (parse_int, to_text, sanitize_text)
-├── scraping/           # Scraping functionality
-│   ├── __init__.py     # Exports scrape_cards (sync orchestration)
-│   ├── probe.py        # Playwright one-shot GraphQL interceptor
-│   ├── fetcher.py      # httpx GraphQL paginator
-│   └── normalizer.py   # API node → CardDict transformer
-├── storage/            # Database layer
-│   ├── __init__.py     # Exports all database functions
-│   └── database.py     # SQLite operations (new schema with API field names)
-├── export/             # Export functionality
-│   ├── __init__.py     # Exports export functions
-│   └── exporters.py    # CSV/XLSX/JSON exporters with translate_card_for_export
-└── importing/          # Import functionality
-    ├── __init__.py     # Exports parse_deck_file
-    └── parser.py       # Deck TXT file parser
-tests/                  # pytest tests
-```
-
-## Architecture
-- **Config**: `kardscm.config` — `LanguageConfig` frozen dataclass with all language-specific data
-  - Registry: `LANGUAGES` dict, built by scanning `kardscm/locales/*.toml` at import
-  - `get_language_config(lang)` looks up `lang or "en"` in the registry. Unknown codes log a warning and return `LANGUAGE_EN`.
-  - `locale_key` field (`"en-EN"` / `"ru-RU"` / `"de-DE"` / `"pt-BR"` / `"zh-Hans"` / …) selects the entry in the JSON title/text dicts.
-  - Static translation mappings: `faction_names`, `type_names`, `rarity_names`, `set_names`, `ability_names`
-  - `DECK_NATION_TO_DB` (in `kardscm.constants`, not `LanguageConfig`) maps deck nation keys to API faction names (e.g. `"soviet"` → `"Soviet"`).
-  - The active language flows from the global `--lang` CLI flag through `commands.*(lang=...)` to `get_language_config(lang)`. There is no `config.ini`.
-- **Scraping**: `kardscm.scraping` fetches cards via direct GraphQL (synchronous)
-  - `probe.py`: One-shot Playwright intercept — opens browser, captures first GraphQL POST
-  - `fetcher.py`: httpx paginator — uses probe data to fetch all cards via offset/cursor pagination
-  - `normalizer.py`: Transforms raw API nodes into CardDict (title/text/attributes as JSON strings)
-  - `scrape_cards()`: Orchestrates probe → fetch → normalize pipeline
-- **Storage**: `kardscm.storage` manages SQLite database
-  - DB columns use API field names (camelCase): `cardId`, `faction`, `title`, `kredits`, etc.
-  - `title` and `text` stored as JSON strings with locale keys
-  - `attributes` stored as JSON array string
-  - `quantity` is user-managed, preserved on upsert
-  - Schema version check: detects old `nation` column → error with migration instructions
-  - Card lookup by faction + `json_extract(title, ...)` for localized name matching
-- **Export**: `kardscm.export` writes formatted files
-  - `translate_card_for_export()`: Converts raw DB card to localized export dict at export time
-  - Excel (XLSX) with styling and filters
-  - CSV with UTF-8 BOM for Windows Excel
-  - JSON with metadata
-  - Deck export to XLSX sheet and JSON
-  - All headers and labels come from `LanguageConfig`
-- **Import**: `kardscm.importing` parses deck files
-  - TXT deck file parser
-- **CLI**: `kardscm.cli` provides Typer-based command-line interface
-  - Console script: `kardscm`
-  - Module entry: `python -m kardscm`
-  - Commands: `sync`, `export`, `update`, `deck import`, `deck export`
-  - `sync` is synchronous (no asyncio)
-- **Commands**: `kardscm.commands` contains business logic
-  - Extracted from cli.py for separation of concerns
-  - Functions: `sync_collection`, `export_collection`, `update_collection`, `import_deck`, `export_deck`
-  - `export_collection` fetches raw DB cards, translates each via `translate_card_for_export`, then exports
-  - `update_collection` reverse-maps localized faction names to API names for DB lookup
-  - Each command takes a `lang: str | None` keyword and resolves it via `get_language_config(lang)`
-
-## Code Patterns
-- English originals stored in DB — translation only at export time via static mappings
-- Language-specific data from `kardscm.config` (`LanguageConfig`), language-agnostic constants from `kardscm.constants`
-- No emojis in log messages
-- Imports at top of file (not inline in exception handlers)
-- Import from package: `from kardscm.config import ...`, `from kardscm.constants import ...`
-- Type hints using TypedDict from `kardscm.models`
-- Card abilities translated via `LanguageConfig.ability_names`; unknown/internal attributes (e.g. `BecomesVeteran:*`) are filtered out
+Do not duplicate architecture or command references here. If project behavior,
+developer workflow, or documentation policy changes, update `README.md`,
+`CONTRIBUTING.md`, and `AGENTS.md` as appropriate.

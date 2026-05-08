@@ -1,4 +1,4 @@
-.PHONY: help sync sync-dev test lint format typecheck check clean release
+.PHONY: help sync sync-dev run sync-diff web web-admin test lint format typecheck check clean release
 
 .DEFAULT_GOAL := help
 
@@ -23,6 +23,18 @@ sync-dev: ## Sync all dependencies including dev tools
 	@echo "Installing Chromium for Playwright..."
 	@$(UV) run python -m playwright install chromium
 	@echo "All dependencies synced successfully!"
+
+run: ## Show kardscm CLI help
+	@$(UV) run kardscm --help
+
+sync-diff: ## Preview catalog sync without modifying the database
+	@$(UV) run kardscm sync --diff-only
+
+web: ## Start the local web UI
+	@$(UV) run kardscm web
+
+web-admin: ## Start the local admin web UI with DB backup
+	@$(UV) run kardscm web --admin
 
 test: ## Run tests with pytest
 	@$(UV) run pytest tests/ -v --cov=kardscm --cov-report=term-missing
