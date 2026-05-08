@@ -1,4 +1,4 @@
-.PHONY: help sync sync-dev test lint format typecheck check clean
+.PHONY: help sync sync-dev test lint format typecheck check clean release
 
 .DEFAULT_GOAL := help
 
@@ -37,6 +37,16 @@ typecheck: ## Run mypy type checker
 	@$(UV) run mypy kardscm/
 
 check: format lint typecheck test ## Run all checks (requires sync first!)
+
+release: check ## Checklist for tagging a release (runs check first)
+	@echo ""
+	@echo "  1. Bump version in pyproject.toml and kardscm/__init__.py"
+	@echo "  2. Add a dated entry to CHANGELOG.md"
+	@echo "  3. Commit: git add pyproject.toml kardscm/__init__.py CHANGELOG.md"
+	@echo "             git commit -m 'chore: X.Y.Z release prep'"
+	@echo "  4. Tag:    git tag vX.Y.Z"
+	@echo "  5. Push:   git push origin main vX.Y.Z"
+	@echo ""
 
 clean: ## Clean cache and temporary files
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

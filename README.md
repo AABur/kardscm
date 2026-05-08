@@ -9,13 +9,18 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 
 ## Features
 
-- Multi-language support (English and Russian)
+- Multi-language support (12 locales: en, ru, de, fr, it, es, pt, pl, ja, ko, zh, zh-Hant)
 - SQLite storage with upsert on sync (preserves user-managed `quantity`)
 - Export to XLSX, CSV, JSON with localized headers
 - Bulk collection quantity update from an edited XLSX
 - Deck add/import from KARDS client TXT format (`deck add` includes exile-card fallback and collection quantity checks)
 - Deck replace, delete, and export to XLSX or JSON
 - Interactive deck selection for export and delete
+- Browser-based Web UI for collection browsing, filtering, and editing
+- User edit mode — quantity editing with rarity caps and save-confirmation modal
+- Admin mode (`--admin`) — full-field editing via modal form, with DB auto-backup
+- API contract drift detection — compares live GraphQL shape against a committed baseline
+- Extra-ability tags — manually curated flags for abilities not in the official API
 
 ## Requirements
 
@@ -122,6 +127,34 @@ Edit the `quantity` column in the XLSX exported above and feed it back with
 (NBSP, double spaces) are normalized automatically. Other columns are ignored.
 Unmatched rows are logged as warnings and skipped.
 
+### Browse and edit in the browser
+
+```bash
+kardscm web                        # open at http://127.0.0.1:8765
+kardscm web --port 9000            # custom port
+kardscm web --no-browser           # don't auto-open the browser
+kardscm --lang ru web              # Russian UI
+kardscm --lang ru web --admin      # admin mode (full-field editing)
+```
+
+The web UI shows the full collection with filterable columns (faction, type,
+rarity, set, kredits, text search, spawnable/reserved/owned toggles) and a
+sortable card table. Click any row to view card details and the card image.
+
+**User edit mode** — click **Edit** in the page header to enable inline quantity
+editing. Each cell saves immediately on change. When you click **Save**, a
+confirmation modal shows the before/after diff; you can confirm, continue
+editing, or undo all changes. Rarity caps are enforced automatically (Standard 4
+/ Limited 3 / Special 2 / Elite 1).
+
+**Admin mode** (`--admin` / `-A`) additionally exposes a modal form for every
+editable field: stats (kredits, attack, defense, operationCost), all ability and
+extra-ability flags, categories (faction, type, rarity, set), the `reserved`
+flag, and localized title/text (active locale only). Admin mode:
+- backs up the database to a timestamped sibling file before the server starts
+- shows a red banner in the browser with the backup path
+- is restricted to localhost and refuses to start on any other host
+
 ### Add a deck
 
 ```bash
@@ -175,11 +208,12 @@ End-to-end loop for keeping collection and decks in sync:
 # 1. Pull the card catalog (first run or after a patch)
 kardscm sync
 
-# 2. Export collection to XLSX and edit the `quantity` column in your editor
+# 2a. Open the browser UI and edit quantities inline (recommended)
+kardscm web
+
+# — or — 2b. Export to XLSX, edit the `quantity` column, push back
 kardscm export -f xlsx -o cards.xlsx
 # ... edit cards.xlsx ...
-
-# 3. Push edited quantities back into the database
 kardscm update -i cards.xlsx
 
 # 4. Save decks exported from the KARDS client
@@ -243,6 +277,8 @@ make clean      # clean cache files
 - Card lookups normalize whitespace (NBSP, double spaces) so titles from the KARDS API always match user input.
 - `sync` preserves user-managed `quantity` on upsert; re-syncing never resets edited quantities.
 - Card abilities (Blitz, Guard, Fury, etc.) are translated according to the configured language.
+- Web UI quantity editing enforces rarity caps: Standard 4 / Limited 3 / Special 2 / Elite 1.
+- Admin mode (`--admin`) is localhost-only and auto-backs up the database before starting.
 
 ## License
 

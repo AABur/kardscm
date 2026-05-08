@@ -128,7 +128,7 @@ def sync(
         Path | None,
         typer.Option(
             "--diff-report",
-            help="Markdown diff report path (default: ./sync-diff-<UTC>.md).",
+            help="Markdown diff report path (default: ./sync-diff-TIMESTAMP.md).",
             resolve_path=True,
         ),
     ] = None,
