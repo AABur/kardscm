@@ -24,7 +24,7 @@ from kardscm.constants import (
 )
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
-    ADMIN_EDITABLE_SCALARS,
+    ADMIN_DB_COLUMNS,
     get_card_quantity_by_id,
     get_connection,
     initialize_schema,
@@ -82,6 +82,10 @@ CARD_COLUMNS = (
     f"{_EXTRA_ABILITY_COLS}, operationCost, "
     "reserved, image, can_create, exile, quantity, updated_at"
 )
+
+# Form-side allow-list: DB columns the admin form can write directly,
+# plus the locale-merged title/text fields the form exposes.
+_ADMIN_FORM_FIELDS: frozenset[str] = ADMIN_DB_COLUMNS | {"title", "text"}
 
 
 def _read_filters(
@@ -526,16 +530,9 @@ def _parse_admin_form(form: Mapping[str, str]) -> dict:
         # Empty text is allowed.
         fields["text"] = str(text)
 
-    # Filter out admin-only fields the storage layer doesn't accept (none currently).
     # Sanity: nothing outside the documented allow-list.
-    allowed_keys = (
-        set(ADMIN_EDITABLE_SCALARS)
-        | {f"ability_{a}" for a in KNOWN_ABILITIES}
-        | {f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES}
-        | {"title", "text"}
-    )
     for key in fields:
-        if key not in allowed_keys:
+        if key not in _ADMIN_FORM_FIELDS:
             raise ValueError(f"unsupported admin field: {key}")
     return fields
 
