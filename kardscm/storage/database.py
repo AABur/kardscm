@@ -27,6 +27,15 @@ ADMIN_EDITABLE_SCALARS: tuple[str, ...] = (
     "reserved",
 )
 
+# DB columns the admin UI can write directly. Title/text are NOT in this
+# set — they are stored as locale-keyed JSON and merged in a separate
+# branch in update_card_admin.
+ADMIN_DB_COLUMNS: frozenset[str] = (
+    frozenset(ADMIN_EDITABLE_SCALARS)
+    | {f"ability_{a}" for a in KNOWN_ABILITIES}
+    | {f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES}
+)
+
 logger = logging.getLogger(__name__)
 
 _EXTRA_ABILITIES_TOML = Path(__file__).parent.parent / "data" / "extra_abilities.toml"
@@ -562,10 +571,6 @@ def update_card_admin(
         KeyError: If card_id does not exist.
         ValueError: If fields contains an unsupported key.
     """
-    allowed = set(ADMIN_EDITABLE_SCALARS)
-    allowed.update(f"ability_{a}" for a in KNOWN_ABILITIES)
-    allowed.update(f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES)
-
     row = conn.execute("SELECT title, text FROM cards WHERE cardId = ?", (card_id,)).fetchone()
     if row is None:
         raise KeyError(f"card not found: {card_id}")
@@ -574,7 +579,7 @@ def update_card_admin(
     params: list[object] = []
 
     for key, value in fields.items():
-        if key in allowed:
+        if key in ADMIN_DB_COLUMNS:
             set_clauses.append(f'"{key}" = ?')
             params.append(value)
         elif key == "title":

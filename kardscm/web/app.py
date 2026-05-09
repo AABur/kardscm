@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 import webbrowser
 from collections.abc import Mapping
 from contextlib import closing
 from pathlib import Path
+from typing import Any
 
-from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,9 +22,10 @@ from kardscm.constants import (
     KNOWN_EXTRA_ABILITIES,
     RARITY_MAX_QUANTITY,
 )
+from kardscm.helpers import extract_locale
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
-    ADMIN_EDITABLE_SCALARS,
+    ADMIN_DB_COLUMNS,
     get_card_quantity_by_id,
     get_connection,
     initialize_schema,
@@ -83,20 +84,25 @@ CARD_COLUMNS = (
     "reserved, image, can_create, exile, quantity, updated_at"
 )
 
+# Form-side allow-list: DB columns the admin form can write directly,
+# plus the locale-merged title/text fields the form exposes.
+_ADMIN_FORM_FIELDS: frozenset[str] = ADMIN_DB_COLUMNS | {"title", "text"}
 
-def _read_filters(
-    factions: list[str],
-    types: list[str],
-    rarities: list[str],
-    sets: list[str],
-    kredits: list[int],
-    abilities: list[str],
-    extra_abilities: list[str],
-    q: str,
-    spawnable: bool,
-    reserved: bool,
-    owned: bool,
+
+def card_filters_dep(
+    factions: list[str] = Query(default=[]),
+    types: list[str] = Query(default=[]),
+    rarities: list[str] = Query(default=[]),
+    sets: list[str] = Query(default=[]),
+    kredits: list[int] = Query(default=[]),
+    abilities: list[str] = Query(default=[]),
+    extra_abilities: list[str] = Query(default=[]),
+    q: str = Query(default=""),
+    spawnable: bool = Query(default=False),
+    reserved: bool = Query(default=False),
+    owned: bool = Query(default=False),
 ) -> CardFilters:
+    """FastAPI dependency that builds CardFilters from query string params."""
     return CardFilters(
         factions=factions,
         types=types,
@@ -142,13 +148,7 @@ def _is_edit_mode(request: Request, *, admin: bool) -> bool:
 
 
 def _decoded_locale_value(raw: object, locale_key: str) -> str:
-    if not raw:
-        return ""
-    try:
-        decoded = json.loads(raw) if isinstance(raw, str) else {}
-    except json.JSONDecodeError:
-        return ""
-    return decoded.get(locale_key, "") or ""
+    return extract_locale(raw, locale_key)
 
 
 def create_app(
@@ -222,65 +222,19 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def index(
         request: Request,
-        factions: list[str] = Query(default=[]),
-        types: list[str] = Query(default=[]),
-        rarities: list[str] = Query(default=[]),
-        sets: list[str] = Query(default=[]),
-        kredits: list[int] = Query(default=[]),
-        abilities: list[str] = Query(default=[]),
-        extra_abilities: list[str] = Query(default=[]),
-        q: str = Query(default=""),
-        spawnable: bool = Query(default=False),
-        reserved: bool = Query(default=False),
-        owned: bool = Query(default=False),
+        filters: CardFilters = Depends(card_filters_dep),
         sort: str = Query(default="faction"),
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
-        filters = _read_filters(
-            factions,
-            types,
-            rarities,
-            sets,
-            kredits,
-            abilities,
-            extra_abilities,
-            q,
-            spawnable,
-            reserved,
-            owned,
-        )
         return render_table(request, filters, sort, direction, "index.html")
 
     @app.get("/cards", response_class=HTMLResponse)
     def cards_partial(
         request: Request,
-        factions: list[str] = Query(default=[]),
-        types: list[str] = Query(default=[]),
-        rarities: list[str] = Query(default=[]),
-        sets: list[str] = Query(default=[]),
-        kredits: list[int] = Query(default=[]),
-        abilities: list[str] = Query(default=[]),
-        extra_abilities: list[str] = Query(default=[]),
-        q: str = Query(default=""),
-        spawnable: bool = Query(default=False),
-        reserved: bool = Query(default=False),
-        owned: bool = Query(default=False),
+        filters: CardFilters = Depends(card_filters_dep),
         sort: str = Query(default="faction"),
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
-        filters = _read_filters(
-            factions,
-            types,
-            rarities,
-            sets,
-            kredits,
-            abilities,
-            extra_abilities,
-            q,
-            spawnable,
-            reserved,
-            owned,
-        )
         return render_table(request, filters, sort, direction, "_table.html")
 
     @app.post("/start-edit")
@@ -311,10 +265,7 @@ def create_app(
             original_qty = edit_snapshot.get(card_id)
             if original_qty is None or current_qty == original_qty:
                 continue
-            try:
-                title = json.loads(title_raw or "{}").get(cfg.locale_key, card_id) or card_id
-            except (json.JSONDecodeError, TypeError):
-                title = card_id
+            title = extract_locale(title_raw, cfg.locale_key, default=card_id)
             changes.append({"title": title, "qty_before": original_qty, "qty_after": current_qty})
         if not changes:
             response = Response(content="", status_code=200)
@@ -461,7 +412,7 @@ def create_app(
     return app
 
 
-def _parse_admin_form(form: Mapping[str, str]) -> dict:
+def _parse_admin_form(form: Mapping[str, Any]) -> dict:
     """Parse the admin edit form into a fields dict for update_card_admin.
 
     Validates ranges and categorical values. Empty number inputs map to None.
@@ -469,6 +420,8 @@ def _parse_admin_form(form: Mapping[str, str]) -> dict:
 
     Args:
         form: A Starlette FormData (or any mapping-like object exposing .get).
+            Values may be ``str`` or ``UploadFile``; non-string values for the
+            keys this parser reads are coerced via ``str()`` where needed.
     """
     fields: dict = {}
 
@@ -526,16 +479,9 @@ def _parse_admin_form(form: Mapping[str, str]) -> dict:
         # Empty text is allowed.
         fields["text"] = str(text)
 
-    # Filter out admin-only fields the storage layer doesn't accept (none currently).
     # Sanity: nothing outside the documented allow-list.
-    allowed_keys = (
-        set(ADMIN_EDITABLE_SCALARS)
-        | {f"ability_{a}" for a in KNOWN_ABILITIES}
-        | {f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES}
-        | {"title", "text"}
-    )
     for key in fields:
-        if key not in allowed_keys:
+        if key not in _ADMIN_FORM_FIELDS:
             raise ValueError(f"unsupported admin field: {key}")
     return fields
 
@@ -556,6 +502,8 @@ def run(
     admin: bool = False,
 ) -> None:
     """Start uvicorn after validating the DB exists and is non-empty."""
+    # Lazy: uvicorn is only needed when the user actually starts the web server,
+    # not for `kardscm --help` or any non-web subcommand.
     import uvicorn
 
     actual_db = Path(db_path) if db_path else Path(DEFAULT_DB_PATH)

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import shutil
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,7 +31,7 @@ from kardscm.export import (
 from kardscm.helpers import parse_int
 from kardscm.importing import parse_deck_file
 from kardscm.models import DeckCardEntry, DiffReport
-from kardscm.scraping import scrape_cards
+from kardscm.scraping import baseline, fetcher, probe, scrape_cards
 from kardscm.storage import (
     apply_extra_abilities_seed,
     delete_all_decks,
@@ -270,22 +272,14 @@ def baseline_init(*, lang: str | None = None) -> None:
     Always overwrites; use ``baseline_accept`` to promote a sync-generated
     observed snapshot instead.
     """
-    from kardscm.scraping.baseline import (
-        BASELINE_PATH,
-        build_snapshot,
-        save_baseline,
-    )
-    from kardscm.scraping.fetcher import fetch_all_cards
-    from kardscm.scraping.probe import build_static_probe
-
     lang_config = get_language_config(lang)
     logger.info("Fetching cards from API to rebuild baseline...")
-    raw = fetch_all_cards(build_static_probe(language=lang_config.code))
-    snapshot = build_snapshot(raw)
-    save_baseline(snapshot)
+    raw = fetcher.fetch_all_cards(probe.build_static_probe(language=lang_config.code))
+    snapshot = baseline.build_snapshot(raw)
+    baseline.save_baseline(snapshot)
     logger.info(
         "Baseline written to %s (%d cards, %d enum value sets).",
-        BASELINE_PATH,
+        baseline.BASELINE_PATH,
         snapshot["card_count"],
         len(snapshot["enum_values"]),
     )
@@ -302,11 +296,6 @@ def baseline_accept() -> None:
     structural shape (must be a dict with all required snapshot keys of
     the correct types), and copies it to the committed baseline location.
     """
-    import json
-    import shutil
-
-    from kardscm.scraping.baseline import BASELINE_PATH
-
     candidates = sorted(Path.cwd().glob("sync-schema-observed-*.json"))
     if not candidates:
         raise SystemExit(
@@ -333,7 +322,7 @@ def baseline_accept() -> None:
     if not isinstance(parsed["enum_values"], dict):
         raise SystemExit(f"{latest}: enum_values must be a dict")
 
-    shutil.copy2(latest, BASELINE_PATH)
+    shutil.copy2(latest, baseline.BASELINE_PATH)
     logger.info("Baseline updated from %s.", latest.name)
 
 

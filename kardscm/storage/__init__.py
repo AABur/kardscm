@@ -2,6 +2,7 @@
 
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
+    ADMIN_DB_COLUMNS,
     ADMIN_EDITABLE_SCALARS,
     apply_extra_abilities_seed,
     delete_all_decks,
@@ -26,6 +27,7 @@ from kardscm.storage.database import (
 )
 
 __all__ = [
+    "ADMIN_DB_COLUMNS",
     "ADMIN_EDITABLE_SCALARS",
     "apply_extra_abilities_seed",
     "backup_database",

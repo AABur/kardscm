@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from kardscm.locales import LANGUAGE_EN
 from kardscm.models import CardDict
 from kardscm.scraping.baseline import (
     build_snapshot,
@@ -88,8 +89,6 @@ def scrape_cards(language: str = "en", lang_config: LanguageConfig | None = None
     raw_cards = fetch_all_cards(probe)
 
     if lang_config is None:
-        from kardscm.locales import LANGUAGE_EN
-
         lang_config = LANGUAGE_EN
     _check_api_drift(raw_cards, lang_config)
 

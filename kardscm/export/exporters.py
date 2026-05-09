@@ -12,8 +12,13 @@ from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
 from kardscm.config import LanguageConfig
-from kardscm.constants import DECK_COLUMN_WIDTHS, DECK_NATION_TO_DB, EXPORT_FIELD_NAMES
-from kardscm.helpers import sanitize_text
+from kardscm.constants import (
+    DECK_COLUMN_WIDTHS,
+    DECK_NATION_TO_DB,
+    EXPORT_FIELD_NAMES,
+    KNOWN_ABILITIES,
+)
+from kardscm.helpers import extract_locale, sanitize_text
 
 logger = logging.getLogger(__name__)
 
@@ -33,27 +38,11 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     """
     locale_key = lang_config.locale_key
 
-    # Extract localized title
     title_raw = card.get("title", "")
-    try:
-        title_dict = json.loads(title_raw) if title_raw else {}
-    except (json.JSONDecodeError, TypeError):
-        title_dict = {}
-    if isinstance(title_dict, dict):
-        title = title_dict.get(locale_key, title_dict.get("en-EN", title_raw))
-    else:
-        title = str(title_raw)
+    title = extract_locale(title_raw, locale_key, default=str(title_raw), en_fallback=True)
 
-    # Extract localized text
     text_raw = card.get("text", "")
-    try:
-        text_dict = json.loads(text_raw) if text_raw else {}
-    except (json.JSONDecodeError, TypeError):
-        text_dict = {}
-    if isinstance(text_dict, dict):
-        text = text_dict.get(locale_key, text_dict.get("en-EN", ""))
-    else:
-        text = str(text_raw) if text_raw else ""
+    text = extract_locale(text_raw, locale_key, en_fallback=True)
 
     # Translate faction
     faction_api = card.get("faction", "")
@@ -72,8 +61,6 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     set_name = lang_config.set_names.get(set_api, set_api)
 
     # Format abilities from binary columns
-    from kardscm.constants import KNOWN_ABILITIES
-
     abilities = ", ".join(
         lang_config.ability_names.get(a, a) for a in KNOWN_ABILITIES if card.get(f"ability_{a}", 0)
     )
@@ -267,16 +254,8 @@ def add_deck_sheet(
         current_row += 1
 
         for card in faction_cards:
-            # Extract localized title
             title_raw = card.get("title", "")
-            try:
-                title_dict = json.loads(title_raw) if title_raw else {}
-            except (json.JSONDecodeError, TypeError):
-                title_dict = {}
-            if isinstance(title_dict, dict):
-                title = title_dict.get(locale_key, title_dict.get("en-EN", title_raw))
-            else:
-                title = str(title_raw)
+            title = extract_locale(title_raw, locale_key, default=str(title_raw), en_fallback=True)
 
             type_api = card.get("type", "")
             type_name = lang_config.type_names.get(type_api, type_api)
@@ -313,13 +292,7 @@ def export_deck_to_json(
 
     def extract_title(card: dict) -> str:
         title_raw = card.get("title", "")
-        try:
-            title_dict = json.loads(title_raw) if title_raw else {}
-        except (json.JSONDecodeError, TypeError):
-            title_dict = {}
-        if isinstance(title_dict, dict):
-            return str(title_dict.get(locale_key, title_dict.get("en-EN", title_raw)))
-        return str(title_raw)
+        return extract_locale(title_raw, locale_key, default=str(title_raw), en_fallback=True)
 
     output = {
         "deck": {
