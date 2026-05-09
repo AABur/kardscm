@@ -556,6 +556,8 @@ def run(
     admin: bool = False,
 ) -> None:
     """Start uvicorn after validating the DB exists and is non-empty."""
+    # Lazy: uvicorn is only needed when the user actually starts the web server,
+    # not for `kardscm --help` or any non-web subcommand.
     import uvicorn
 
     actual_db = Path(db_path) if db_path else Path(DEFAULT_DB_PATH)

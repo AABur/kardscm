@@ -12,7 +12,12 @@ from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
 from kardscm.config import LanguageConfig
-from kardscm.constants import DECK_COLUMN_WIDTHS, DECK_NATION_TO_DB, EXPORT_FIELD_NAMES
+from kardscm.constants import (
+    DECK_COLUMN_WIDTHS,
+    DECK_NATION_TO_DB,
+    EXPORT_FIELD_NAMES,
+    KNOWN_ABILITIES,
+)
 from kardscm.helpers import sanitize_text
 
 logger = logging.getLogger(__name__)
@@ -72,8 +77,6 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     set_name = lang_config.set_names.get(set_api, set_api)
 
     # Format abilities from binary columns
-    from kardscm.constants import KNOWN_ABILITIES
-
     abilities = ", ".join(
         lang_config.ability_names.get(a, a) for a in KNOWN_ABILITIES if card.get(f"ability_{a}", 0)
     )
