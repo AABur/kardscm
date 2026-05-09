@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from contextlib import closing
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -88,19 +88,20 @@ CARD_COLUMNS = (
 _ADMIN_FORM_FIELDS: frozenset[str] = ADMIN_DB_COLUMNS | {"title", "text"}
 
 
-def _read_filters(
-    factions: list[str],
-    types: list[str],
-    rarities: list[str],
-    sets: list[str],
-    kredits: list[int],
-    abilities: list[str],
-    extra_abilities: list[str],
-    q: str,
-    spawnable: bool,
-    reserved: bool,
-    owned: bool,
+def card_filters_dep(
+    factions: list[str] = Query(default=[]),
+    types: list[str] = Query(default=[]),
+    rarities: list[str] = Query(default=[]),
+    sets: list[str] = Query(default=[]),
+    kredits: list[int] = Query(default=[]),
+    abilities: list[str] = Query(default=[]),
+    extra_abilities: list[str] = Query(default=[]),
+    q: str = Query(default=""),
+    spawnable: bool = Query(default=False),
+    reserved: bool = Query(default=False),
+    owned: bool = Query(default=False),
 ) -> CardFilters:
+    """FastAPI dependency that builds CardFilters from query string params."""
     return CardFilters(
         factions=factions,
         types=types,
@@ -220,65 +221,19 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def index(
         request: Request,
-        factions: list[str] = Query(default=[]),
-        types: list[str] = Query(default=[]),
-        rarities: list[str] = Query(default=[]),
-        sets: list[str] = Query(default=[]),
-        kredits: list[int] = Query(default=[]),
-        abilities: list[str] = Query(default=[]),
-        extra_abilities: list[str] = Query(default=[]),
-        q: str = Query(default=""),
-        spawnable: bool = Query(default=False),
-        reserved: bool = Query(default=False),
-        owned: bool = Query(default=False),
+        filters: CardFilters = Depends(card_filters_dep),
         sort: str = Query(default="faction"),
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
-        filters = _read_filters(
-            factions,
-            types,
-            rarities,
-            sets,
-            kredits,
-            abilities,
-            extra_abilities,
-            q,
-            spawnable,
-            reserved,
-            owned,
-        )
         return render_table(request, filters, sort, direction, "index.html")
 
     @app.get("/cards", response_class=HTMLResponse)
     def cards_partial(
         request: Request,
-        factions: list[str] = Query(default=[]),
-        types: list[str] = Query(default=[]),
-        rarities: list[str] = Query(default=[]),
-        sets: list[str] = Query(default=[]),
-        kredits: list[int] = Query(default=[]),
-        abilities: list[str] = Query(default=[]),
-        extra_abilities: list[str] = Query(default=[]),
-        q: str = Query(default=""),
-        spawnable: bool = Query(default=False),
-        reserved: bool = Query(default=False),
-        owned: bool = Query(default=False),
+        filters: CardFilters = Depends(card_filters_dep),
         sort: str = Query(default="faction"),
         direction: str = Query(default="asc"),
     ) -> HTMLResponse:
-        filters = _read_filters(
-            factions,
-            types,
-            rarities,
-            sets,
-            kredits,
-            abilities,
-            extra_abilities,
-            q,
-            spawnable,
-            reserved,
-            owned,
-        )
         return render_table(request, filters, sort, direction, "_table.html")
 
     @app.post("/start-edit")
