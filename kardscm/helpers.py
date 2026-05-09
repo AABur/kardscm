@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 
 ESCAPE_RE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|r|n|t|\\|\"|')")
@@ -64,6 +65,52 @@ def decode_escapes(text: str) -> str:
         return match.group(0)
 
     return ESCAPE_RE.sub(replace_match, text)
+
+
+def extract_locale(
+    raw: object,
+    locale_key: str,
+    *,
+    default: str = "",
+    en_fallback: bool = False,
+) -> str:
+    """Decode a locale-keyed JSON blob and return the value for ``locale_key``.
+
+    Args:
+        raw: The JSON-encoded locale dict, typically the value of a
+            locale-keyed DB column. Empty/None returns ``default``.
+            Non-string values are converted via ``str()``.
+        locale_key: Locale key (e.g. ``"ru-RU"``) to look up in the
+            decoded dict.
+        default: Returned on empty input, decode failure, non-dict
+            shape, or when neither ``locale_key`` nor (optionally)
+            ``"en-EN"`` is present.
+        en_fallback: When True, fall back to ``"en-EN"`` if
+            ``locale_key`` is missing or its value is empty. Default
+            False so accidental adoption at a new call site does not
+            silently change semantics.
+
+    Returns:
+        The locale-specific string, the en-EN fallback, or ``default``.
+    """
+    if not raw:
+        return default
+    if not isinstance(raw, str):
+        return str(raw)
+    try:
+        decoded = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return default
+    if not isinstance(decoded, dict):
+        return default
+    value = decoded.get(locale_key)
+    if value:
+        return str(value)
+    if en_fallback:
+        en_value = decoded.get("en-EN")
+        if en_value:
+            return str(en_value)
+    return default
 
 
 def sanitize_text(text: str) -> str:

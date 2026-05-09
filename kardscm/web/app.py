@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 import webbrowser
@@ -22,6 +21,7 @@ from kardscm.constants import (
     KNOWN_EXTRA_ABILITIES,
     RARITY_MAX_QUANTITY,
 )
+from kardscm.helpers import extract_locale
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
     ADMIN_DB_COLUMNS,
@@ -146,13 +146,7 @@ def _is_edit_mode(request: Request, *, admin: bool) -> bool:
 
 
 def _decoded_locale_value(raw: object, locale_key: str) -> str:
-    if not raw:
-        return ""
-    try:
-        decoded = json.loads(raw) if isinstance(raw, str) else {}
-    except json.JSONDecodeError:
-        return ""
-    return decoded.get(locale_key, "") or ""
+    return extract_locale(raw, locale_key)
 
 
 def create_app(
@@ -315,10 +309,7 @@ def create_app(
             original_qty = edit_snapshot.get(card_id)
             if original_qty is None or current_qty == original_qty:
                 continue
-            try:
-                title = json.loads(title_raw or "{}").get(cfg.locale_key, card_id) or card_id
-            except (json.JSONDecodeError, TypeError):
-                title = card_id
+            title = extract_locale(title_raw, cfg.locale_key, default=card_id)
             changes.append({"title": title, "qty_before": original_qty, "qty_after": current_qty})
         if not changes:
             response = Response(content="", status_code=200)

@@ -16,11 +16,11 @@ Other fields are upserted silently and never surfaced.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 
 from kardscm.config import LanguageConfig
 from kardscm.constants import KNOWN_ABILITIES
+from kardscm.helpers import extract_locale
 from kardscm.models import (
     CardChange,
     CardDict,
@@ -123,21 +123,8 @@ def _card_changes(old: dict, new: CardDict, locale_key: str) -> list[FieldChange
     return changes
 
 
-def _parse_json(value: object) -> object:
-    """Parse a JSON string defensively. Returns None on any failure."""
-    if not isinstance(value, str) or not value:
-        return None
-    try:
-        return json.loads(value)
-    except (ValueError, TypeError):
-        return None
-
-
 def _text_for_locale(value: object, locale_key: str) -> str:
-    parsed = _parse_json(value)
-    if isinstance(parsed, dict):
-        return str(parsed.get(locale_key, "") or "")
-    return ""
+    return extract_locale(value, locale_key)
 
 
 def _faction_label(faction: str, lang_config: LanguageConfig) -> str:
@@ -146,10 +133,7 @@ def _faction_label(faction: str, lang_config: LanguageConfig) -> str:
 
 def _title_for_locale(value: object, locale_key: str) -> str:
     """Best-effort localized title for display. Falls back to en-EN, then raw."""
-    parsed = _parse_json(value)
-    if isinstance(parsed, dict):
-        return str(parsed.get(locale_key) or parsed.get("en-EN") or "")
-    return str(value or "")
+    return extract_locale(value, locale_key, default=str(value or ""), en_fallback=True)
 
 
 def _group_by_faction(cards: list[CardDict] | list[dict]) -> dict[str, list]:
