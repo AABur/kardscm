@@ -40,7 +40,7 @@ def _is_graphql_request(request: Request) -> bool:
     try:
         parsed = json.loads(body)
         return "operationName" in parsed or "query" in parsed
-    except (json.JSONDecodeError, Exception):
+    except (json.JSONDecodeError, TypeError):
         return False
 
 
