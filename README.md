@@ -57,21 +57,25 @@ pipx install git+https://github.com/AABur/kardscm.git
 
 ## Quick Start
 
+If you installed via `pipx`, run `kardscm` directly. If you cloned the
+repo and ran `make sync`, prefix each command with `uv run` (or
+activate `.venv` first) so the console script is found:
+
 ```bash
 # 1. Sync the card catalog into collection.db.
-kardscm sync
+uv run kardscm sync
 
 # 2. Open the local browser UI and edit quantities.
-kardscm web
+uv run kardscm web
 
 # 3. Export your collection.
-kardscm export -f xlsx -o cards.xlsx
+uv run kardscm export -f xlsx -o cards.xlsx
 
 # 4. Add a deck exported from the KARDS client.
-kardscm deck add my-deck.txt
+uv run kardscm deck add my-deck.txt
 
 # 5. Export a saved deck.
-kardscm deck export -f xlsx -o deck.xlsx
+uv run kardscm deck export -f xlsx -o deck.xlsx
 ```
 
 ## Language
@@ -221,11 +225,12 @@ Rules:
 
 ## API Baseline
 
-Maintainers can refresh the committed API baseline:
+Maintainers can refresh the committed API baseline (run from a clone;
+pipx users can drop the `uv run` prefix):
 
 ```bash
-kardscm baseline init
-kardscm baseline accept
+uv run kardscm baseline init
+uv run kardscm baseline accept
 ```
 
 Use `baseline init` after intentional API changes or a fresh baseline rebuild.
