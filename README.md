@@ -4,23 +4,35 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Manager for [KARDS](https://www.kards.com/) card game player collection and decks.
-Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
+`kardscm` is a local collection and deck manager for
+[KARDS](https://www.kards.com/).
 
-## Features
+It syncs the official card catalog into a local SQLite database, lets you keep
+your owned card quantities up to date, saves decks from KARDS client TXT files,
+and exports collection or deck data to XLSX, CSV, or JSON.
 
-- Multi-language support (12 locales: en, ru, de, fr, it, es, pt, pl, ja, ko, zh, zh-Hant)
-- SQLite storage with upsert on sync (preserves user-managed `quantity`)
-- Export to XLSX, CSV, JSON with localized headers
-- Bulk collection quantity update from an edited XLSX
-- Deck add/import from KARDS client TXT format (`deck add` includes exile-card fallback and collection quantity checks)
-- Deck replace, delete, and export to XLSX or JSON
-- Interactive deck selection for export and delete
-- Browser-based Web UI for collection browsing, filtering, and editing
-- User edit mode — quantity editing with rarity caps and save-confirmation modal
-- Admin mode (`--admin`) — full-field editing via modal form, with DB auto-backup
-- API contract drift detection — compares live GraphQL shape against a committed baseline
-- Extra-ability tags — manually curated flags for abilities not in the official API
+The tool is local-first:
+
+- no account
+- no hosted service
+- no PyPI package
+- database stored as `collection.db` in the working directory
+
+## What It Does
+
+- Syncs the full KARDS card catalog, including reserved and spawnable cards.
+- Preserves user-managed card quantities across syncs.
+- Shows catalog changes before applying them: new cards, changed stats/text,
+  reserve transitions, and removed cards.
+- Exports the collection to XLSX, CSV, or JSON.
+- Updates card quantities from an edited XLSX export.
+- Imports, adds, replaces, deletes, and exports saved decks.
+- Provides a local browser UI for browsing, filtering, and editing quantities.
+- Provides an admin-only local mode for full card-field correction with an
+  automatic database backup.
+- Tracks API contract drift against a committed baseline.
+- Adds manually curated extra-ability tags for game-client-only mechanics not
+  exposed by the official GraphQL API.
 
 ## Requirements
 
@@ -29,8 +41,7 @@ Syncs the official card catalog into SQLite and exports to XLSX, CSV, or JSON.
 
 ## Installation
 
-`kardscm` is distributed **only from GitHub**. It is not and will not
-be published to PyPI — clone the repo and run it via `uv`.
+`kardscm` is distributed only from GitHub. It is not published to PyPI.
 
 ```bash
 git clone git@github.com:AABur/kardscm.git
@@ -38,16 +49,38 @@ cd kardscm
 make sync
 ```
 
-Or, for an isolated install without cloning:
+For an isolated command install:
 
 ```bash
 pipx install git+https://github.com/AABur/kardscm.git
 ```
 
-## Configuration
+## Quick Start
 
-Pick a UI language with the global `--lang` flag — it works on every
-subcommand (default is English):
+If you installed via `pipx`, run `kardscm` directly. If you cloned the
+repo and ran `make sync`, prefix each command with `uv run` (or
+activate `.venv` first) so the console script is found:
+
+```bash
+# 1. Sync the card catalog into collection.db.
+uv run kardscm sync
+
+# 2. Open the local browser UI and edit quantities.
+uv run kardscm web
+
+# 3. Export your collection.
+uv run kardscm export -f xlsx -o cards.xlsx
+
+# 4. Add a deck exported from the KARDS client.
+uv run kardscm deck add my-deck.txt
+
+# 5. Export a saved deck.
+uv run kardscm deck export -f xlsx -o deck.xlsx
+```
+
+## Language
+
+Use the global `--lang` flag before the subcommand:
 
 ```bash
 kardscm --lang ru sync
@@ -55,60 +88,35 @@ kardscm --lang de export -f xlsx -o cards.xlsx
 kardscm --lang zh-Hant web
 ```
 
-Supported codes: `en`, `ru`, `de`, `fr`, `it`, `es`, `pt`, `pl`, `ja`,
-`ko`, `zh`, `zh-Hant`. Locales other than `en` and `ru` ship as
-scaffolds. Scaffold files set `code`, `name`, `locale_key`, and
-`collection_sheet_name`; untranslated keys are **omitted** so the
-loader falls back to English and logs them via `fallback_warnings` on
-stderr. Keys present with an empty string value (`""`) are treated as
-valid translations and do **not** trigger fallback — scaffold authors
-should omit keys rather than blank them.
+Supported codes: `en`, `ru`, `de`, `fr`, `it`, `es`, `pt`, `pl`, `ja`, `ko`,
+`zh`, `zh-Hant`.
 
-To add or refine a locale, drop a `<code>.toml` into
-`kardscm/locales/`. Missing keys fall back to English; the loader
-discovers `*.toml` files at import time.
+English and Russian are maintained. Other locale files may be partial; missing
+translation keys fall back to English and are reported in the CLI or web UI.
 
-## Usage
-
-### Sync card catalog
+## Sync
 
 ```bash
-kardscm sync                              # interactive: review and approve changes
-kardscm sync --diff-only                  # dry-run: print + write report, do not modify DB
-kardscm sync --yes                        # auto-approve everything (CI / scripting)
-kardscm sync --diff-report ./out.md       # custom report path
+kardscm sync
+kardscm sync --diff-only
+kardscm sync --yes
+kardscm sync --diff-report ./sync-report.md
 ```
 
-Sync fetches the full catalog (including reserved and spawnable cards),
-diffs it against the local DB, and groups changes into four categories:
-**new cards**, **changed characteristics** (cost, attack, defense, operation
-cost, abilities, ability text), **reserve transitions** (in/out), and
-**removed cards**. Each non-empty category is shown to you and prompts a
-single y/N. Any "no" aborts the sync — the DB is left untouched. A
-Markdown diff report (`./sync-diff-<UTC-iso>.md` by default) is written
-whenever the diff is non-empty.
+`sync` fetches the official catalog, compares it with the local database, and
+shows a diff before writing changes. Any rejected prompt aborts the sync and
+leaves the database unchanged. A Markdown report is written whenever there are
+changes.
 
-Sync also runs **API contract drift detection**: it compares the observed
-shape of the GraphQL response (top-level node keys, JSON keys with
-presence ratios, distinct enum values for faction/type/rarity/set/
-attributes, card count) against `kardscm/data/api_baseline.json`. On any
-divergence, sync writes a `sync-schema-diff-<UTC-iso>.md` report and a
-companion `sync-schema-observed-*.json` snapshot to the current directory
-and continues — drift never aborts a sync.
+`--diff-only` writes the report without modifying the database. `--yes`
+auto-approves every category for scripted runs.
 
-### Manage the API baseline
+Sync also checks the live GraphQL response shape against
+`kardscm/data/api_baseline.json`. If the API shape changes, `kardscm` writes
+`sync-schema-diff-*.md` and `sync-schema-observed-*.json` files in the current
+directory. This does not block the sync.
 
-```bash
-kardscm baseline init      # fetch live API → overwrite the committed baseline
-kardscm baseline accept    # promote the latest sync-schema-observed-*.json
-```
-
-Use `init` once after cloning the repo or after intentional API changes.
-Use `accept` after reviewing a `sync-schema-diff-*.md` report and updating
-any constants/translations to acknowledge the new API shape — the latest
-observed snapshot in cwd is validated and copied to the baseline file.
-
-### Export collection
+## Collection Export And Update
 
 ```bash
 kardscm export -f xlsx -o cards.xlsx
@@ -116,121 +124,81 @@ kardscm export -f csv -o cards.csv
 kardscm export -f json -o cards.json
 ```
 
-### Update card quantities from XLSX
+To update quantities from an edited spreadsheet:
 
 ```bash
 kardscm update -i cards.xlsx
 ```
 
-Edit the `quantity` column in the XLSX exported above and feed it back with
-`update`. Cards are matched by `faction + title`; whitespace differences
-(NBSP, double spaces) are normalized automatically. Other columns are ignored.
-Unmatched rows are logged as warnings and skipped.
+Only the quantity column is read. Cards are matched by faction and title in the
+active language. Whitespace differences such as NBSP and double spaces are
+normalized.
 
-### Browse and edit in the browser
+## Web UI
 
 ```bash
-kardscm web                        # open at http://127.0.0.1:8765
-kardscm web --port 9000            # custom port
-kardscm web --no-browser           # don't auto-open the browser
-kardscm --lang ru web              # Russian UI
-kardscm --lang ru web --admin      # admin mode (full-field editing)
+kardscm web
+kardscm web --port 9000
+kardscm web --no-browser
+kardscm --lang ru web
 ```
 
-The web UI shows the full collection with filterable columns (faction, type,
-rarity, set, kredits, text search, spawnable/reserved/owned toggles) and a
-sortable card table. Click any row to view card details and the card image.
+The web UI runs locally at `127.0.0.1:8765` by default. It provides collection
+browsing, sorting, filters, card details, and quantity editing.
 
-**User edit mode** — click **Edit** in the page header to enable inline quantity
-editing. Each cell saves immediately on change. When you click **Save**, a
-confirmation modal shows the before/after diff; you can confirm, continue
-editing, or undo all changes. Rarity caps are enforced automatically (Standard 4
-/ Limited 3 / Special 2 / Elite 1).
+Click **Edit** to enable quantity changes. Quantity writes are server-side
+validated by rarity caps:
 
-**Admin mode** (`--admin` / `-A`) additionally exposes a modal form for every
-editable field: stats (kredits, attack, defense, operationCost), all ability and
-extra-ability flags, categories (faction, type, rarity, set), the `reserved`
-flag, and localized title/text (active locale only). Admin mode:
-- backs up the database to a timestamped sibling file before the server starts
-- shows a red banner in the browser with the backup path
-- is restricted to localhost and refuses to start on any other host
+- Standard: 4
+- Limited: 3
+- Special: 2
+- Elite: 1
 
-### Add a deck
+## Admin Mode
+
+```bash
+kardscm web --admin
+kardscm --lang ru web --admin
+```
+
+Admin mode is for trusted local correction of catalog data. It exposes editable
+card stats, categories, ability flags, extra-ability flags, reserved state, and
+localized title/text for the active locale.
+
+Admin mode:
+
+- only starts on localhost
+- creates a timestamped database backup before startup
+- shows the backup path in a red banner
+- does not register admin routes unless `--admin` is passed
+
+## Decks
 
 ```bash
 kardscm deck add deck.txt
-kardscm deck add *.txt                 # add many at once; errors are batched
-kardscm deck add deck.txt -u           # also sync collection quantities to deck
-kardscm deck add deck.txt -r           # replace existing deck with same name
-```
-
-`deck add` is the primary way to save a deck. It:
-
-- looks up cards by faction first, then falls back to the exile field
-- fails if any card is missing from the collection (shows which ones)
-- with `--update`/`-u`, raises collection quantities to match the deck
-- with `--replace`/`-r`, overwrites an existing deck with the same name
-- continues past failures when multiple files are given and prints a summary
-
-The deck TXT file must use card names matching the configured language.
-
-### Import a deck
-
-```bash
-kardscm deck import -i deck.txt
-```
-
-Simpler single-file alternative to `deck add`: no exile fallback, no quantity
-check, no `--replace`. Prefer `deck add` for day-to-day use.
-
-### Delete a deck
-
-```bash
+kardscm deck add *.txt
+kardscm deck add deck.txt -u
+kardscm deck add deck.txt -r
 kardscm deck delete
-```
-
-Lists saved decks, prompts for selection and confirmation.
-
-### Export a deck
-
-```bash
 kardscm deck export -f xlsx -o deck.xlsx
 kardscm deck export -f json -o deck.json
 ```
 
-Interactively prompts for a deck when more than one is saved.
+`deck add` is the preferred import path. It looks up cards by faction, falls
+back to exile links when needed, checks collection quantities, and can update
+or replace existing data:
 
-## Typical workflow
+- `--update` / `-u`: raise collection quantities to match the deck
+- `--replace` / `-r`: overwrite an existing saved deck with the same name
 
-End-to-end loop for keeping collection and decks in sync:
+`deck import` still exists as a simpler single-file import path, but day-to-day
+use should prefer `deck add`.
 
-```bash
-# 1. Pull the card catalog (first run or after a patch)
-kardscm sync
+## Deck File Format
 
-# 2a. Open the browser UI and edit quantities inline (recommended)
-kardscm web
+KARDS client TXT decks look like this:
 
-# — or — 2b. Export to XLSX, edit the `quantity` column, push back
-kardscm export -f xlsx -o cards.xlsx
-# ... edit cards.xlsx ...
-kardscm update -i cards.xlsx
-
-# 4. Save decks exported from the KARDS client
-kardscm deck add my-deck.txt
-
-# 5. If the collection is short on copies, let the deck top it up
-kardscm deck add my-deck.txt -u
-
-# 6. Replace a deck after rebuilding it in the client
-kardscm deck add my-deck.txt -r
-```
-
-## Deck file format
-
-The deck TXT file exported from the KARDS client looks like this:
-
-```
+```text
 My Deck Name
 Major power: soviet
 Ally: germany
@@ -246,39 +214,44 @@ germany:
 %%DECKCODE...
 ```
 
-- First non-empty line is the deck name
-- `Major power:` (required), `Ally:`, `HQ:` are metadata lines
-- Nation sections start with `nation:` header
-- Cards follow the format: `<qty>x (<cost>K) <name>`
-- Deck code line (starting with `%%`) is optional
+Rules:
+
+- first non-empty line is the deck name
+- `Major power:` is required
+- `Ally:` and `HQ:` are optional
+- nation sections use `nation:` headers
+- card rows use `<qty>x (<cost>K) <name>`
+- the `%%` deck-code line is optional
+
+## API Baseline
+
+Maintainers can refresh the committed API baseline (run from a clone;
+pipx users can drop the `uv run` prefix):
+
+```bash
+uv run kardscm baseline init
+uv run kardscm baseline accept
+```
+
+Use `baseline init` after intentional API changes or a fresh baseline rebuild.
+Use `baseline accept` after reviewing the latest `sync-schema-observed-*.json`
+file from a sync drift report.
+
+## Output Files
+
+- `collection.db`: local SQLite database
+- `collection.db.bak*`: local backups
+- `sync-diff-*.md`: sync reports
+- `sync-schema-diff-*.md`: API drift reports
+- `sync-schema-observed-*.json`: observed API snapshots
+- export files: whatever path you pass with `-o`
+
+Generated local data is intentionally not part of the repository.
 
 ## Development
 
-```bash
-make sync-dev   # install all dependencies including dev tools
-make check      # run all checks (format, lint, typecheck, test)
-make test       # run tests only
-make lint       # run ruff linter
-make format     # format code with ruff
-make typecheck  # run mypy
-make clean      # clean cache files
-```
-
-## Output
-
-- Database: `collection.db` (created on first sync)
-- Exports: filenames specified via `-o` option
-
-## Notes
-
-- Data is obtained from the official KARDS website.
-- The scrape targets the collection page in the configured language and falls back to English when needed.
-- `deck add`/`deck import` require a synced collection — every card in the deck file must already exist in the database.
-- Card lookups normalize whitespace (NBSP, double spaces) so titles from the KARDS API always match user input.
-- `sync` preserves user-managed `quantity` on upsert; re-syncing never resets edited quantities.
-- Card abilities (Blitz, Guard, Fury, etc.) are translated according to the configured language.
-- Web UI quantity editing enforces rarity caps: Standard 4 / Limited 3 / Special 2 / Elite 1.
-- Admin mode (`--admin`) is localhost-only and auto-backs up the database before starting.
+Developer setup, architecture, release process, and maintainer workflows are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 

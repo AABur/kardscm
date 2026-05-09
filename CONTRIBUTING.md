@@ -1,110 +1,298 @@
 # Contributing
 
-## Development Setup
+This project is a local Python CLI and web UI for managing a KARDS collection
+and saved decks. Keep changes small, verified, and documented.
+
+## Setup
 
 ```bash
 make sync-dev
 ```
 
-This installs all dependencies including dev tools (ruff, mypy, pytest) and Playwright's Chromium.
+This installs runtime and development dependencies through `uv`, then installs
+Chromium for Playwright.
 
-## Code Quality
+Use `uv`, not direct `pip`, for project work.
+
+## Commands
 
 ```bash
-make format       # format code with ruff
-make lint         # run ruff linter
-make typecheck    # run mypy type checker
-make test         # run tests with pytest + coverage
-make check        # all of the above
+make help       # list available make targets
+make sync       # install runtime dependencies + Chromium
+make sync-dev   # install runtime/dev dependencies + Chromium
+make run        # show kardscm CLI help
+make sync-diff  # preview catalog sync without DB changes
+make web        # start the local web UI
+make web-admin  # start admin web UI with DB backup
+make test       # pytest with coverage
+make lint       # ruff check
+make format     # ruff format
+make typecheck  # mypy over kardscm/
+make check      # format, lint, typecheck, test
+make clean      # remove local caches
+make release    # run checks and print the release checklist
 ```
 
-## CLI Reference
+Useful local runs:
 
-The CLI is built with [Typer](https://typer.tiangolo.com/). Entry points: `kardscm` (console script) or `python -m kardscm`.
-
-| Command | Description |
-|---------|-------------|
-| `kardscm sync` | Fetch cards from the website and update `collection.db` |
-| `kardscm export --format <csv\|json\|xlsx> --file <path>` | Export collection from SQLite |
-| `kardscm update --file <path>` | Update card quantities from XLSX file |
-| `kardscm deck import --file <path>` | Import deck from TXT file into database |
-| `kardscm deck export --format xlsx --file <path>` | Export deck to XLSX sheet (interactive selection) |
-| `kardscm deck export --format json --file <path>` | Export deck to JSON (interactive selection) |
-
-## Project Structure
-
+```bash
+uv run kardscm --help
+uv run kardscm sync --diff-only
+uv run kardscm web --no-browser
+uv run kardscm web --admin --no-browser
+uv run pytest tests/test_deck_parser.py -v
 ```
+
+## Project Shape
+
+```text
 kardscm/
-├── __init__.py         # Package initialization
-├── __main__.py         # Entry point (python -m kardscm)
-├── config.py           # Language configuration (LanguageConfig dataclass)
-├── cli.py              # Typer CLI declarations
-├── commands.py         # Business logic (sync, export, import, deck)
-├── constants.py        # Language-agnostic constants (URLs, mappings)
-├── models.py           # TypedDict definitions
-├── helpers.py          # Utility functions
-├── scraping/           # Scraping functionality
-│   ├── scraper.py      # API data parsing
-│   ├── localization.py # Translation loading and text processing
-│   └── browser.py      # Playwright automation
-├── storage/            # Database layer
-│   └── database.py     # SQLite operations (cards + decks)
-├── export/             # Export functionality
-│   └── exporters.py    # CSV/XLSX/JSON exporters + deck export
-└── importing/          # Import functionality
-    └── parser.py       # Deck TXT file parser
-tests/                  # pytest suites
-scripts/                # Developer tools (e.g. generate_locale.py)
+  cli.py              Typer command declarations
+  commands.py         CLI business workflows
+  config.py           language lookup compatibility layer
+  constants.py        URLs, GraphQL query, known ability keys, DB defaults
+  diff.py             sync diff computation and rendering
+  helpers.py          small parsing/text helpers
+  models.py           TypedDict models used across modules
+  scraping/           GraphQL probe, fetch, normalization, API baseline drift
+  storage/            SQLite schema, migrations, card/deck persistence, backups
+  export/             collection and deck exporters
+  importing/          KARDS client deck TXT parser
+  locales/            TOML locale files and locale loader
+  data/               committed baseline/seed data
+  web/                FastAPI + Jinja2 + HTMX local web UI
+tests/                pytest suite
+scripts/              maintainer helpers
 ```
+
+Root files are intentionally sparse:
+
+- `README.md`: user-facing guide
+- `CONTRIBUTING.md`: developer and maintainer guide
+- `AGENTS.md`: coding-agent operating rules
+- `CLAUDE.md`: Claude-specific pointer to `AGENTS.md`
+- `CHANGELOG.md`: release history
+- `Makefile`: common commands
+- `pyproject.toml` / `uv.lock`: package metadata and locked dependency graph
+- `LICENSE`: MIT license
+
+Do not add a new top-level documentation tree unless there is a clear need that
+does not fit README or CONTRIBUTING.
 
 ## Architecture
 
-- **config.py** — `LanguageConfig` frozen dataclass holding all language-specific data (headers, nation names, URLs, translation indices). The registry is built by `kardscm.locales` from `*.toml` files; `get_language_config(lang)` resolves the active locale from the global `--lang` CLI flag.
-- **scraping/** — Playwright browser automation collects GraphQL responses from the KARDS website; parses API data into card dictionaries using `LanguageConfig` for localization
-- **storage/** — SQLite CRUD layer with upsert logic for cards and deck storage
-- **export/** — XLSX (with styling and filters), CSV (UTF-8 BOM), and JSON exporters; deck export as XLSX sheet or JSON. All headers and labels come from `LanguageConfig`
-- **importing/** — parser for KARDS client deck TXT format
-- **cli.py** — Typer-based CLI with commands: `sync`, `export`, `update`, `deck import`, `deck export`
-- **commands.py** — business logic; loads `LanguageConfig` at the start of each command
+`kardscm` has one local source of truth: `collection.db`.
 
-## Language System
+The main data flows are:
 
-All language-specific data lives in `kardscm/config.py` as `LanguageConfig` instances.
+```text
+official KARDS GraphQL API
+  -> scraping.fetcher/probe
+  -> scraping.normalizer
+  -> commands.sync_collection
+  -> storage.database
+  -> collection.db
+```
 
-Each `LanguageConfig` contains:
-- `code` / `name` — language identifier and display name
-- `keys` — API response keys to prioritize (e.g. `("ru", "ru-RU")`)
-- `lang_index` — position in the website's JS translation arrays
-- `collection_url` — URL for the collection page
-- `export_headers` — column headers for XLSX/CSV exports
-- `faction_names` — display names for nations
-- `deck_nation_to_db` — mapping from deck file nation keys to DB names
-- `nation_display_names` — adjective forms for deck export sections
-- `deck_headers` / `deck_metadata_labels` — deck export labels
-- `collection_sheet_name` — XLSX worksheet title
+```text
+collection.db
+  -> export.exporters
+  -> XLSX / CSV / JSON
+```
 
-Language-agnostic constants (KNOWN_MAPPINGS, EXPORT_FIELD_NAMES, DECK_CARD_PATTERN, etc.) remain in `kardscm/constants.py`.
+```text
+KARDS deck TXT
+  -> importing.parser
+  -> commands.add_deck/import_deck
+  -> storage.database
+  -> collection.db
+```
 
-### Adding a New Language
+```text
+collection.db
+  -> web.queries / web.translate
+  -> FastAPI + Jinja templates
+  -> local browser UI
+```
 
-1. Run `uv run python scripts/generate_locale.py <code>` to bootstrap the file
-   from kards.com — it fills `code`, `name`, `locale_key`, and
-   `collection_sheet_name` automatically (via Playwright + GraphQL probe).
-2. Edit `kardscm/locales/<code>.toml` to add translations. Use
-   `kardscm/locales/en.toml` as the schema reference. Top-level keys:
-   `code`, `name`, `locale_key`, `collection_sheet_name`, `export_headers`,
-   `deck_headers`, `deck_metadata_labels`. Sections: `[factions]`, `[types]`,
-   `[rarities]`, `[sets]`, `[abilities]`, `[nation_display_names]`,
-   `[ui_strings]`, `[diff_headers]`.
-3. Any key you omit falls back to the English value; the loader records a
-   warning that surfaces on CLI (stderr) and web UI (yellow strip at the
-   page top). Partially-translated locales are valid.
-4. Activate via `kardscm --lang <code> <subcommand>` — no other config needed.
+Important boundaries:
 
-No code changes needed. No tests required for new locale files — the loader is already covered by `tests/test_locales.py`.
+- `cli.py` should stay thin. It declares command shape and forwards to
+  `commands.py`.
+- `commands.py` owns user workflows and IO orchestration.
+- `scraping/` owns raw API acquisition and normalization.
+- `storage/` owns SQLite schema and persistence.
+- `export/` owns file output formats.
+- `web/` owns local browser routes, queries, templates, and view translation.
+- `locales/` owns UI/export translations. English is the baseline.
 
-## Makefile Targets
+## Database
+
+The default database path is `collection.db` in the current working directory.
+It is local user data and must not be committed.
+
+Card columns follow the KARDS API shape where practical (`cardId`,
+`operationCost`, etc.). User-managed `quantity` is preserved across syncs.
+
+Schema initialization also handles:
+
+- incompatible old `nation` schemas: fail with manual reset instructions
+- legacy `attributes` schema: backup, recreate, and ask the user to re-sync
+- extra-ability columns: idempotently add missing `extra_ability_*` columns
+- extra-ability seed freshness: reapply bundled seed when its hash changes
+
+## Sync And API Drift
+
+`kardscm sync` fetches the catalog, computes a diff, asks for category approval,
+and writes only after approval. Rejected syncs leave the DB unchanged.
+
+The API baseline lives at:
+
+```text
+kardscm/data/api_baseline.json
+```
+
+During sync, the raw GraphQL response shape is compared with this committed
+baseline. Drift produces local files:
+
+```text
+sync-schema-diff-*.md
+sync-schema-observed-*.json
+```
+
+Workflow for intentional API changes:
+
+1. Run `uv run kardscm sync --diff-only` or `uv run kardscm sync`.
+2. Review the generated schema diff and observed snapshot.
+3. Update code/constants/locales if needed.
+4. Run `uv run kardscm baseline accept` to promote the latest observed snapshot,
+   or `uv run kardscm baseline init` to rebuild directly from the live API.
+5. Commit the baseline update with the related code or data change.
+
+GraphQL introspection is not assumed to be available. Treat the baseline as a
+data-derived contract snapshot.
+
+## Extra Abilities
+
+Some KARDS mechanics are visible in the game client but are not exposed as
+official GraphQL attributes. Those are tracked as manually curated
+extra-ability flags.
+
+Relevant files:
+
+```text
+kardscm/constants.py                 KNOWN_EXTRA_ABILITIES
+kardscm/data/extra_abilities.toml    cardId seed lists
+scripts/discover_extra_abilities.py  live GraphQL search helper
+```
+
+To update an extra ability:
 
 ```bash
-make help    # see all available targets
+uv run python scripts/discover_extra_abilities.py pincer en
+```
+
+Then edit `kardscm/data/extra_abilities.toml`. The seed is reapplied on
+`kardscm sync` and when the schema initializes after the file hash changes.
+
+When adding a new extra ability key, update all of these together:
+
+- `KNOWN_EXTRA_ABILITIES`
+- `kardscm/data/extra_abilities.toml`
+- `kardscm/locales/en.toml`
+- any maintained translated locale
+- tests covering storage/web filtering behavior
+- README or this file if the workflow changes
+
+## Locales
+
+Locale files live in `kardscm/locales/*.toml`.
+
+English is the canonical baseline. Other locale files may omit keys; missing
+values fall back to English and are surfaced as warnings.
+
+When adding or changing a locale:
+
+1. Use `kardscm/locales/en.toml` as the schema reference.
+2. Omit unknown translations instead of setting them to empty strings.
+3. Run `uv run pytest tests/test_locales.py -v`.
+4. If user-facing language behavior changes, update `README.md`.
+
+## Web UI
+
+The web UI is server-rendered FastAPI + Jinja2 + HTMX. There is no JavaScript
+build pipeline.
+
+Admin mode is intentionally separate from normal user edit mode:
+
+- normal mode edits collection quantities only
+- admin mode exposes full-field editing
+- admin mode only runs on localhost
+- admin mode creates a DB backup before startup
+- admin routes are not registered unless `--admin` is passed
+
+For UI changes, inspect the rendered page in a browser before calling the work
+done.
+
+## Release Process
+
+The package version must match in both files:
+
+```text
+pyproject.toml
+kardscm/__init__.py
+```
+
+Release checklist:
+
+1. Update `CHANGELOG.md` with a dated release entry.
+2. Bump `version` in `pyproject.toml`.
+3. Bump `__version__` in `kardscm/__init__.py`.
+4. Run `make check`.
+5. Commit the release prep.
+6. Tag with `vX.Y.Z`.
+7. Push `main` and the tag.
+8. Create the GitHub release from the changelog notes.
+
+`make release` runs checks and prints this checklist. It does not tag or push.
+
+## Documentation Maintenance
+
+Documentation is part of the change.
+
+Update docs in the same branch when a change affects any of these:
+
+- user workflow or command behavior -> `README.md`
+- setup, architecture, maintainer workflow, release process -> `CONTRIBUTING.md`
+- agent workflow or repository rules -> `AGENTS.md` / `CLAUDE.md`
+- released behavior -> `CHANGELOG.md`
+- Make targets -> `README.md` or `CONTRIBUTING.md`, depending on audience
+
+Do not leave outdated docs for a later cleanup. If a change makes a documented
+statement false, update or remove that statement in the same PR.
+
+Avoid standalone docs unless the project grows past what README and
+CONTRIBUTING can reasonably hold. Historical implementation plans should not be
+kept as active project documentation.
+
+## Git Hygiene
+
+- Keep commits focused.
+- Do not commit local databases, sync reports, Playwright logs, cache folders,
+  or personal test data.
+- Do not revert unrelated user changes in the working tree.
+- Before committing, check `git status --short` and make sure only intended
+  files are staged.
+
+Known local-only paths are ignored:
+
+```text
+collection.db
+.playwright-mcp/
+experiments/
+test_data/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 ```
