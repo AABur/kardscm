@@ -8,6 +8,7 @@ import webbrowser
 from collections.abc import Mapping
 from contextlib import closing
 from pathlib import Path
+from typing import Any
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
@@ -411,7 +412,7 @@ def create_app(
     return app
 
 
-def _parse_admin_form(form: Mapping[str, str]) -> dict:
+def _parse_admin_form(form: Mapping[str, Any]) -> dict:
     """Parse the admin edit form into a fields dict for update_card_admin.
 
     Validates ranges and categorical values. Empty number inputs map to None.
@@ -419,6 +420,8 @@ def _parse_admin_form(form: Mapping[str, str]) -> dict:
 
     Args:
         form: A Starlette FormData (or any mapping-like object exposing .get).
+            Values may be ``str`` or ``UploadFile``; non-string values for the
+            keys this parser reads are coerced via ``str()`` where needed.
     """
     fields: dict = {}
 
