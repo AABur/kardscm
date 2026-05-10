@@ -30,7 +30,7 @@ from kardscm.export import (
 )
 from kardscm.helpers import parse_int
 from kardscm.importing import parse_deck_file
-from kardscm.models import DeckCardEntry, DiffReport
+from kardscm.models import CardDict, DeckCardEntry, DiffReport
 from kardscm.scraping import baseline, fetcher, probe, scrape_cards
 from kardscm.storage import (
     apply_extra_abilities_seed,
@@ -199,6 +199,75 @@ def _read_xlsx_quantities(
     return results
 
 
+def fetch_and_compute_diff(
+    db_path: str,
+    lang_config: LanguageConfig,
+) -> tuple[DiffReport, list[CardDict], str]:
+    """Fetch fresh cards from the website and compute the DB diff.
+
+    Pure read path: no DB writes, no console echo, no markdown report.
+    Web flows call this to drive the preview modal; the CLI orchestrator
+    composes it with `apply_sync_changes`.
+
+    Args:
+        db_path: SQLite database path.
+        lang_config: Active language configuration.
+
+    Returns:
+        Tuple of (DiffReport, fetched cards, filesystem-safe UTC timestamp).
+        The timestamp is generated once here so every report path the
+        caller writes shares the same identifier.
+    """
+    new_cards = scrape_cards(language=lang_config.code, lang_config=lang_config)
+    with get_connection(db_path) as conn:
+        initialize_schema(conn, db_path)
+        old_cards = fetch_cards(conn)
+        report = compute_diff(old_cards, new_cards, lang_config.locale_key)
+    return report, new_cards, _safe_timestamp()
+
+
+def apply_sync_changes(
+    db_path: str,
+    new_cards: list[CardDict],
+    report: DiffReport,
+    lang_config: LanguageConfig,
+    timestamp: str,
+    diff_report_path: Path | None = None,
+) -> Path | None:
+    """Persist the sync result to the DB and update metadata.
+
+    Args:
+        db_path: SQLite database path.
+        new_cards: Cards returned by `fetch_and_compute_diff`.
+        report: Diff report bucketed by category.
+        lang_config: Active language configuration.
+        timestamp: Filesystem-safe UTC timestamp from `fetch_and_compute_diff`.
+        diff_report_path: Optional override for the markdown report path.
+            Defaults to `./sync-diff-<timestamp>.md` when a report is written.
+
+    Returns:
+        Path to the markdown report when a non-empty diff was applied,
+        otherwise None (empty diff → metadata-only update).
+    """
+    with get_connection(db_path) as conn:
+        initialize_schema(conn, db_path)
+        if is_empty(report):
+            set_metadata(conn, "last_sync", _utc_timestamp())
+            set_metadata(conn, "language", lang_config.code)
+            return None
+
+        upsert_cards(conn, new_cards)
+        if report["removed"]:
+            delete_cards(conn, [r["cardId"] for r in report["removed"]])
+        apply_extra_abilities_seed(conn)
+        set_metadata(conn, "last_sync", _utc_timestamp())
+        set_metadata(conn, "language", lang_config.code)
+
+    report_path = diff_report_path or _default_diff_report_path()
+    _write_diff_report(report_path, report, lang_config, timestamp)
+    return report_path
+
+
 def sync_collection(
     db_path: str = DEFAULT_DB_PATH,
     *,
@@ -226,43 +295,31 @@ def sync_collection(
     lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
-    new_cards = scrape_cards(language=lang_config.code, lang_config=lang_config)
 
-    with get_connection(db_path) as conn:
-        initialize_schema(conn, db_path)
-        old_cards = fetch_cards(conn)
-        report = compute_diff(old_cards, new_cards, lang_config.locale_key)
+    report, new_cards, timestamp = fetch_and_compute_diff(db_path, lang_config)
 
-        if is_empty(report):
-            set_metadata(conn, "last_sync", _utc_timestamp())
-            set_metadata(conn, "language", lang_config.code)
-            logger.info("No changes. %s cards in collection.", len(new_cards))
-            return
+    if is_empty(report):
+        apply_sync_changes(db_path, new_cards, report, lang_config, timestamp)
+        logger.info("No changes. %s cards in collection.", len(new_cards))
+        return
 
-        typer.echo(format_console_report(report, lang_config))
+    typer.echo(format_console_report(report, lang_config))
+    report_path = diff_report_path or _default_diff_report_path()
 
-        report_path = diff_report_path or _default_diff_report_path()
-        report_timestamp = _safe_timestamp()
+    if diff_only:
+        _write_diff_report(report_path, report, lang_config, timestamp)
+        logger.info("Diff report written to %s. No DB changes.", report_path)
+        return
 
-        if diff_only:
-            _write_diff_report(report_path, report, lang_config, report_timestamp)
-            logger.info("Diff report written to %s. No DB changes.", report_path)
-            return
+    if not yes and not _approve_all_categories(report, lang_config):
+        _write_diff_report(report_path, report, lang_config, timestamp)
+        logger.info("Sync aborted by user. Diff report written to %s.", report_path)
+        return
 
-        if not yes and not _approve_all_categories(report, lang_config):
-            _write_diff_report(report_path, report, lang_config, report_timestamp)
-            logger.info("Sync aborted by user. Diff report written to %s.", report_path)
-            return
-
-        upsert_cards(conn, new_cards)
-        if report["removed"]:
-            delete_cards(conn, [r["cardId"] for r in report["removed"]])
-        apply_extra_abilities_seed(conn)
-        set_metadata(conn, "last_sync", _utc_timestamp())
-        set_metadata(conn, "language", lang_config.code)
-        _write_diff_report(report_path, report, lang_config, report_timestamp)
-
-    logger.info("Sync completed. Stored %s cards. Report: %s", len(new_cards), report_path)
+    written = apply_sync_changes(
+        db_path, new_cards, report, lang_config, timestamp, report_path
+    )
+    logger.info("Sync completed. Stored %s cards. Report: %s", len(new_cards), written)
 
 
 def baseline_init(*, lang: str | None = None) -> None:
