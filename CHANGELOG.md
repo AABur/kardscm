@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2026-05-08
+### Added
+
+- **Web UI Sync flow**: a **Sync** button in the page header opens a
+  confirmation modal, runs the same fetch + diff the CLI does (with a
+  spinner during the request), and shows a categorized preview (new /
+  changed / reserve transitions / removed). Apply persists the
+  changes and writes the Markdown diff report; Cancel leaves the DB
+  untouched. Empty diffs collapse to a single "no changes" notice and
+  only update `last_sync` metadata.
+- **Web UI Export flow**: an **Export** button opens a format
+  selector (XLSX, CSV, JSON). The browser downloads the file
+  directly; the server only uses a tempfile that is cleaned up after
+  the response is sent.
+- New CLI helpers `commands.fetch_and_compute_diff` and
+  `commands.apply_sync_changes` extracted from `sync_collection` so
+  the web routes can reuse the same logic without duplicating it.
+- `nav_sync`, `nav_export`, `sync_*`, and `export_*` UI strings added
+  to all 12 locale TOMLs.
 
 ### Added
 

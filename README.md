@@ -157,7 +157,9 @@ kardscm --lang ru web
 ```
 
 The web UI runs locally at `127.0.0.1:8765` by default. It provides collection
-browsing, sorting, filters, card details, and quantity editing.
+browsing, sorting, filters, card details, quantity editing, and full
+**Sync** and **Export** flows so the browser is the only surface needed to
+manage a collection.
 
 Click **Edit** to enable quantity changes. Quantity writes are server-side
 validated by rarity caps:
@@ -166,6 +168,25 @@ validated by rarity caps:
 - Limited: 3
 - Special: 2
 - Elite: 1
+
+Click **Sync** to pull the latest cards from the website. The flow is
+two-phase:
+
+1. Confirm the action in the modal — the server runs the same fetch +
+   diff the CLI does, with a spinner while the request is in flight.
+2. Review the categorized diff (new / changed / reserve transitions /
+   removed) and either **Apply changes** or **Cancel**. Cancel leaves
+   the database untouched; apply persists everything in one shot and
+   writes a Markdown diff report next to the working directory, just
+   like `kardscm sync`. When the API and the local database already
+   match, the modal collapses to a single "no changes" notice and
+   only `last_sync` metadata is touched.
+
+Click **Export** to download the current collection. Pick **Excel
+(.xlsx)**, **CSV**, or **JSON** — the browser receives the file
+directly; nothing is written to the server filesystem. The exported
+content matches `kardscm export -f <fmt>` exactly, in the active
+language.
 
 ## Admin Mode
 

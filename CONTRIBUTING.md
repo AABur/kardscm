@@ -231,6 +231,26 @@ Admin mode is intentionally separate from normal user edit mode:
 - admin mode creates a DB backup before startup
 - admin routes are not registered unless `--admin` is passed
 
+The web Sync and Export flows reuse the CLI orchestrators rather than
+re-implementing them:
+
+- `commands.fetch_and_compute_diff` performs the read-only fetch + diff
+  step. `commands.apply_sync_changes` performs the DB write + report
+  step. `commands.sync_collection` (the CLI orchestrator) composes both
+  with the typer prompts in between.
+- The web `POST /sync/start` route runs `fetch_and_compute_diff` in a
+  thread, stashes the result in a per-app `dict[str, SyncSession]`, and
+  renders the diff modal. `POST /sync/apply/{sync_id}` reuses the
+  cached cards via `apply_sync_changes`. Sessions are evicted on apply
+  or cancel; abandoned sessions die with the process.
+- `GET /export/{fmt}` writes a `NamedTemporaryFile`, calls the existing
+  `export_collection` unchanged, and returns a `FileResponse` with a
+  `BackgroundTask(os.unlink, ...)` cleanup hook. The CLI export path is
+  unchanged.
+
+All blocking work (`scrape_cards`, DB writes, file writers) goes through
+`asyncio.to_thread` so the event loop stays responsive.
+
 For UI changes, inspect the rendered page in a browser before calling the work
 done.
 
