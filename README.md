@@ -18,6 +18,19 @@ The tool is local-first:
 - no PyPI package
 - database stored as `collection.db` in the working directory
 
+## Disclaimer
+
+`kardscm` is an **unofficial fan tool**, not affiliated with or endorsed by
+1939 Games ehf. KARDS and all related card names, art, and trademarks are the
+property of 1939 Games ehf.
+
+The tool is intended for **personal, non-commercial use**. Users are
+responsible for complying with the
+[KARDS Terms of Use](https://www.kards.com/terms-of-use).
+
+This repository ships no card data, card art, or pre-built database. The local
+SQLite catalog is built on the user's own machine.
+
 ## What It Does
 
 - Syncs the full KARDS card catalog, including reserved and spawnable cards.
@@ -255,4 +268,8 @@ Developer setup, architecture, release process, and maintainer workflows are in
 
 ## License
 
-MIT
+MIT.
+
+The MIT license covers the source code of `kardscm` itself. It does not grant
+any rights over KARDS game content, card data, or trademarks; see the
+[Disclaimer](#disclaimer) section above.
