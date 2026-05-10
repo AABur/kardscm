@@ -1,0 +1,37 @@
+<div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
+  <div class="modal-content export-modal-content" hx-on:click="event.stopPropagation()">
+    <button
+      type="button"
+      class="modal-close"
+      aria-label="{{ ui.modal_close }}"
+      hx-on:click="document.getElementById('modal').replaceChildren()"
+    >×</button>
+    <h2>{{ ui.export_modal_title }}</h2>
+    <ul class="export-format-list">
+      <li>
+        <a class="btn-export" href="/export/xlsx" download
+           hx-on:click="document.getElementById('modal').replaceChildren()">
+          {{ ui.export_format_xlsx }}
+        </a>
+      </li>
+      <li>
+        <a class="btn-export" href="/export/csv" download
+           hx-on:click="document.getElementById('modal').replaceChildren()">
+          {{ ui.export_format_csv }}
+        </a>
+      </li>
+      <li>
+        <a class="btn-export" href="/export/json" download
+           hx-on:click="document.getElementById('modal').replaceChildren()">
+          {{ ui.export_format_json }}
+        </a>
+      </li>
+    </ul>
+    <div class="sync-modal-actions">
+      <button class="btn-sync-cancel"
+              hx-on:click="document.getElementById('modal').replaceChildren()">
+        {{ ui.sync_cancel }}
+      </button>
+    </div>
+  </div>
+</div>

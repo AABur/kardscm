@@ -27,6 +27,12 @@
           hx-swap="innerHTML">
     {{ ui.nav_sync }}
   </button>
+  <button class="action-btn"
+          hx-get="/export/modal"
+          hx-target="#modal"
+          hx-swap="innerHTML">
+    {{ ui.nav_export }}
+  </button>
   <small class="qty-hint">{{ ui.saved_hint }}</small>
 </header>
 

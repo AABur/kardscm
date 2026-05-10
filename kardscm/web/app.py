@@ -4,21 +4,25 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sqlite3
+import tempfile
 import uuid
 import webbrowser
 from collections.abc import Mapping
 from contextlib import closing
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.background import BackgroundTask
 
-from kardscm.commands import apply_sync_changes, fetch_and_compute_diff
+from kardscm.commands import apply_sync_changes, export_collection, fetch_and_compute_diff
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import (
     DEFAULT_DB_PATH,
@@ -62,6 +66,12 @@ TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
 
 EDIT_MODE_COOKIE = "kardscm_edit"
+
+EXPORT_MIME_TYPES: dict[str, str] = {
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "csv": "text/csv",
+    "json": "application/json",
+}
 
 FACTIONS = [
     "Soviet",
@@ -490,6 +500,38 @@ def create_app(
     def sync_cancel(sync_id: str) -> Response:
         sync_sessions.pop(sync_id, None)
         return Response(content="", status_code=200)
+
+    @app.get("/export/modal", response_class=HTMLResponse)
+    def export_modal(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request, "_export_modal.html", {"ui": cfg.ui_strings}
+        )
+
+    @app.get("/export/{fmt}")
+    async def export_download(fmt: str) -> FileResponse:
+        if fmt not in EXPORT_MIME_TYPES:
+            raise HTTPException(status_code=400, detail=f"unsupported format: {fmt}")
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{fmt}")
+        tmp.close()
+        try:
+            await asyncio.to_thread(
+                export_collection,
+                fmt,
+                tmp.name,
+                str(db_path_resolved),
+                lang=cfg.code,
+            )
+        except SystemExit as exc:
+            os.unlink(tmp.name)
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        filename = f"kards_collection_{cfg.code}_{timestamp}.{fmt}"
+        return FileResponse(
+            tmp.name,
+            media_type=EXPORT_MIME_TYPES[fmt],
+            filename=filename,
+            background=BackgroundTask(os.unlink, tmp.name),
+        )
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
