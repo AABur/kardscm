@@ -280,4 +280,4 @@ MIT.
 
 The MIT license covers the source code of `kardscm` itself. It does not grant
 any rights over KARDS game content, card data, or trademarks; see the
-**Disclaimer** section above.
+[Disclaimer](#disclaimer) section above.
