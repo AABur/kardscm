@@ -13,8 +13,10 @@ from kardscm.commands import (
     _read_xlsx_quantities,
     _select_deck,
     add_deck,
+    apply_sync_changes,
     export_collection,
     export_deck,
+    fetch_and_compute_diff,
     import_deck,
     remove_deck,
     sync_collection,
@@ -374,6 +376,142 @@ class TestSyncCollection:
 
         assert custom.exists()
         assert "kredits" in custom.read_text(encoding="utf-8")
+
+
+class TestFetchAndComputeDiff:
+    @patch("kardscm.commands.scrape_cards")
+    def test_returns_report_and_new_cards(
+        self, mock_scrape, tmp_path, make_card
+    ):
+        """Helper returns (report, new_cards, timestamp) without writing DB."""
+        old = make_card(kredits=2)
+        new = make_card(kredits=5)
+        mock_scrape.return_value = [new]
+
+        db_path = str(tmp_path / "fc.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [old])
+
+        report, new_cards, timestamp = fetch_and_compute_diff(db_path, LANGUAGE_EN)
+
+        assert new_cards == [new]
+        assert report["new"] == []
+        assert len(report["changed"]) == 1
+        assert report["changed"][0]["card"]["cardId"] == "card-1"
+        assert isinstance(timestamp, str) and len(timestamp) > 0
+
+        # DB must be untouched.
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert cards[0]["kredits"] == 2
+
+    @patch("kardscm.commands.scrape_cards")
+    def test_empty_db_routes_all_cards_to_new(
+        self, mock_scrape, tmp_path, make_card
+    ):
+        new = make_card()
+        mock_scrape.return_value = [new]
+
+        db_path = str(tmp_path / "fc_empty.db")
+        report, new_cards, _ = fetch_and_compute_diff(db_path, LANGUAGE_EN)
+
+        assert new_cards == [new]
+        assert len(report["new"]) == 1
+        assert report["changed"] == []
+
+
+class TestApplySyncChanges:
+    @patch("kardscm.commands.scrape_cards")
+    def test_writes_db_and_report(self, mock_scrape, tmp_path, make_card):
+        old = make_card(kredits=2)
+        new = make_card(kredits=5)
+        mock_scrape.return_value = [new]
+
+        db_path = str(tmp_path / "ap.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [old])
+
+        report, new_cards, timestamp = fetch_and_compute_diff(db_path, LANGUAGE_EN)
+        report_path = tmp_path / "out.md"
+
+        result = apply_sync_changes(
+            db_path,
+            new_cards,
+            report,
+            LANGUAGE_EN,
+            timestamp,
+            diff_report_path=report_path,
+        )
+
+        assert result == report_path
+        assert report_path.exists()
+        assert "kredits" in report_path.read_text(encoding="utf-8")
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+            row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+        assert cards[0]["kredits"] == 5
+        assert row is not None
+
+    @patch("kardscm.commands.scrape_cards")
+    def test_empty_report_only_updates_metadata(
+        self, mock_scrape, tmp_path, make_card
+    ):
+        card = make_card()
+        mock_scrape.return_value = [card]
+
+        db_path = str(tmp_path / "ap_empty.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [card])
+
+        report, new_cards, timestamp = fetch_and_compute_diff(db_path, LANGUAGE_EN)
+        report_path = tmp_path / "should_not_exist.md"
+
+        result = apply_sync_changes(
+            db_path,
+            new_cards,
+            report,
+            LANGUAGE_EN,
+            timestamp,
+            diff_report_path=report_path,
+        )
+
+        assert result is None
+        assert not report_path.exists()
+        with get_connection(db_path) as conn:
+            row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+        assert row is not None
+
+    @patch("kardscm.commands.delete_cards")
+    @patch("kardscm.commands.scrape_cards")
+    def test_removed_cards_trigger_delete(
+        self, mock_scrape, mock_delete, tmp_path, make_card
+    ):
+        existing = make_card(cardId="A")
+        going_away = make_card(cardId="B", title=json.dumps({"en-EN": "Bravo"}))
+        mock_scrape.return_value = [existing]
+
+        db_path = str(tmp_path / "ap_rm.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [existing, going_away])
+
+        report, new_cards, timestamp = fetch_and_compute_diff(db_path, LANGUAGE_EN)
+
+        apply_sync_changes(
+            db_path,
+            new_cards,
+            report,
+            LANGUAGE_EN,
+            timestamp,
+            diff_report_path=tmp_path / "r.md",
+        )
+
+        mock_delete.assert_called_once()
+        deleted_ids = list(mock_delete.call_args[0][1])
+        assert deleted_ids == ["B"]
 
 
 class TestExportDeck:
