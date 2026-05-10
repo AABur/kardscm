@@ -465,3 +465,94 @@ body.admin-mode .cards-table th.sort-desc { background: #991b1b; }
   order: 3;
 }
 .btn-save-undo:hover { background: #fef2f2; }
+
+/* Action buttons (sync/export) in the page header */
+.action-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.action-btn:hover { background: #eef2ff; }
+
+/* Sync flow */
+.sync-confirm-content,
+.sync-empty-content {
+  max-width: 480px;
+}
+.sync-diff-content {
+  max-width: 720px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.sync-confirm-body,
+.sync-empty-body {
+  margin: 0.5rem 0 1rem;
+  color: #374151;
+}
+.sync-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 1rem;
+}
+.sync-spinner {
+  display: none;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+.sync-spinner.htmx-request,
+.htmx-request .sync-spinner {
+  display: inline;
+}
+.btn-sync-run,
+.btn-sync-apply {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+.btn-sync-run:hover,
+.btn-sync-apply:hover { background: #1d4ed8; }
+.btn-sync-run[disabled] { opacity: 0.6; cursor: progress; }
+.btn-sync-cancel,
+.btn-sync-ok {
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+.btn-sync-cancel:hover,
+.btn-sync-ok:hover { background: #eef2ff; }
+
+.sync-diff-section { margin-top: 1rem; }
+.sync-diff-section h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  color: #1f2937;
+}
+.sync-diff-section ul { margin: 0; padding-left: 1.25rem; }
+.sync-diff-section .diff-faction {
+  display: inline-block;
+  min-width: 90px;
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin-right: 6px;
+}
+.sync-diff-section .diff-fields {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-top: 4px;
+}
+.sync-diff-section .diff-old { background: #fee2e2; padding: 0 4px; border-radius: 2px; }
+.sync-diff-section .diff-new { background: #dcfce7; padding: 0 4px; border-radius: 2px; }

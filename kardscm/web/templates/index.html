@@ -21,6 +21,12 @@
       </button>
     {% endif %}
   {% endif %}
+  <button class="action-btn"
+          hx-get="/sync/modal"
+          hx-target="#modal"
+          hx-swap="innerHTML">
+    {{ ui.nav_sync }}
+  </button>
   <small class="qty-hint">{{ ui.saved_hint }}</small>
 </header>
 

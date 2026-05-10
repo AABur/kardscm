@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import sqlite3
+import uuid
 import webbrowser
 from collections.abc import Mapping
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +18,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from kardscm.commands import apply_sync_changes, fetch_and_compute_diff
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import (
     DEFAULT_DB_PATH,
@@ -22,7 +26,9 @@ from kardscm.constants import (
     KNOWN_EXTRA_ABILITIES,
     RARITY_MAX_QUANTITY,
 )
+from kardscm.diff import is_empty
 from kardscm.helpers import extract_locale
+from kardscm.models import CardDict, DiffReport
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
     ADMIN_DB_COLUMNS,
@@ -34,6 +40,20 @@ from kardscm.storage.database import (
 )
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
 from kardscm.web.translate import to_view
+
+
+@dataclass
+class SyncSession:
+    """In-memory state passed from /sync/start to /sync/apply.
+
+    Holds the diff preview and the cards needed to apply the change so
+    the second phase can reuse the already-fetched data without hitting
+    the API a second time.
+    """
+
+    report: DiffReport
+    new_cards: list[CardDict]
+    timestamp: str
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +190,7 @@ def create_app(
     cfg = lang_config or get_language_config()
     db_path_resolved = Path(db_path)
     edit_snapshot: dict[str, int] = {}
+    sync_sessions: dict[str, SyncSession] = {}
 
     app = FastAPI(title="kardscm webUI", docs_url=None, redoc_url=None, openapi_url=None)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -178,6 +199,9 @@ def create_app(
     templates.env.globals["admin"] = admin
     templates.env.globals["backup_path"] = str(backup_path) if backup_path else ""
     templates.env.globals["rarity_max_quantity"] = RARITY_MAX_QUANTITY
+    templates.env.filters["card_title"] = lambda raw: extract_locale(
+        raw, cfg.locale_key, default=str(raw or ""), en_fallback=True
+    )
 
     def render_table(
         request: Request,
@@ -404,6 +428,68 @@ def create_app(
                     "include_oob_modal_clear": True,
                 },
             )
+
+    @app.get("/sync/modal", response_class=HTMLResponse)
+    def sync_confirm_modal(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request, "_sync_confirm.html", {"ui": cfg.ui_strings}
+        )
+
+    @app.post("/sync/start", response_class=HTMLResponse)
+    async def sync_start(request: Request) -> HTMLResponse:
+        report, new_cards, timestamp = await asyncio.to_thread(
+            fetch_and_compute_diff, str(db_path_resolved), cfg
+        )
+        if is_empty(report):
+            await asyncio.to_thread(
+                apply_sync_changes,
+                str(db_path_resolved),
+                new_cards,
+                report,
+                cfg,
+                timestamp,
+            )
+            return templates.TemplateResponse(
+                request, "_sync_empty.html", {"ui": cfg.ui_strings}
+            )
+        sync_id = uuid.uuid4().hex
+        sync_sessions[sync_id] = SyncSession(
+            report=report, new_cards=new_cards, timestamp=timestamp
+        )
+        return templates.TemplateResponse(
+            request,
+            "_sync_diff.html",
+            {
+                "ui": cfg.ui_strings,
+                "sync_id": sync_id,
+                "report": report,
+                "diff_headers": cfg.diff_headers,
+                "faction_names": cfg.faction_names,
+                "ability_names": cfg.ability_names,
+            },
+        )
+
+    @app.post("/sync/apply/{sync_id}")
+    async def sync_apply(sync_id: str) -> Response:
+        session = sync_sessions.pop(sync_id, None)
+        if session is None:
+            raise HTTPException(status_code=404, detail="sync session not found")
+        await asyncio.to_thread(
+            apply_sync_changes,
+            str(db_path_resolved),
+            session.new_cards,
+            session.report,
+            cfg,
+            session.timestamp,
+        )
+        response = Response(content="", status_code=200)
+        response.headers["HX-Redirect"] = "/"
+        return response
+
+    @app.post("/sync/cancel/{sync_id}")
+    def sync_cancel(sync_id: str) -> Response:
+        sync_sessions.pop(sync_id, None)
+        return Response(content="", status_code=200)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

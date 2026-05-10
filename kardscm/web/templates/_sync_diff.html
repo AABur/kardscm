@@ -1,0 +1,72 @@
+<div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
+  <div class="modal-content sync-diff-content" hx-on:click="event.stopPropagation()">
+    <button
+      type="button"
+      class="modal-close"
+      aria-label="{{ ui.modal_close }}"
+      hx-on:click="document.getElementById('modal').replaceChildren()"
+    >×</button>
+    <h2>{{ ui.sync_diff_title }}</h2>
+
+    {% set plain_sections = [
+      ('new', report['new']),
+      ('reserved_in', report['reserved_in']),
+      ('reserved_out', report['reserved_out']),
+      ('removed', report['removed']),
+    ] %}
+    {% for key, items in plain_sections %}
+      {% if items %}
+        <section class="sync-diff-section">
+          <h3>{{ diff_headers.get(key, key) }} ({{ items|length }})</h3>
+          <ul>
+            {% for card in items %}
+              <li>
+                <span class="diff-faction">{{ faction_names.get(card.faction, card.faction) }}</span>
+                <span class="diff-title">{{ card.title | card_title }}</span>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    {% endfor %}
+
+    {% if report['changed'] %}
+      <section class="sync-diff-section">
+        <h3>{{ diff_headers.get('changed', 'changed') }} ({{ report['changed']|length }})</h3>
+        <ul>
+          {% for change in report['changed'] %}
+            <li>
+              <span class="diff-faction">{{ faction_names.get(change.card.faction, change.card.faction) }}</span>
+              <span class="diff-title">{{ change.card.title | card_title }}</span>
+              <ul class="diff-fields">
+                {% for fc in change.changes %}
+                  <li>
+                    <span class="diff-field-name">{{ fc.field }}:</span>
+                    <code class="diff-old">{{ fc.old }}</code>
+                    →
+                    <code class="diff-new">{{ fc.new }}</code>
+                  </li>
+                {% endfor %}
+              </ul>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <div class="sync-modal-actions">
+      <button class="btn-sync-apply"
+              hx-post="/sync/apply/{{ sync_id }}"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+        {{ ui.sync_apply }}
+      </button>
+      <button class="btn-sync-cancel"
+              hx-post="/sync/cancel/{{ sync_id }}"
+              hx-target="#modal"
+              hx-swap="innerHTML">
+        {{ ui.sync_cancel }}
+      </button>
+    </div>
+  </div>
+</div>

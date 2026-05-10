@@ -1,0 +1,27 @@
+<div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
+  <div class="modal-content sync-confirm-content" hx-on:click="event.stopPropagation()">
+    <button
+      type="button"
+      class="modal-close"
+      aria-label="{{ ui.modal_close }}"
+      hx-on:click="document.getElementById('modal').replaceChildren()"
+    >×</button>
+    <h2>{{ ui.sync_confirm_title }}</h2>
+    <p class="sync-confirm-body">{{ ui.sync_confirm_body }}</p>
+    <div class="sync-modal-actions">
+      <button class="btn-sync-run"
+              hx-post="/sync/start"
+              hx-target="#modal"
+              hx-swap="innerHTML"
+              hx-disabled-elt="this"
+              hx-indicator="#sync-spinner">
+        {{ ui.sync_run }}
+      </button>
+      <span id="sync-spinner" class="sync-spinner htmx-indicator">{{ ui.sync_running }}</span>
+      <button class="btn-sync-cancel"
+              hx-on:click="document.getElementById('modal').replaceChildren()">
+        {{ ui.sync_cancel }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,18 @@
+<div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
+  <div class="modal-content sync-empty-content" hx-on:click="event.stopPropagation()">
+    <button
+      type="button"
+      class="modal-close"
+      aria-label="{{ ui.modal_close }}"
+      hx-on:click="document.getElementById('modal').replaceChildren()"
+    >×</button>
+    <h2>{{ ui.sync_diff_title }}</h2>
+    <p class="sync-empty-body">{{ ui.sync_diff_empty }}</p>
+    <div class="sync-modal-actions">
+      <button class="btn-sync-ok"
+              hx-on:click="document.getElementById('modal').replaceChildren()">
+        {{ ui.sync_ok }}
+      </button>
+    </div>
+  </div>
+</div>
