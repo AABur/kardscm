@@ -35,12 +35,22 @@ from kardscm.helpers import extract_locale
 from kardscm.models import CardDict, DiffReport
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
-    ADMIN_DB_COLUMNS,
     get_card_quantity_by_id,
     get_connection,
     initialize_schema,
     update_card_admin,
     update_card_quantity_by_id,
+)
+from kardscm.web.constants import (
+    _ADMIN_FORM_FIELDS,
+    CARD_COLUMNS,
+    EDIT_MODE_COOKIE,
+    EXPORT_MIME_TYPES,
+    FACTIONS,
+    KREDITS_RANGE,
+    RARITIES,
+    SETS,
+    TYPES,
 )
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
 from kardscm.web.translate import to_view
@@ -59,64 +69,12 @@ class SyncSession:
     new_cards: list[CardDict]
     timestamp: str
 
+
 logger = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
-
-EDIT_MODE_COOKIE = "kardscm_edit"
-
-EXPORT_MIME_TYPES: dict[str, str] = {
-    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "csv": "text/csv",
-    "json": "application/json",
-}
-
-FACTIONS = [
-    "Soviet",
-    "USA",
-    "Britain",
-    "Germany",
-    "Japan",
-    "France",
-    "Italy",
-    "Poland",
-    "Finland",
-    "Neutral",
-]
-TYPES = ["infantry", "tank", "artillery", "fighter", "bomber", "order", "countermeasure"]
-RARITIES = ["Standard", "Limited", "Special", "Elite"]
-SETS = [
-    "Base",
-    "Allegiance",
-    "TheatersOfWar",
-    "Breakthrough",
-    "WorldAtWar",
-    "CovertOps",
-    "BloodAndIron",
-    "Legions",
-    "NavalWarfare",
-    "Homefront",
-    "WinterWar",
-    "BrothersInArms",
-    "Special",
-    "OnlySpawnable",
-]
-KREDITS_RANGE = list(range(0, 11))
-
-_ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
-_EXTRA_ABILITY_COLS = ", ".join(f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES)
-CARD_COLUMNS = (
-    'cardId, importId, imageUrl, thumbUrl, faction, type, rarity, "set", '
-    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, "
-    f"{_EXTRA_ABILITY_COLS}, operationCost, "
-    "reserved, image, can_create, exile, quantity, updated_at"
-)
-
-# Form-side allow-list: DB columns the admin form can write directly,
-# plus the locale-merged title/text fields the form exposes.
-_ADMIN_FORM_FIELDS: frozenset[str] = ADMIN_DB_COLUMNS | {"title", "text"}
 
 
 def card_filters_dep(
@@ -441,9 +399,7 @@ def create_app(
 
     @app.get("/sync/modal", response_class=HTMLResponse)
     def sync_confirm_modal(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse(
-            request, "_sync_confirm.html", {"ui": cfg.ui_strings}
-        )
+        return templates.TemplateResponse(request, "_sync_confirm.html", {"ui": cfg.ui_strings})
 
     @app.post("/sync/start", response_class=HTMLResponse)
     async def sync_start(request: Request) -> HTMLResponse:
@@ -459,9 +415,7 @@ def create_app(
                 cfg,
                 timestamp,
             )
-            return templates.TemplateResponse(
-                request, "_sync_empty.html", {"ui": cfg.ui_strings}
-            )
+            return templates.TemplateResponse(request, "_sync_empty.html", {"ui": cfg.ui_strings})
         sync_id = uuid.uuid4().hex
         sync_sessions[sync_id] = SyncSession(
             report=report, new_cards=new_cards, timestamp=timestamp
@@ -503,9 +457,7 @@ def create_app(
 
     @app.get("/export/modal", response_class=HTMLResponse)
     def export_modal(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse(
-            request, "_export_modal.html", {"ui": cfg.ui_strings}
-        )
+        return templates.TemplateResponse(request, "_export_modal.html", {"ui": cfg.ui_strings})
 
     @app.get("/export/{fmt}")
     async def export_download(fmt: str) -> FileResponse:
