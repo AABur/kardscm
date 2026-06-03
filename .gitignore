@@ -45,7 +45,15 @@ htmlcov/
 
 # Local user data (per-machine collection + auto-backup from breaking migrations)
 collection.db
-collection.db.bak
+collection.db.bak*
+
+# Sync drift/diff reports (written to cwd by sync; regenerated on demand)
+sync-diff-*.md
+sync-schema-diff-*.md
+sync-schema-observed-*.json
+
+# Claude Code code-graph index cache
+.codegraph/
 
 # Playwright MCP runtime artifacts
 .playwright-mcp/
