@@ -35,7 +35,7 @@ from kardscm.storage.decks import (  # noqa: F401
     insert_deck,
     insert_deck_cards,
 )
-from kardscm.storage.metadata import set_metadata  # noqa: F401
+from kardscm.storage.metadata import set_metadata
 
 logger = logging.getLogger(__name__)
 
