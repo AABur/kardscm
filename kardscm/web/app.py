@@ -2,24 +2,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
-import tempfile
 import webbrowser
 from collections.abc import Mapping
 from contextlib import closing
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.background import BackgroundTask
 
-from kardscm.commands import export_collection
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import (
     DEFAULT_DB_PATH,
@@ -39,7 +33,6 @@ from kardscm.storage.database import (
 from kardscm.web.constants import (
     _ADMIN_FORM_FIELDS,
     EDIT_MODE_COOKIE,
-    EXPORT_MIME_TYPES,
     FACTIONS,
     KREDITS_RANGE,
     RARITIES,
@@ -55,6 +48,7 @@ from kardscm.web.deps import (
     card_filters_dep,
 )
 from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
+from kardscm.web.routes_export import create_export_router
 from kardscm.web.routes_sync import create_sync_router
 from kardscm.web.translate import to_view
 
@@ -91,6 +85,8 @@ def create_app(
 
     sync_router, sync_sessions = create_sync_router(templates, cfg, str(db_path_resolved))
     app.include_router(sync_router)
+    export_router = create_export_router(templates, cfg, str(db_path_resolved))
+    app.include_router(export_router)
     templates.env.globals["fallback_warnings"] = cfg.fallback_warnings
     templates.env.globals["admin"] = admin
     templates.env.globals["backup_path"] = str(backup_path) if backup_path else ""
@@ -324,36 +320,6 @@ def create_app(
                     "include_oob_modal_clear": True,
                 },
             )
-
-    @app.get("/export/modal", response_class=HTMLResponse)
-    def export_modal(request: Request) -> HTMLResponse:
-        return templates.TemplateResponse(request, "_export_modal.html", {"ui": cfg.ui_strings})
-
-    @app.get("/export/{fmt}")
-    async def export_download(fmt: str) -> FileResponse:
-        if fmt not in EXPORT_MIME_TYPES:
-            raise HTTPException(status_code=400, detail=f"unsupported format: {fmt}")
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{fmt}")
-        tmp.close()
-        try:
-            await asyncio.to_thread(
-                export_collection,
-                fmt,
-                tmp.name,
-                str(db_path_resolved),
-                lang=cfg.code,
-            )
-        except SystemExit as exc:
-            os.unlink(tmp.name)
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-        filename = f"kards_collection_{cfg.code}_{timestamp}.{fmt}"
-        return FileResponse(
-            tmp.name,
-            media_type=EXPORT_MIME_TYPES[fmt],
-            filename=filename,
-            background=BackgroundTask(os.unlink, tmp.name),
-        )
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
