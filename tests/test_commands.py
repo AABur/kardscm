@@ -10,8 +10,6 @@ import pytest
 from openpyxl import Workbook
 
 from kardscm.commands import (
-    _read_xlsx_quantities,
-    _select_deck,
     add_deck,
     apply_sync_changes,
     export_collection,
@@ -23,6 +21,8 @@ from kardscm.commands import (
     update_collection,
     validate_file,
 )
+from kardscm.commands.decks import _select_deck
+from kardscm.commands.export import _read_xlsx_quantities
 from kardscm.locales import LANGUAGE_EN
 from kardscm.storage import (
     fetch_all_decks,
