@@ -43,7 +43,6 @@ from kardscm.storage.database import (
 )
 from kardscm.web.constants import (
     _ADMIN_FORM_FIELDS,
-    CARD_COLUMNS,
     EDIT_MODE_COOKIE,
     EXPORT_MIME_TYPES,
     FACTIONS,
@@ -52,7 +51,7 @@ from kardscm.web.constants import (
     SETS,
     TYPES,
 )
-from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
+from kardscm.web.queries import ALLOWED_SORT_COLUMNS, SELECT_COLUMNS, CardFilters, query_cards
 from kardscm.web.translate import to_view
 
 
@@ -122,7 +121,7 @@ def _fetch_card(conn: sqlite3.Connection, card_id: str) -> dict | None:
     conn.row_factory = sqlite3.Row
     try:
         row = conn.execute(
-            f"SELECT {CARD_COLUMNS} FROM cards WHERE cardId = ?", (card_id,)
+            f"SELECT {SELECT_COLUMNS} FROM cards WHERE cardId = ?", (card_id,)
         ).fetchone()
         return dict(row) if row else None
     finally:

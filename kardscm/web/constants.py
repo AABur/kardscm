@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from kardscm.constants import KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
 from kardscm.storage.database import ADMIN_DB_COLUMNS
 
 EDIT_MODE_COOKIE = "kardscm_edit"
@@ -44,15 +43,6 @@ SETS = [
     "OnlySpawnable",
 ]
 KREDITS_RANGE = list(range(0, 11))
-
-_ABILITY_COLS = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
-_EXTRA_ABILITY_COLS = ", ".join(f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES)
-CARD_COLUMNS = (
-    'cardId, importId, imageUrl, thumbUrl, faction, type, rarity, "set", '
-    f"title, text, kredits, attack, defense, {_ABILITY_COLS}, "
-    f"{_EXTRA_ABILITY_COLS}, operationCost, "
-    "reserved, image, can_create, exile, quantity, updated_at"
-)
 
 # Form-side allow-list: DB columns the admin form can write directly,
 # plus the locale-merged title/text fields the form exposes.
