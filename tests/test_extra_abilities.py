@@ -164,17 +164,17 @@ class TestSeedLoaderValidation:
         # cards = "abc" would silently coerce to ['a','b','c'] without validation
         bad = tmp_path / "extra_abilities.toml"
         bad.write_text('[abilities.pincer]\ncards = "abc"\n')
-        from kardscm.storage import database as db_mod
+        from kardscm.storage import seed_extra_abilities as seed_mod
 
-        monkeypatch.setattr(db_mod, "_EXTRA_ABILITIES_TOML", bad)
+        monkeypatch.setattr(seed_mod, "_EXTRA_ABILITIES_TOML", bad)
         with pytest.raises(ValueError, match="cards must be an array of strings"):
-            db_mod._load_extra_abilities_seed()
+            seed_mod._load_extra_abilities_seed()
 
     def test_rejects_non_string_element_in_cards(self, tmp_path, monkeypatch):
         bad = tmp_path / "extra_abilities.toml"
         bad.write_text("[abilities.pincer]\ncards = [123]\n")
-        from kardscm.storage import database as db_mod
+        from kardscm.storage import seed_extra_abilities as seed_mod
 
-        monkeypatch.setattr(db_mod, "_EXTRA_ABILITIES_TOML", bad)
+        monkeypatch.setattr(seed_mod, "_EXTRA_ABILITIES_TOML", bad)
         with pytest.raises(ValueError, match="cards must be an array of strings"):
-            db_mod._load_extra_abilities_seed()
+            seed_mod._load_extra_abilities_seed()
