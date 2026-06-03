@@ -12,6 +12,7 @@ from pathlib import Path
 import typer
 from openpyxl import load_workbook
 
+from kardscm.commands.validation import validate_file as validate_file
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DECK_NATION_TO_DB, DEFAULT_DB_PATH
 from kardscm.diff import (
@@ -112,28 +113,6 @@ def _write_diff_report(
 ) -> None:
     content = format_markdown_report(report, lang_config, timestamp)
     path.write_text(content, encoding="utf-8")
-
-
-def validate_file(path: str, expected_ext: str, must_exist: bool = False) -> Path:
-    """Validate file extension and existence.
-
-    Args:
-        path: File path string.
-        expected_ext: Expected extension (e.g. ".xlsx").
-        must_exist: If True, file must exist on disk.
-
-    Returns:
-        Resolved Path object.
-
-    Raises:
-        SystemExit: If validation fails.
-    """
-    p = Path(path)
-    if p.suffix != expected_ext:
-        raise SystemExit(f"Expected {expected_ext} file, got: {p.suffix or '(no extension)'}")
-    if must_exist and not p.exists():
-        raise SystemExit(f"File not found: {path}")
-    return p
 
 
 def _read_xlsx_quantities(
@@ -316,9 +295,7 @@ def sync_collection(
         logger.info("Sync aborted by user. Diff report written to %s.", report_path)
         return
 
-    written = apply_sync_changes(
-        db_path, new_cards, report, lang_config, timestamp, report_path
-    )
+    written = apply_sync_changes(db_path, new_cards, report, lang_config, timestamp, report_path)
     logger.info("Sync completed. Stored %s cards. Report: %s", len(new_cards), written)
 
 
