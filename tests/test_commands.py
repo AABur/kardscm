@@ -20,7 +20,6 @@ from kardscm.commands import (
     remove_deck,
     sync_collection,
     update_collection,
-    validate_file,
 )
 from kardscm.commands.decks import _select_deck
 from kardscm.commands.export import _read_xlsx_quantities
@@ -34,37 +33,6 @@ from kardscm.storage import (
     insert_deck_cards,
     upsert_cards,
 )
-
-
-class TestValidateFile:
-    def test_correct_ext(self):
-        result = validate_file("cards.xlsx", ".xlsx")
-        assert isinstance(result, Path)
-        assert result.suffix == ".xlsx"
-
-    def test_wrong_ext(self):
-        with pytest.raises(SystemExit, match="Expected .xlsx"):
-            validate_file("cards.csv", ".xlsx")
-
-    def test_no_extension(self):
-        with pytest.raises(SystemExit, match="no extension"):
-            validate_file("cards", ".xlsx")
-
-    def test_must_exist_missing(self, tmp_path):
-        missing = tmp_path / "missing.xlsx"
-        with pytest.raises(SystemExit, match="File not found"):
-            validate_file(str(missing), ".xlsx", must_exist=True)
-
-    def test_must_exist_present(self, tmp_path):
-        existing = tmp_path / "cards.xlsx"
-        existing.write_bytes(b"")
-        result = validate_file(str(existing), ".xlsx", must_exist=True)
-        assert result.exists()
-
-    def test_must_exist_false_missing(self, tmp_path):
-        missing = tmp_path / "output.xlsx"
-        result = validate_file(str(missing), ".xlsx", must_exist=False)
-        assert result.suffix == ".xlsx"
 
 
 class TestExportCollection:

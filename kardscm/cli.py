@@ -21,7 +21,6 @@ from kardscm.commands import (
     remove_deck,
     sync_collection,
     update_collection,
-    validate_file,
 )
 from kardscm.web.app import run as run_web
 
@@ -70,6 +69,11 @@ def _version_callback(value: bool) -> None:
 def _lang(ctx: typer.Context) -> str | None:
     """Return the global --lang value from the Typer context, if any."""
     return (ctx.obj or {}).get("lang") if ctx.obj else None
+
+
+def _validate_extension(path: Path, expected_ext: str) -> None:
+    if path.suffix != expected_ext:
+        raise SystemExit(f"Expected {expected_ext} file, got: {path.suffix or '(no extension)'}")
 
 
 @app.callback(invoke_without_command=True)
@@ -171,7 +175,7 @@ def export(
     Reads cards from the local database and writes them to the
     specified format. Run **sync** first to populate the database.
     """
-    validate_file(str(file), f".{fmt.value}")
+    _validate_extension(file, f".{fmt.value}")
     export_collection(fmt.value, str(file), lang=_lang(ctx))
 
 
@@ -198,7 +202,7 @@ def update(
     updates matching cards in the local database.
     Column names follow the active **--lang** locale.
     """
-    validate_file(str(file), ".xlsx", must_exist=True)
+    _validate_extension(file, ".xlsx")
     update_collection(str(file), lang=_lang(ctx))
 
 
@@ -225,7 +229,7 @@ def deck_import(
     Parses the deck file and saves it to the local database.
     Cards in the file must already exist in the collection.
     """
-    validate_file(str(file), ".txt", must_exist=True)
+    _validate_extension(file, ".txt")
     import_deck(str(file), lang=_lang(ctx))
 
 
@@ -301,7 +305,7 @@ def deck_export_cmd(
     Select a deck interactively and write it to the specified
     format. Run **deck import** first to add decks.
     """
-    validate_file(str(file), f".{fmt.value}")
+    _validate_extension(file, f".{fmt.value}")
     export_deck(fmt.value, str(file), lang=_lang(ctx))
 
 
