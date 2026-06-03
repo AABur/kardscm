@@ -87,7 +87,7 @@ class TestUpdateCardAdmin:
                 "SELECT attack, defense, kredits FROM cards WHERE cardId = ?",
                 ("card-1",),
             ).fetchone()
-        assert row == (9, 4, 7)
+        assert (row[0], row[1], row[2]) == (9, 4, 7)
 
     def test_merges_only_active_locale_in_title(self, db_path: Path) -> None:
         with get_connection(db_path) as conn:

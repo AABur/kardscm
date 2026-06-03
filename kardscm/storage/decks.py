@@ -141,7 +141,6 @@ def fetch_deck_cards(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
         List of card dicts with deck_quantity and deck_cost added.
     """
     ability_cols = ", ".join(f"c.ability_{a}" for a in KNOWN_ABILITIES)
-    conn.row_factory = sqlite3.Row
     cursor = conn.execute(
         f"""
         SELECT
@@ -156,6 +155,4 @@ def fetch_deck_cards(conn: sqlite3.Connection, deck_id: int) -> list[dict]:
         """,
         (deck_id,),
     )
-    rows = cursor.fetchall()
-    conn.row_factory = None
-    return [dict(row) for row in rows]
+    return [dict(row) for row in cursor.fetchall()]

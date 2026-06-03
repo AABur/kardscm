@@ -108,7 +108,6 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict]:
         List of card dictionaries.
     """
     ability_cols = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
-    conn.row_factory = sqlite3.Row
     cursor = conn.execute(
         f"""
         SELECT
@@ -122,9 +121,7 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict]:
         ORDER BY title
         """
     )
-    rows = cursor.fetchall()
-    conn.row_factory = None
-    return [dict(row) for row in rows]
+    return [dict(row) for row in cursor.fetchall()]
 
 
 def delete_cards(conn: sqlite3.Connection, card_ids: Iterable[str]) -> int:

@@ -164,10 +164,4 @@ def query_cards(
 ) -> list[dict]:
     """Run a filtered/sorted SELECT and return rows as plain dicts."""
     sql, params = build_query(filters, sort_col, sort_dir, locale_key)
-    prev_factory = conn.row_factory
-    conn.row_factory = sqlite3.Row
-    try:
-        rows = conn.execute(sql, params).fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.row_factory = prev_factory
+    return [dict(row) for row in conn.execute(sql, params).fetchall()]
