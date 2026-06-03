@@ -143,13 +143,13 @@ class TestUpdateCollection:
 
 
 class TestImportDeck:
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_file_not_found(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         with pytest.raises(SystemExit, match="Failed to parse deck"):
             import_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_duplicate_deck(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
 
@@ -178,7 +178,7 @@ class TestImportDeck:
         with pytest.raises(SystemExit, match="already exists"):
             import_deck(str(deck_file), db_path=db_path)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_card_not_found(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
 
@@ -195,7 +195,7 @@ class TestImportDeck:
         with pytest.raises(SystemExit, match="Cards not found"):
             import_deck(str(deck_file), db_path=db_path)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_success(self, mock_config, tmp_path, make_card):
         mock_config.return_value = LANGUAGE_EN
 
@@ -533,8 +533,8 @@ class TestExportDeck:
             conn.commit()
         return db_path
 
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands._select_deck")
+    @patch("kardscm.commands.decks.get_language_config")
+    @patch("kardscm.commands.decks._select_deck")
     def test_export_json(self, mock_select, mock_config, deck_db_path, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         mock_select.return_value = {
@@ -549,8 +549,8 @@ class TestExportDeck:
         export_deck("json", str(out), db_path=deck_db_path)
         assert out.exists()
 
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands._select_deck")
+    @patch("kardscm.commands.decks.get_language_config")
+    @patch("kardscm.commands.decks._select_deck")
     def test_no_cards_raises(self, mock_select, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         db_path = str(tmp_path / "test.db")
@@ -689,13 +689,13 @@ class TestAddDeck:
             upsert_cards(conn, [exile_card_data])
         return db_path
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_file_not_found(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         with pytest.raises(RuntimeError, match="Failed to parse deck"):
             add_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_card_not_found_no_exile(self, mock_config, empty_db, tmp_path):
         mock_config.return_value = LANGUAGE_EN
 
@@ -708,7 +708,7 @@ class TestAddDeck:
         with pytest.raises(RuntimeError, match="Cards not found"):
             add_deck(str(deck_file), db_path=empty_db)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_exile_fallback_success(self, mock_config, db_with_exile, tmp_path):
         mock_config.return_value = LANGUAGE_EN
 
@@ -725,7 +725,7 @@ class TestAddDeck:
         assert len(decks) == 1
         assert decks[0]["name"] == "Soviet Deck"
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_quantity_mismatch_no_update(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         with get_connection(db_with_card) as conn:
@@ -741,7 +741,7 @@ class TestAddDeck:
         with pytest.raises(RuntimeError, match="quantity mismatch"):
             add_deck(str(deck_file), db_path=db_with_card)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_quantity_mismatch_with_update(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         with get_connection(db_with_card) as conn:
@@ -760,7 +760,7 @@ class TestAddDeck:
             cards = fetch_cards(conn)
         assert cards[0]["quantity"] == 2
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_success_no_mismatch(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
 
@@ -778,7 +778,7 @@ class TestAddDeck:
         assert len(decks) == 1
         assert decks[0]["name"] == "My Deck"
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_duplicate_same_code_no_replace_error(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         deck_file = tmp_path / "deck.txt"
@@ -790,7 +790,7 @@ class TestAddDeck:
         with pytest.raises(RuntimeError, match="already exists"):
             add_deck(str(deck_file), db_path=db_with_card)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_duplicate_different_code_no_replace_hint(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         deck_file = tmp_path / "deck.txt"
@@ -808,7 +808,7 @@ class TestAddDeck:
         with pytest.raises(RuntimeError, match="Use --replace"):
             add_deck(str(deck_file2), db_path=db_with_card)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_replace_deletes_old_deck(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         deck_file = tmp_path / "deck.txt"
@@ -830,7 +830,7 @@ class TestAddDeck:
         assert len(decks) == 1
         assert decks[0]["deck_code"] == "%%BBB"
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.decks.get_language_config")
     def test_replace_no_existing_normal_add(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         deck_file = tmp_path / "deck.txt"
