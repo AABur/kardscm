@@ -6,12 +6,17 @@ import json
 import logging
 import shutil
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 import typer
 from openpyxl import load_workbook
 
+from kardscm.commands.utils import (
+    _default_diff_report_path,
+    _emit_locale_warnings,
+    _safe_timestamp,
+    _utc_timestamp,
+)
 from kardscm.commands.validation import validate_file as validate_file
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DECK_NATION_TO_DB, DEFAULT_DB_PATH
@@ -56,31 +61,6 @@ from kardscm.storage import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _utc_timestamp() -> str:
-    return datetime.now(UTC).replace(tzinfo=None).isoformat(timespec="seconds")
-
-
-def _safe_timestamp() -> str:
-    """Filesystem-safe UTC timestamp (no colons)."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
-
-
-def _emit_locale_warnings(cfg: LanguageConfig) -> None:
-    if not cfg.fallback_warnings:
-        return
-    keys = cfg.fallback_warnings
-    summary = ", ".join(keys[:5])
-    suffix = f", … and {len(keys) - 5} more" if len(keys) > 5 else ""
-    typer.echo(
-        f"Locale '{cfg.code}': {len(keys)} key(s) fell back to English ({summary}{suffix}).",
-        err=True,
-    )
-
-
-def _default_diff_report_path() -> Path:
-    return Path.cwd() / f"sync-diff-{_safe_timestamp()}.md"
 
 
 _APPROVAL_CATEGORIES = (
