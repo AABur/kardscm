@@ -12,7 +12,7 @@ import typer
 
 from kardscm import __version__
 from kardscm.commands import (
-    add_deck,
+    add_decks,
     baseline_accept,
     baseline_init,
     export_collection,
@@ -263,18 +263,7 @@ def deck_add(
     Use --replace to overwrite an existing deck with the same name.
     On error, continues with remaining files and prints a summary at the end.
     """
-    lang = _lang(ctx)
-    errors: list[tuple[str, str]] = []
-    for f in files:
-        try:
-            validate_file(str(f), ".txt")  # existence guaranteed by Typer
-            add_deck(str(f), update=update, replace=replace, lang=lang)
-        except (RuntimeError, SystemExit) as e:  # SystemExit: validate_file; RuntimeError: add_deck
-            errors.append((str(f), str(e)))
-
-    if errors:
-        lines = "\n".join(f"  {fname}: {msg}" for fname, msg in errors)
-        raise SystemExit(f"Failed to add {len(errors)} deck(s):\n{lines}")
+    add_decks([str(f) for f in files], update=update, replace=replace, lang=_lang(ctx))
 
 
 @deck_app.command(

@@ -271,6 +271,41 @@ def remove_deck(db_path: str = DEFAULT_DB_PATH) -> None:
         logger.info("Deck '%s' deleted.", deck["name"])
 
 
+def add_decks(
+    filenames: list[str],
+    update: bool = False,
+    replace: bool = False,
+    db_path: str = DEFAULT_DB_PATH,
+    *,
+    lang: str | None = None,
+) -> None:
+    """Add multiple decks from TXT files, collecting errors across all files.
+
+    Processes all files, collecting any errors, and raises SystemExit
+    with a batch summary at the end if any failures occurred.
+
+    Args:
+        filenames: List of paths to deck TXT files.
+        update: If True, update collection quantities to match deck.
+        replace: If True, replace existing decks with same name.
+        db_path: SQLite database path.
+        lang: Active language code (e.g. "en", "ru"). Defaults to English.
+
+    Raises:
+        SystemExit: If any files fail to add; includes all error summaries.
+    """
+    errors: list[tuple[str, str]] = []
+    for filename in filenames:
+        try:
+            add_deck(filename, update=update, replace=replace, db_path=db_path, lang=lang)
+        except (RuntimeError, SystemExit) as e:
+            errors.append((filename, str(e)))
+
+    if errors:
+        lines = "\n".join(f"  {fname}: {msg}" for fname, msg in errors)
+        raise SystemExit(f"Failed to add {len(errors)} deck(s):\n{lines}")
+
+
 def export_deck(
     fmt: str | None,
     filename: str,
