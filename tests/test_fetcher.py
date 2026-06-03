@@ -8,40 +8,8 @@ import pytest
 
 from kardscm.scraping.fetcher import (
     _extract_card,
-    _find_edges_or_nodes,
-    _find_page_info,
     fetch_all_cards,
 )
-
-
-class TestFindEdgesOrNodes:
-    def test_edges_at_top(self):
-        data = {"edges": [1, 2, 3]}
-        assert _find_edges_or_nodes(data) == [1, 2, 3]
-
-    def test_nodes_at_top(self):
-        data = {"nodes": [4, 5]}
-        assert _find_edges_or_nodes(data) == [4, 5]
-
-    def test_nested(self):
-        data = {"data": {"cards": {"edges": [1]}}}
-        assert _find_edges_or_nodes(data) == [1]
-
-    def test_not_found(self):
-        assert _find_edges_or_nodes({"foo": "bar"}) is None
-
-    def test_in_list(self):
-        data = [{"edges": [1]}]
-        assert _find_edges_or_nodes(data) == [1]
-
-
-class TestFindPageInfo:
-    def test_found(self):
-        data = {"data": {"cards": {"pageInfo": {"hasNextPage": True}}}}
-        assert _find_page_info(data) == {"hasNextPage": True}
-
-    def test_not_found(self):
-        assert _find_page_info({"foo": "bar"}) is None
 
 
 class TestExtractCard:
@@ -78,18 +46,17 @@ class TestFetchAllCards:
         resp.raise_for_status = MagicMock()
         return resp
 
+    def _cards_response(self, edges):
+        return {"data": {"cards": {"edges": edges}}}
+
     def test_single_page(self, mock_httpx_client, default_probe):
         mock_httpx_client.post.return_value = self._make_response(
-            {
-                "data": {
-                    "cards": {
-                        "edges": [
-                            {"node": {"cardId": "c1"}},
-                            {"node": {"cardId": "c2"}},
-                        ]
-                    }
-                }
-            }
+            self._cards_response(
+                [
+                    {"node": {"cardId": "c1"}},
+                    {"node": {"cardId": "c2"}},
+                ]
+            )
         )
 
         result = fetch_all_cards(default_probe)
@@ -98,16 +65,12 @@ class TestFetchAllCards:
 
     def test_deduplication(self, mock_httpx_client, default_probe):
         mock_httpx_client.post.return_value = self._make_response(
-            {
-                "data": {
-                    "cards": {
-                        "edges": [
-                            {"node": {"cardId": "c1"}},
-                            {"node": {"cardId": "c1"}},
-                        ]
-                    }
-                }
-            }
+            self._cards_response(
+                [
+                    {"node": {"cardId": "c1"}},
+                    {"node": {"cardId": "c1"}},
+                ]
+            )
         )
 
         result = fetch_all_cards(default_probe)
@@ -120,14 +83,12 @@ class TestFetchAllCards:
         assert result == []
 
     def test_empty_edges_stops(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response(
-            {"data": {"cards": {"edges": []}}}
-        )
+        mock_httpx_client.post.return_value = self._make_response(self._cards_response([]))
 
         result = fetch_all_cards(default_probe)
         assert result == []
 
-    def test_no_data_stops(self, mock_httpx_client, default_probe):
+    def test_no_cards_key_stops(self, mock_httpx_client, default_probe):
         mock_httpx_client.post.return_value = self._make_response({"data": {"something": "else"}})
 
         result = fetch_all_cards(default_probe)
@@ -135,7 +96,7 @@ class TestFetchAllCards:
 
     def test_limit_from_query_text(self, mock_httpx_client):
         mock_httpx_client.post.return_value = self._make_response(
-            {"data": {"cards": {"edges": [{"node": {"cardId": "c1"}}]}}}
+            self._cards_response([{"node": {"cardId": "c1"}}])
         )
 
         probe = {
@@ -146,11 +107,3 @@ class TestFetchAllCards:
 
         result = fetch_all_cards(probe)
         assert len(result) == 1
-
-    def test_nodes_instead_of_edges(self, mock_httpx_client, default_probe):
-        mock_httpx_client.post.return_value = self._make_response(
-            {"data": {"cards": {"nodes": [{"cardId": "c1"}, {"cardId": "c2"}]}}}
-        )
-
-        result = fetch_all_cards(default_probe)
-        assert len(result) == 2

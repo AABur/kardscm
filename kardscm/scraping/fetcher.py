@@ -13,42 +13,6 @@ from kardscm.models import ProbeData
 logger = logging.getLogger(__name__)
 
 
-def _find_edges_or_nodes(data: Any) -> list[Any] | None:
-    """Recursively find the first 'edges' or 'nodes' key in the response."""
-    if isinstance(data, dict):
-        if "edges" in data:
-            return list(data["edges"])
-        if "nodes" in data:
-            return list(data["nodes"])
-        for value in data.values():
-            result = _find_edges_or_nodes(value)
-            if result is not None:
-                return result
-    if isinstance(data, list):
-        for item in data:
-            result = _find_edges_or_nodes(item)
-            if result is not None:
-                return result
-    return None
-
-
-def _find_page_info(data: Any) -> dict[str, Any] | None:
-    """Recursively find the first 'pageInfo' in the response."""
-    if isinstance(data, dict):
-        if "pageInfo" in data:
-            return dict(data["pageInfo"])
-        for value in data.values():
-            result = _find_page_info(value)
-            if result is not None:
-                return result
-    if isinstance(data, list):
-        for item in data:
-            result = _find_page_info(item)
-            if result is not None:
-                return result
-    return None
-
-
 def _extract_card(item: dict[str, Any]) -> dict[str, Any]:
     """Extract card node from an edge, or return the item directly."""
     if "node" in item:
@@ -100,7 +64,12 @@ def fetch_all_cards(probe: ProbeData) -> list[dict]:
                 logger.error("GraphQL errors: %s", data["errors"])
                 break
 
-            edges = _find_edges_or_nodes(data.get("data", data))
+            try:
+                edges = data["data"]["cards"]["edges"]
+            except KeyError:
+                logger.info("No cards data on page %d, stopping", page)
+                break
+
             if not edges:
                 logger.info("No data on page %d, stopping", page)
                 break
