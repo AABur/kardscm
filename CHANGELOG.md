@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- `run_probe` and the Playwright runtime dependency. The production sync
+  path has used `build_static_probe` (hardcoded constants) exclusively;
+  the browser-based interceptor was unreachable dead code.
+
 ### Added
 
 - **Web UI Sync flow**: a **Sync** button in the page header opens a

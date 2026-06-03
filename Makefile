@@ -13,15 +13,11 @@ help: ## Show this help message
 sync: ## Sync basic dependencies only
 	@echo "Syncing dependencies..."
 	@$(UV) sync
-	@echo "Installing Chromium for Playwright..."
-	@$(UV) run python -m playwright install chromium
 	@echo "Dependencies synced successfully!"
 
 sync-dev: ## Sync all dependencies including dev tools
 	@echo "Syncing all dependencies (including dev tools)..."
 	@$(UV) sync --all-extras
-	@echo "Installing Chromium for Playwright..."
-	@$(UV) run python -m playwright install chromium
 	@echo "All dependencies synced successfully!"
 
 run: ## Show kardscm CLI help

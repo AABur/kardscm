@@ -31,7 +31,7 @@ the local collection/deck workflow.
 - CLI: Typer
 - Web UI: FastAPI, Jinja2, HTMX
 - Storage: SQLite
-- API access: httpx + Playwright-backed probe/static GraphQL shape
+- API access: httpx + static GraphQL shape
 - Export: openpyxl, CSV, JSON
 
 ## Main Commands
