@@ -48,7 +48,7 @@ uv run pytest tests/test_deck_parser.py -v
 ```text
 kardscm/
   cli.py              Typer command declarations
-  commands.py         CLI business workflows
+  commands/           CLI business workflows (package)
   config.py           language lookup compatibility layer
   constants.py        URLs, GraphQL query, known ability keys, DB defaults
   diff.py             sync diff computation and rendering
@@ -103,7 +103,7 @@ collection.db
 ```text
 KARDS deck TXT
   -> importing.parser
-  -> commands.add_deck/import_deck
+  -> commands.add_deck (or) commands.import_deck
   -> storage.database
   -> collection.db
 ```
@@ -118,8 +118,8 @@ collection.db
 Important boundaries:
 
 - `cli.py` should stay thin. It declares command shape and forwards to
-  `commands.py`.
-- `commands.py` owns user workflows and IO orchestration.
+  `commands/`.
+- `commands/` owns user workflows and IO orchestration.
 - `scraping/` owns raw API acquisition and normalization.
 - `storage/` owns SQLite schema and persistence.
 - `export/` owns file output formats.
@@ -244,7 +244,7 @@ re-implementing them:
   cached cards via `apply_sync_changes`. Sessions are evicted on apply
   or cancel; abandoned sessions die with the process.
 - `GET /export/{fmt}` writes a `NamedTemporaryFile`, calls the existing
-  `export_collection` unchanged, and returns a `FileResponse` with a
+  `commands.export_collection` unchanged, and returns a `FileResponse` with a
   `BackgroundTask(os.unlink, ...)` cleanup hook. The CLI export path is
   unchanged.
 

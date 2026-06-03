@@ -53,7 +53,7 @@ claiming completion.
 
 ```text
 kardscm/cli.py              Typer declarations only
-kardscm/commands.py         user workflow orchestration
+kardscm/commands/           user workflow orchestration (package)
 kardscm/scraping/           GraphQL fetch, normalize, API baseline drift
 kardscm/storage/            SQLite schema, migrations, persistence, backups
 kardscm/export/             XLSX/CSV/JSON collection and deck export
@@ -88,7 +88,7 @@ project docs are `README.md` and `CONTRIBUTING.md`; agent-specific docs are
 ## Coding Rules
 
 - Match existing style and module boundaries.
-- Keep `cli.py` thin; put workflow logic in `commands.py`.
+- Keep `cli.py` thin; put workflow logic in `commands/`.
 - Keep DB behavior in `storage/`.
 - Keep web query/filter logic in `web/queries.py`; view conversion in
   `web/translate.py`.
