@@ -68,6 +68,8 @@ For an isolated command install:
 pipx install git+https://github.com/AABur/kardscm.git
 ```
 
+Check the installed version with `kardscm --version` (short: `-v`).
+
 ## Quick Start
 
 If you installed via `pipx`, run `kardscm` directly. If you cloned the
@@ -93,11 +95,11 @@ uv run kardscm deck export -f xlsx -o deck.xlsx
 
 ## Language
 
-Use the global `--lang` flag before the subcommand:
+Use the global `--lang` (short: `-l`) flag before the subcommand:
 
 ```bash
 kardscm --lang ru sync
-kardscm --lang de export -f xlsx -o cards.xlsx
+kardscm -l de export -f xlsx -o cards.xlsx
 kardscm --lang zh-Hant web
 ```
 
@@ -122,7 +124,7 @@ leaves the database unchanged. A Markdown report is written whenever there are
 changes.
 
 `--diff-only` writes the report without modifying the database. `--yes`
-auto-approves every category for scripted runs.
+(short: `-y`) auto-approves every category for scripted runs.
 
 Sync also checks the live GraphQL response shape against
 `kardscm/data/api_baseline.json`. If the API shape changes, `kardscm` writes
@@ -151,7 +153,7 @@ normalized.
 
 ```bash
 kardscm web
-kardscm web --port 9000
+kardscm web --port 9000        # short: -p
 kardscm web --no-browser
 kardscm --lang ru web
 ```
@@ -191,7 +193,7 @@ language.
 ## Admin Mode
 
 ```bash
-kardscm web --admin
+kardscm web --admin            # short: -A
 kardscm --lang ru web --admin
 ```
 
