@@ -6,25 +6,16 @@ import logging
 import sqlite3
 from pathlib import Path
 
-import typer
 from openpyxl import load_workbook
 
 from kardscm.commands.baseline import baseline_accept, baseline_init
+from kardscm.commands.sync import apply_sync_changes, fetch_and_compute_diff, sync_collection
 from kardscm.commands.utils import (
-    _default_diff_report_path,
     _emit_locale_warnings,
-    _safe_timestamp,
-    _utc_timestamp,
 )
 from kardscm.commands.validation import validate_file as validate_file
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DECK_NATION_TO_DB, DEFAULT_DB_PATH
-from kardscm.diff import (
-    compute_diff,
-    format_console_report,
-    format_markdown_report,
-    is_empty,
-)
 from kardscm.export import (
     add_deck_sheet,
     export_deck_to_json,
@@ -35,12 +26,9 @@ from kardscm.export import (
 )
 from kardscm.helpers import parse_int
 from kardscm.importing import parse_deck_file
-from kardscm.models import CardDict, DeckCardEntry, DiffReport
-from kardscm.scraping import baseline, fetcher, probe, scrape_cards
+from kardscm.models import DeckCardEntry
 from kardscm.storage import (
-    apply_extra_abilities_seed,
     delete_all_decks,
-    delete_cards,
     delete_deck,
     fetch_all_decks,
     fetch_cards,
@@ -53,45 +41,11 @@ from kardscm.storage import (
     initialize_schema,
     insert_deck,
     insert_deck_cards,
-    set_metadata,
     update_card_quantity_by_id,
     update_quantity,
-    upsert_cards,
 )
 
 logger = logging.getLogger(__name__)
-
-
-_APPROVAL_CATEGORIES = (
-    ("new", "Apply"),
-    ("changed", "Apply"),
-    ("reserved_in", "Apply"),
-    ("reserved_out", "Apply"),
-    ("removed", "Delete"),
-)
-
-
-def _approve_all_categories(report: DiffReport, lang_config: LanguageConfig) -> bool:
-    """Prompt y/N for each non-empty category. Any 'no' returns False."""
-    headers = lang_config.diff_headers
-    for key, verb in _APPROVAL_CATEGORIES:
-        items = report[key]  # type: ignore[literal-required]
-        if not items:
-            continue
-        label = headers.get(key, key)
-        if not typer.confirm(f"{verb} {len(items)} '{label}'?", default=True):
-            return False
-    return True
-
-
-def _write_diff_report(
-    path: Path,
-    report: DiffReport,
-    lang_config: LanguageConfig,
-    timestamp: str,
-) -> None:
-    content = format_markdown_report(report, lang_config, timestamp)
-    path.write_text(content, encoding="utf-8")
 
 
 def _read_xlsx_quantities(
@@ -155,127 +109,6 @@ def _read_xlsx_quantities(
         results.append((str(faction).strip(), str(title).strip(), qty))
 
     return results
-
-
-def fetch_and_compute_diff(
-    db_path: str,
-    lang_config: LanguageConfig,
-) -> tuple[DiffReport, list[CardDict], str]:
-    """Fetch fresh cards from the website and compute the DB diff.
-
-    Pure read path: no DB writes, no console echo, no markdown report.
-    Web flows call this to drive the preview modal; the CLI orchestrator
-    composes it with `apply_sync_changes`.
-
-    Args:
-        db_path: SQLite database path.
-        lang_config: Active language configuration.
-
-    Returns:
-        Tuple of (DiffReport, fetched cards, filesystem-safe UTC timestamp).
-        The timestamp is generated once here so every report path the
-        caller writes shares the same identifier.
-    """
-    new_cards = scrape_cards(language=lang_config.code, lang_config=lang_config)
-    with get_connection(db_path) as conn:
-        initialize_schema(conn, db_path)
-        old_cards = fetch_cards(conn)
-        report = compute_diff(old_cards, new_cards, lang_config.locale_key)
-    return report, new_cards, _safe_timestamp()
-
-
-def apply_sync_changes(
-    db_path: str,
-    new_cards: list[CardDict],
-    report: DiffReport,
-    lang_config: LanguageConfig,
-    timestamp: str,
-    diff_report_path: Path | None = None,
-) -> Path | None:
-    """Persist the sync result to the DB and update metadata.
-
-    Args:
-        db_path: SQLite database path.
-        new_cards: Cards returned by `fetch_and_compute_diff`.
-        report: Diff report bucketed by category.
-        lang_config: Active language configuration.
-        timestamp: Filesystem-safe UTC timestamp from `fetch_and_compute_diff`.
-        diff_report_path: Optional override for the markdown report path.
-            Defaults to `./sync-diff-<timestamp>.md` when a report is written.
-
-    Returns:
-        Path to the markdown report when a non-empty diff was applied,
-        otherwise None (empty diff → metadata-only update).
-    """
-    with get_connection(db_path) as conn:
-        initialize_schema(conn, db_path)
-        if is_empty(report):
-            set_metadata(conn, "last_sync", _utc_timestamp())
-            set_metadata(conn, "language", lang_config.code)
-            return None
-
-        upsert_cards(conn, new_cards)
-        if report["removed"]:
-            delete_cards(conn, [r["cardId"] for r in report["removed"]])
-        apply_extra_abilities_seed(conn)
-        set_metadata(conn, "last_sync", _utc_timestamp())
-        set_metadata(conn, "language", lang_config.code)
-
-    report_path = diff_report_path or _default_diff_report_path()
-    _write_diff_report(report_path, report, lang_config, timestamp)
-    return report_path
-
-
-def sync_collection(
-    db_path: str = DEFAULT_DB_PATH,
-    *,
-    lang: str | None = None,
-    diff_only: bool = False,
-    yes: bool = False,
-    diff_report_path: Path | None = None,
-) -> None:
-    """Synchronize local SQLite storage with the website.
-
-    Computes a diff between the current DB state and the fresh API pull,
-    prints it, and asks the user to bulk-approve each non-empty category.
-    Any rejection aborts the sync — the DB is left untouched. The
-    Markdown diff report is written whenever the diff is non-empty.
-
-    Args:
-        db_path: SQLite database path.
-        lang: Active language code (e.g. "en", "ru"). Defaults to English.
-        diff_only: If True, write the report and return without prompting
-            or modifying the DB. Useful for previews and CI.
-        yes: If True, auto-approve every category without prompting.
-        diff_report_path: Override the default report path
-            (`./sync-diff-<UTC-iso>.md`).
-    """
-    lang_config = get_language_config(lang)
-    _emit_locale_warnings(lang_config)
-    logger.info("Starting sync from website (language: %s)...", lang_config.name)
-
-    report, new_cards, timestamp = fetch_and_compute_diff(db_path, lang_config)
-
-    if is_empty(report):
-        apply_sync_changes(db_path, new_cards, report, lang_config, timestamp)
-        logger.info("No changes. %s cards in collection.", len(new_cards))
-        return
-
-    typer.echo(format_console_report(report, lang_config))
-    report_path = diff_report_path or _default_diff_report_path()
-
-    if diff_only:
-        _write_diff_report(report_path, report, lang_config, timestamp)
-        logger.info("Diff report written to %s. No DB changes.", report_path)
-        return
-
-    if not yes and not _approve_all_categories(report, lang_config):
-        _write_diff_report(report_path, report, lang_config, timestamp)
-        logger.info("Sync aborted by user. Diff report written to %s.", report_path)
-        return
-
-    written = apply_sync_changes(db_path, new_cards, report, lang_config, timestamp, report_path)
-    logger.info("Sync completed. Stored %s cards. Report: %s", len(new_cards), written)
 
 
 def export_collection(

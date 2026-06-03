@@ -226,8 +226,8 @@ class TestSyncCollection:
     def _list_diff_files(directory: Path) -> list[Path]:
         return sorted(directory.glob("sync-diff-*.md"))
 
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_first_sync_writes_all_new_cards_and_report(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
@@ -246,8 +246,8 @@ class TestSyncCollection:
         assert json.loads(cards[0]["title"])["en-EN"] == "Alpha"
         assert len(self._list_diff_files(tmp_path)) == 1
 
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_empty_diff_no_prompts_no_report(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
@@ -269,8 +269,8 @@ class TestSyncCollection:
             row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
         assert row is not None
 
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_diff_only_writes_report_no_db_changes(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
@@ -294,9 +294,9 @@ class TestSyncCollection:
         assert len(diff_files) == 1
         assert "kredits: `2` → `5`" in diff_files[0].read_text(encoding="utf-8")
 
-    @patch("kardscm.commands.typer.confirm", return_value=False)
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.typer.confirm", return_value=False)
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_user_rejects_aborts_without_db_changes(
         self,
         mock_scrape,
@@ -326,9 +326,9 @@ class TestSyncCollection:
         assert last_sync is None  # rejection does not bump last_sync
         assert len(self._list_diff_files(tmp_path)) == 1  # report still written
 
-    @patch("kardscm.commands.delete_cards")
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.delete_cards")
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_yes_flag_applies_writes_and_deletes(
         self,
         mock_scrape,
@@ -356,8 +356,8 @@ class TestSyncCollection:
         deleted_ids = list(mock_delete.call_args[0][1])
         assert deleted_ids == ["B"]
 
-    @patch("kardscm.commands.get_language_config")
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_diff_report_custom_path(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
@@ -379,10 +379,8 @@ class TestSyncCollection:
 
 
 class TestFetchAndComputeDiff:
-    @patch("kardscm.commands.scrape_cards")
-    def test_returns_report_and_new_cards(
-        self, mock_scrape, tmp_path, make_card
-    ):
+    @patch("kardscm.commands.sync.scrape_cards")
+    def test_returns_report_and_new_cards(self, mock_scrape, tmp_path, make_card):
         """Helper returns (report, new_cards, timestamp) without writing DB."""
         old = make_card(kredits=2)
         new = make_card(kredits=5)
@@ -406,10 +404,8 @@ class TestFetchAndComputeDiff:
             cards = fetch_cards(conn)
         assert cards[0]["kredits"] == 2
 
-    @patch("kardscm.commands.scrape_cards")
-    def test_empty_db_routes_all_cards_to_new(
-        self, mock_scrape, tmp_path, make_card
-    ):
+    @patch("kardscm.commands.sync.scrape_cards")
+    def test_empty_db_routes_all_cards_to_new(self, mock_scrape, tmp_path, make_card):
         new = make_card()
         mock_scrape.return_value = [new]
 
@@ -422,7 +418,7 @@ class TestFetchAndComputeDiff:
 
 
 class TestApplySyncChanges:
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_writes_db_and_report(self, mock_scrape, tmp_path, make_card):
         old = make_card(kredits=2)
         new = make_card(kredits=5)
@@ -454,10 +450,8 @@ class TestApplySyncChanges:
         assert cards[0]["kredits"] == 5
         assert row is not None
 
-    @patch("kardscm.commands.scrape_cards")
-    def test_empty_report_only_updates_metadata(
-        self, mock_scrape, tmp_path, make_card
-    ):
+    @patch("kardscm.commands.sync.scrape_cards")
+    def test_empty_report_only_updates_metadata(self, mock_scrape, tmp_path, make_card):
         card = make_card()
         mock_scrape.return_value = [card]
 
@@ -484,11 +478,9 @@ class TestApplySyncChanges:
             row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
         assert row is not None
 
-    @patch("kardscm.commands.delete_cards")
-    @patch("kardscm.commands.scrape_cards")
-    def test_removed_cards_trigger_delete(
-        self, mock_scrape, mock_delete, tmp_path, make_card
-    ):
+    @patch("kardscm.commands.sync.delete_cards")
+    @patch("kardscm.commands.sync.scrape_cards")
+    def test_removed_cards_trigger_delete(self, mock_scrape, mock_delete, tmp_path, make_card):
         existing = make_card(cardId="A")
         going_away = make_card(cardId="B", title=json.dumps({"en-EN": "Bravo"}))
         mock_scrape.return_value = [existing]

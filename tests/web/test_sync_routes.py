@@ -47,7 +47,7 @@ class TestSyncConfirmModal:
 
 
 class TestSyncStart:
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_start_with_changes_renders_diff_modal(
         self, mock_scrape, client: TestClient, make_card
     ) -> None:
@@ -61,7 +61,7 @@ class TestSyncStart:
         assert "/sync/apply/" in r.text
         assert "/sync/cancel/" in r.text
 
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_start_with_no_changes_renders_empty_modal_and_updates_metadata(
         self, mock_scrape, client: TestClient, db_path: Path, make_card
     ) -> None:
@@ -72,9 +72,7 @@ class TestSyncStart:
         # Empty diff must NOT expose apply/cancel URLs.
         assert "/sync/apply/" not in r.text
         with get_connection(db_path) as conn:
-            row = conn.execute(
-                "SELECT value FROM metadata WHERE key='last_sync'"
-            ).fetchone()
+            row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
         assert row is not None
 
 
@@ -90,7 +88,7 @@ def _extract_sync_id(html: str) -> str:
 
 
 class TestSyncApply:
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_apply_persists_and_redirects(
         self, mock_scrape, client: TestClient, db_path: Path, make_card, tmp_path
     ) -> None:
@@ -117,7 +115,7 @@ class TestSyncApply:
 
 
 class TestSyncCancel:
-    @patch("kardscm.commands.scrape_cards")
+    @patch("kardscm.commands.sync.scrape_cards")
     def test_cancel_clears_session(
         self, mock_scrape, client: TestClient, db_path: Path, make_card
     ) -> None:
