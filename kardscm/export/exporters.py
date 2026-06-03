@@ -7,11 +7,11 @@ import json
 import logging
 
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook import Workbook as WorkbookType
 
 from kardscm.config import LanguageConfig
+from kardscm.export.styles import BOLD_FONT, HEADER_ALIGNMENT, HEADER_ALIGNMENT_NO_WRAP, HEADER_FILL, HEADER_FONT
 from kardscm.constants import (
     DECK_COLUMN_WIDTHS,
     DECK_NATION_TO_DB,
@@ -106,13 +106,10 @@ def export_to_xlsx(
     header_row = list(headers)
     ws.append(header_row)
 
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF")
-
     for cell in ws[1]:
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGNMENT
 
     numeric_fields = {"quantity", "kredits", "attack", "defense"}
     for card in cards:
@@ -216,8 +213,6 @@ def add_deck_sheet(
     sheet_name = deck_meta["name"][:31]
     ws = wb.create_sheet(title=sheet_name)
 
-    bold_font = Font(bold=True)
-
     major = deck_meta.get("major_power", "")
     ally = deck_meta.get("ally", "")
     meta_values = [
@@ -228,17 +223,15 @@ def add_deck_sheet(
         deck_meta.get("deck_code", ""),
     ]
     for row_idx, (label, value) in enumerate(zip(metadata_labels, meta_values), 1):
-        ws.cell(row=row_idx, column=1, value=label).font = bold_font
+        ws.cell(row=row_idx, column=1, value=label).font = BOLD_FONT
         ws.cell(row=row_idx, column=2, value=value or "")
 
     header_row = 7
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF")
     for col_idx, header in enumerate(deck_headers, 1):
         cell = ws.cell(row=header_row, column=col_idx, value=header)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGNMENT_NO_WRAP
 
     current_row = header_row + 1
     cards_by_faction: dict[str, list[dict]] = {}
@@ -250,7 +243,7 @@ def add_deck_sheet(
     for faction, faction_cards in cards_by_faction.items():
         faction_lower = faction.lower()
         display_name = nation_display_names.get(faction_lower, faction)
-        ws.cell(row=current_row, column=1, value=display_name).font = bold_font
+        ws.cell(row=current_row, column=1, value=display_name).font = BOLD_FONT
         current_row += 1
 
         for card in faction_cards:
