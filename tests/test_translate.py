@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from kardscm.constants import KNOWN_ABILITIES
-from kardscm.export.exporters import translate_card_for_export
+from kardscm.export import translate_card_for_export
 from kardscm.locales import LANGUAGE_EN, LANGUAGE_RU
 
 

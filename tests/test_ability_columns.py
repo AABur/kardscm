@@ -221,7 +221,7 @@ def _ability_card(**overrides) -> dict:
 
 
 def test_translate_card_reads_ability_columns():
-    from kardscm.export.exporters import translate_card_for_export
+    from kardscm.export import translate_card_for_export
 
     card = _ability_card(ability_guard=1, ability_blitz=1)
     result = translate_card_for_export(card, LANGUAGE_EN)
@@ -232,7 +232,7 @@ def test_translate_card_reads_ability_columns():
 
 
 def test_translate_card_no_abilities_gives_empty_string():
-    from kardscm.export.exporters import translate_card_for_export
+    from kardscm.export import translate_card_for_export
 
     card = _ability_card()
     result = translate_card_for_export(card, LANGUAGE_EN)

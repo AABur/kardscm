@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from kardscm.config import LanguageConfig
 from kardscm.constants import KNOWN_EXTRA_ABILITIES
-from kardscm.export.exporters import translate_card_for_export
+from kardscm.export import translate_card_for_export
 
 
 def to_view(card: dict, lang_config: LanguageConfig) -> dict:
