@@ -75,35 +75,35 @@ class TestExportCollection:
             upsert_cards(conn, [make_card()])
         return path
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_no_cards_raises(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         db_path = str(tmp_path / "empty.db")
         with pytest.raises(SystemExit, match="No cards"):
             export_collection("csv", str(tmp_path / "out.csv"), db_path=db_path)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_xlsx(self, mock_config, db_path, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         out = tmp_path / "out.xlsx"
         export_collection("xlsx", str(out), db_path=db_path)
         assert out.exists()
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_csv(self, mock_config, db_path, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         out = tmp_path / "out.csv"
         export_collection("csv", str(out), db_path=db_path)
         assert out.exists()
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_json(self, mock_config, db_path, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         out = tmp_path / "out.json"
         export_collection("json", str(out), db_path=db_path)
         assert out.exists()
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_unsupported_format(self, mock_config, db_path, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         with pytest.raises(ValueError, match="Unsupported format"):
@@ -111,7 +111,7 @@ class TestExportCollection:
 
 
 class TestUpdateCollection:
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_file_not_found(self, mock_config, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         db_path = str(tmp_path / "test.db")
@@ -119,7 +119,7 @@ class TestUpdateCollection:
         with pytest.raises(SystemExit, match="Failed to read file"):
             update_collection(missing, db_path=db_path)
 
-    @patch("kardscm.commands.get_language_config")
+    @patch("kardscm.commands.export.get_language_config")
     def test_success(self, mock_config, tmp_path, make_card):
         mock_config.return_value = LANGUAGE_EN
 
