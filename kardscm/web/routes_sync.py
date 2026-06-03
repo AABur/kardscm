@@ -40,9 +40,7 @@ def create_sync_router(
 
     @router.post("/sync/start", response_class=HTMLResponse)
     async def sync_start(request: Request) -> HTMLResponse:
-        report, new_cards, timestamp = await asyncio.to_thread(
-            fetch_and_compute_diff, db_path, cfg
-        )
+        report, new_cards, timestamp = await asyncio.to_thread(fetch_and_compute_diff, db_path, cfg)
         if is_empty(report):
             await asyncio.to_thread(
                 apply_sync_changes,
