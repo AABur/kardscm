@@ -27,6 +27,7 @@ from kardscm.storage.database import (
     initialize_schema,
     update_card_quantity_by_id,
 )
+from kardscm.web.admin import create_admin_router
 from kardscm.web.constants import (
     EDIT_MODE_COOKIE,
     FACTIONS,
@@ -254,8 +255,6 @@ def create_app(
         )
 
     if admin:
-        from kardscm.web.admin import create_admin_router
-
         admin_router = create_admin_router(templates, cfg, str(db_path_resolved))
         app.include_router(admin_router)
 
