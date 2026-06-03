@@ -9,8 +9,7 @@ and saved decks. Keep changes small, verified, and documented.
 make sync-dev
 ```
 
-This installs runtime and development dependencies through `uv`, then installs
-Chromium for Playwright.
+This installs runtime and development dependencies through `uv`.
 
 Use `uv`, not direct `pip`, for project work.
 
@@ -18,8 +17,8 @@ Use `uv`, not direct `pip`, for project work.
 
 ```bash
 make help       # list available make targets
-make sync       # install runtime dependencies + Chromium
-make sync-dev   # install runtime/dev dependencies + Chromium
+make sync       # install runtime dependencies
+make sync-dev   # install runtime/dev dependencies
 make run        # show kardscm CLI help
 make sync-diff  # preview catalog sync without DB changes
 make web        # start the local web UI
