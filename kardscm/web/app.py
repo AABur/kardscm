@@ -5,13 +5,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import sqlite3
 import tempfile
 import uuid
 import webbrowser
 from collections.abc import Mapping
 from contextlib import closing
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -32,7 +30,6 @@ from kardscm.constants import (
 )
 from kardscm.diff import is_empty
 from kardscm.helpers import extract_locale
-from kardscm.models import CardDict, DiffReport
 from kardscm.storage.backup import backup_database
 from kardscm.storage.database import (
     get_card_quantity_by_id,
@@ -51,91 +48,23 @@ from kardscm.web.constants import (
     SETS,
     TYPES,
 )
-from kardscm.web.queries import ALLOWED_SORT_COLUMNS, SELECT_COLUMNS, CardFilters, query_cards
+from kardscm.web.deps import (
+    SyncSession,
+    _decoded_locale_value,
+    _fetch_card,
+    _is_edit_mode,
+    _open_conn,
+    _total_card_count,
+    card_filters_dep,
+)
+from kardscm.web.queries import ALLOWED_SORT_COLUMNS, CardFilters, query_cards
 from kardscm.web.translate import to_view
-
-
-@dataclass
-class SyncSession:
-    """In-memory state passed from /sync/start to /sync/apply.
-
-    Holds the diff preview and the cards needed to apply the change so
-    the second phase can reuse the already-fetched data without hitting
-    the API a second time.
-    """
-
-    report: DiffReport
-    new_cards: list[CardDict]
-    timestamp: str
-
 
 logger = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent
 TEMPLATES_DIR = WEB_DIR / "templates"
 STATIC_DIR = WEB_DIR / "static"
-
-
-def card_filters_dep(
-    factions: list[str] = Query(default=[]),
-    types: list[str] = Query(default=[]),
-    rarities: list[str] = Query(default=[]),
-    sets: list[str] = Query(default=[]),
-    kredits: list[int] = Query(default=[]),
-    abilities: list[str] = Query(default=[]),
-    extra_abilities: list[str] = Query(default=[]),
-    q: str = Query(default=""),
-    spawnable: bool = Query(default=False),
-    reserved: bool = Query(default=False),
-    owned: bool = Query(default=False),
-) -> CardFilters:
-    """FastAPI dependency that builds CardFilters from query string params."""
-    return CardFilters(
-        factions=factions,
-        types=types,
-        rarities=rarities,
-        sets=sets,
-        kredits=kredits,
-        abilities=abilities,
-        extra_abilities=extra_abilities,
-        text_query=q.strip(),
-        include_spawnable=spawnable,
-        include_reserved=reserved,
-        owned_only=owned,
-    )
-
-
-def _total_card_count(conn: sqlite3.Connection) -> int:
-    row = conn.execute("SELECT COUNT(*) FROM cards").fetchone()
-    return int(row[0]) if row else 0
-
-
-def _open_conn(db_path: str | Path) -> sqlite3.Connection:
-    conn = get_connection(db_path)
-    initialize_schema(conn)
-    return conn
-
-
-def _fetch_card(conn: sqlite3.Connection, card_id: str) -> dict | None:
-    prev = conn.row_factory
-    conn.row_factory = sqlite3.Row
-    try:
-        row = conn.execute(
-            f"SELECT {SELECT_COLUMNS} FROM cards WHERE cardId = ?", (card_id,)
-        ).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.row_factory = prev
-
-
-def _is_edit_mode(request: Request, *, admin: bool) -> bool:
-    if admin:
-        return True
-    return bool(request.cookies.get(EDIT_MODE_COOKIE) == "1")
-
-
-def _decoded_locale_value(raw: object, locale_key: str) -> str:
-    return extract_locale(raw, locale_key)
 
 
 def create_app(
