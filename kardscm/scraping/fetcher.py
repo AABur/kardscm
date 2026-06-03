@@ -56,19 +56,6 @@ def _extract_card(item: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
-def _detect_pagination(variables: dict, query: str = "") -> str:
-    """Detect pagination type: 'cursor' or 'offset'."""
-    if "after" in variables:
-        return "cursor"
-    if "offset" in variables:
-        return "offset"
-    if "$offset" in query or "offset:" in query:
-        return "offset"
-    if "$after" in query or "after:" in query:
-        return "cursor"
-    return "offset"
-
-
 def fetch_all_cards(probe: ProbeData) -> list[dict]:
     """Fetch all cards via GraphQL pagination.
 
@@ -84,13 +71,10 @@ def fetch_all_cards(probe: ProbeData) -> list[dict]:
     variables = body_template.get("variables", {})
 
     query_text = body_template.get("query", "")
-    pagination_type = _detect_pagination(variables, query_text)
-    logger.info("Pagination type: %s", pagination_type)
 
     all_cards: list[dict] = []
     seen_ids: set[str] = set()
 
-    cursor: str | None = None
     offset = 0
     limit = variables.get("first", variables.get("limit", variables.get("pageSize", 0)))
     if not limit:
@@ -103,15 +87,7 @@ def fetch_all_cards(probe: ProbeData) -> list[dict]:
             page += 1
             body = dict(body_template)
             vars_copy = dict(variables)
-
-            if pagination_type == "cursor":
-                if cursor is not None:
-                    vars_copy["after"] = cursor
-                elif "after" in vars_copy:
-                    vars_copy.pop("after", None)
-            else:
-                vars_copy["offset"] = offset
-
+            vars_copy["offset"] = offset
             body["variables"] = vars_copy
 
             logger.info("Page %d (offset=%d)", page, offset)
@@ -145,18 +121,9 @@ def fetch_all_cards(probe: ProbeData) -> list[dict]:
             if new_count == 0:
                 break
 
-            if pagination_type == "cursor":
-                page_info = _find_page_info(data.get("data", data))
-                if not page_info:
-                    break
-                has_next = page_info.get("hasNextPage", False)
-                cursor = page_info.get("endCursor")
-                if not has_next or not cursor:
-                    break
-            else:
-                if len(edges) < limit:
-                    break
-                offset += limit
+            if len(edges) < limit:
+                break
+            offset += limit
 
     logger.info("Fetched %d total cards", len(all_cards))
     return all_cards

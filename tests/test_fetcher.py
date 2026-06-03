@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from kardscm.scraping.fetcher import (
-    _detect_pagination,
     _extract_card,
     _find_edges_or_nodes,
     _find_page_info,
@@ -53,23 +52,6 @@ class TestExtractCard:
     def test_without_node(self):
         item = {"cardId": "2"}
         assert _extract_card(item) == {"cardId": "2"}
-
-
-class TestDetectPagination:
-    def test_cursor_in_variables(self):
-        assert _detect_pagination({"after": "abc"}) == "cursor"
-
-    def test_offset_in_variables(self):
-        assert _detect_pagination({"offset": 0}) == "offset"
-
-    def test_offset_in_query(self):
-        assert _detect_pagination({}, "$offset") == "offset"
-
-    def test_cursor_in_query(self):
-        assert _detect_pagination({}, "$after") == "cursor"
-
-    def test_default_offset(self):
-        assert _detect_pagination({}) == "offset"
 
 
 class TestFetchAllCards:
@@ -144,41 +126,6 @@ class TestFetchAllCards:
 
         result = fetch_all_cards(default_probe)
         assert result == []
-
-    def test_cursor_pagination(self, mock_httpx_client):
-        responses = [
-            {
-                "data": {
-                    "cards": {
-                        "edges": [{"node": {"cardId": "c1"}}],
-                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"},
-                    }
-                }
-            },
-            {
-                "data": {
-                    "cards": {
-                        "edges": [{"node": {"cardId": "c2"}}],
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
-                    }
-                }
-            },
-        ]
-        resp_iter = iter(responses)
-
-        def make_response(*args, **kwargs):
-            return self._make_response(next(resp_iter))
-
-        mock_httpx_client.post.side_effect = make_response
-
-        probe = {
-            "url": "https://api.example.com/graphql",
-            "headers": {},
-            "body": {"variables": {"after": "start", "first": 50}, "query": ""},
-        }
-
-        result = fetch_all_cards(probe)
-        assert len(result) == 2
 
     def test_no_data_stops(self, mock_httpx_client, default_probe):
         mock_httpx_client.post.return_value = self._make_response({"data": {"something": "else"}})
