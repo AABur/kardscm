@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from pathlib import Path
 
 from openpyxl import load_workbook
 
 from kardscm.commands.utils import _emit_locale_warnings
-from kardscm.config import LanguageConfig, get_language_config
+from kardscm.config import get_language_config
 from kardscm.constants import DECK_NATION_TO_DB, DEFAULT_DB_PATH
 from kardscm.export import (
     add_deck_sheet,
