@@ -298,7 +298,7 @@ def add_decks(
     for filename in filenames:
         try:
             add_deck(filename, update=update, replace=replace, db_path=db_path, lang=lang)
-        except (RuntimeError, SystemExit) as e:
+        except RuntimeError as e:
             errors.append((filename, str(e)))
 
     if errors:

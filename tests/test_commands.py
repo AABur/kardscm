@@ -11,6 +11,7 @@ from openpyxl import Workbook
 
 from kardscm.commands import (
     add_deck,
+    add_decks,
     apply_sync_changes,
     export_collection,
     export_deck,
@@ -844,6 +845,68 @@ class TestAddDeck:
             decks = fetch_all_decks(conn)
         assert len(decks) == 1
         assert decks[0]["name"] == "New Deck"
+
+
+class TestAddDecks:
+    @pytest.fixture()
+    def db_with_card(self, tmp_path, make_card):
+        db_path = str(tmp_path / "test.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [make_card(title=json.dumps({"en-EN": "Alpha"}))])
+        return db_path
+
+    @patch("kardscm.commands.decks.get_language_config")
+    def test_partial_failure(self, mock_config, db_with_card, tmp_path):
+        """One file succeeds, one raises RuntimeError: error is collected and
+        SystemExit is raised at the end with a summary message."""
+        mock_config.return_value = LANGUAGE_EN
+
+        good_file = tmp_path / "good.txt"
+        good_file.write_text(
+            "Good Deck\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        bad_file = tmp_path / "bad.txt"
+        bad_file.write_text(
+            "Bad Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) MISSING\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(SystemExit, match="Cards not found"):
+            add_decks(
+                [str(good_file), str(bad_file)],
+                db_path=db_with_card,
+            )
+
+        # The successful deck must still be in the database.
+        with get_connection(db_with_card) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 1
+        assert decks[0]["name"] == "Good Deck"
+
+    @patch("kardscm.commands.decks.get_language_config")
+    def test_all_success(self, mock_config, db_with_card, tmp_path):
+        """All files succeed: add_deck is called for each and no error is raised."""
+        mock_config.return_value = LANGUAGE_EN
+
+        deck_file1 = tmp_path / "deck1.txt"
+        deck_file1.write_text(
+            "Deck One\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+        deck_file2 = tmp_path / "deck2.txt"
+        deck_file2.write_text(
+            "Deck Two\nMajor power: usa\n\nusa:\n0x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_decks([str(deck_file1), str(deck_file2)], db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            decks = fetch_all_decks(conn)
+        assert len(decks) == 2
+        assert {d["name"] for d in decks} == {"Deck One", "Deck Two"}
 
 
 class TestRemoveDeck:
