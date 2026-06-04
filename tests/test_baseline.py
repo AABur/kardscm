@@ -107,6 +107,12 @@ class TestBuildSnapshot:
         assert snap["json_keys"] == {}
         assert all(v == [] for v in snap["enum_values"].values())
 
+    def test_omits_set_enum(self) -> None:
+        # `set` (card expansion) is normal content, not a tracked contract enum.
+        snap = build_snapshot([_node()])
+        assert "set" not in snap["enum_values"]
+        assert set(snap["enum_values"]) == {"faction", "type", "rarity", "attributes"}
+
 
 def _baseline_snap(**overrides) -> Snapshot:
     snap = build_snapshot([_node(card_id=f"c{i}") for i in range(10)])
@@ -158,20 +164,78 @@ class TestDiffSnapshots:
         assert report.has_changes()
         assert "Atlantis" in report.removed_enum_values["faction"]
 
-    def test_card_count_delta_under_threshold_silent(self) -> None:
-        # baseline 100, observed 102 → 2% delta, under 5%
-        baseline = _baseline_snap(card_count=100)
-        observed = build_snapshot([_node(card_id=f"c{i}") for i in range(102)])
-        report = diff_snapshots(baseline, observed)
-        # Delta should not be reported (only enum changes might be)
-        assert report.card_count_delta_pct is None or abs(report.card_count_delta_pct) < 5
-
-    def test_card_count_delta_over_threshold_info(self) -> None:
+    def test_card_count_growth_does_not_trigger(self) -> None:
+        # Growth (new cards) is normal content evolution, never drift.
         baseline = _baseline_snap(card_count=100)
         observed = build_snapshot([_node(card_id=f"c{i}") for i in range(150)])
         report = diff_snapshots(baseline, observed)
-        assert report.card_count_delta_pct is not None
-        assert report.card_count_delta_pct >= 5
+        assert report.card_count_drop_pct is None
+        assert not report.has_changes()
+
+    def test_card_count_sharp_drop_triggers(self) -> None:
+        # A large drop (-20%) suggests a partial/broken fetch → halt.
+        baseline = _baseline_snap(card_count=100)
+        observed = build_snapshot([_node(card_id=f"c{i}") for i in range(80)])
+        report = diff_snapshots(baseline, observed)
+        assert report.card_count_drop_pct is not None
+        assert report.card_count_drop_pct >= 10
+        assert report.has_changes()
+
+    def test_card_count_small_drop_silent(self) -> None:
+        # -5% is below the 10% drop threshold → no trigger.
+        baseline = _baseline_snap(card_count=100)
+        observed = build_snapshot([_node(card_id=f"c{i}") for i in range(95)])
+        report = diff_snapshots(baseline, observed)
+        assert report.card_count_drop_pct is None
+        assert not report.has_changes()
+
+    def test_new_set_value_does_not_trigger(self) -> None:
+        # A new card set (expansion) is normal content, not contract drift.
+        baseline = _baseline_snap()
+        nodes = [_node(card_id=f"c{i}") for i in range(10)]
+        nodes[0]["json"]["set"] = "NewExpansion"
+        observed = build_snapshot(nodes)
+        report = diff_snapshots(baseline, observed)
+        assert not report.has_changes()
+
+    def test_legacy_baseline_with_set_key_does_not_trigger(self) -> None:
+        # A pre-existing baseline may still carry enum_values["set"]; the new
+        # detector ignores untracked enum fields and must not flag them.
+        baseline = _baseline_snap()
+        baseline["enum_values"]["set"] = ["Base", "Retired"]
+        observed = build_snapshot([_node(card_id=f"c{i}") for i in range(10)])
+        report = diff_snapshots(baseline, observed)
+        assert not report.has_changes()
+
+    def test_new_type_value_triggers(self) -> None:
+        baseline = _baseline_snap()
+        nodes = [_node(card_id="a", json_overrides={"type": "warship"})] + [
+            _node(card_id=f"c{i}") for i in range(9)
+        ]
+        observed = build_snapshot(nodes)
+        report = diff_snapshots(baseline, observed)
+        assert report.has_changes()
+        assert "warship" in report.added_enum_values["type"]
+
+    def test_new_rarity_value_triggers(self) -> None:
+        baseline = _baseline_snap()
+        nodes = [_node(card_id="a", json_overrides={"rarity": "Mythic"})] + [
+            _node(card_id=f"c{i}") for i in range(9)
+        ]
+        observed = build_snapshot(nodes)
+        report = diff_snapshots(baseline, observed)
+        assert report.has_changes()
+        assert "Mythic" in report.added_enum_values["rarity"]
+
+    def test_new_attribute_value_triggers(self) -> None:
+        baseline = _baseline_snap()
+        nodes = [_node(card_id="a", json_overrides={"attributes": ["blitz", "newkeyword"]})] + [
+            _node(card_id=f"c{i}") for i in range(9)
+        ]
+        observed = build_snapshot(nodes)
+        report = diff_snapshots(baseline, observed)
+        assert report.has_changes()
+        assert "newkeyword" in report.added_enum_values["attributes"]
 
     def test_new_json_key_warns(self) -> None:
         baseline = _baseline_snap()
@@ -248,6 +312,11 @@ class TestDriftReportSemantics:
     def test_has_changes_true_when_presence_dropped(self) -> None:
         report = DriftReport()
         report.presence_dropped_json_keys.append("attack: 100% -> 70%")
+        assert report.has_changes()
+
+    def test_has_changes_true_when_card_count_dropped(self) -> None:
+        report = DriftReport()
+        report.card_count_drop_pct = 15.0
         assert report.has_changes()
 
     def test_has_changes_false_when_empty(self) -> None:

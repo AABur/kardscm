@@ -346,6 +346,39 @@ class TestSyncCollection:
         assert custom.exists()
         assert "kredits" in custom.read_text(encoding="utf-8")
 
+    @patch("kardscm.commands.sync.get_language_config")
+    @patch("kardscm.commands.sync.scrape_cards")
+    def test_contract_drift_aborts_sync(
+        self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
+    ):
+        """API contract drift halts the sync (exit non-zero, DB untouched)."""
+        from kardscm.scraping import ApiContractDriftError
+        from kardscm.scraping.baseline import DriftReport
+
+        mock_config.return_value = LANGUAGE_EN
+        report = DriftReport()
+        report.added_json_keys.append("newField")
+        mock_scrape.side_effect = ApiContractDriftError(
+            report,
+            Path("sync-schema-diff-x.md"),
+            Path("sync-schema-observed-x.json"),
+        )
+        monkeypatch.chdir(tmp_path)
+
+        db_path = str(tmp_path / "sync.db")
+        with get_connection(db_path) as conn:
+            initialize_schema(conn)
+            upsert_cards(conn, [make_card(kredits=2)])
+
+        with pytest.raises(SystemExit):
+            sync_collection(db_path=db_path)
+
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+            last_sync = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+        assert cards[0]["kredits"] == 2  # DB untouched
+        assert last_sync is None
+
 
 class TestFetchAndComputeDiff:
     @patch("kardscm.commands.sync.scrape_cards")

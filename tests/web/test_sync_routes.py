@@ -75,6 +75,30 @@ class TestSyncStart:
             row = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
         assert row is not None
 
+    @patch("kardscm.commands.sync.scrape_cards")
+    def test_start_on_contract_drift_renders_drift_modal(
+        self, mock_scrape, client: TestClient, db_path: Path, make_card
+    ) -> None:
+        from kardscm.scraping import ApiContractDriftError
+        from kardscm.scraping.baseline import DriftReport
+
+        report = DriftReport()
+        report.added_json_keys.append("newField")
+        mock_scrape.side_effect = ApiContractDriftError(
+            report,
+            Path("sync-schema-diff-x.md"),
+            Path("sync-schema-observed-x.json"),
+        )
+        r = client.post("/sync/start")
+        assert r.status_code == 200
+        # Drift modal points at the report and exposes no apply/cancel.
+        assert "sync-schema-diff-x.md" in r.text
+        assert "/sync/apply/" not in r.text
+        # DB must remain untouched.
+        with get_connection(db_path) as conn:
+            cards = fetch_cards(conn)
+        assert cards[0]["kredits"] == 2
+
 
 def _extract_sync_id(html: str) -> str:
     """Parse the sync_id out of an apply URL in the rendered diff modal."""
