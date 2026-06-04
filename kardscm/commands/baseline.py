@@ -7,32 +7,11 @@ import logging
 import shutil
 from pathlib import Path
 
-from kardscm.config import get_language_config
-from kardscm.scraping import baseline, fetcher, probe
+from kardscm.scraping import baseline
 
 logger = logging.getLogger(__name__)
 
 _BASELINE_REQUIRED_KEYS = ("card_count", "node_keys", "json_keys", "enum_values")
-
-
-def baseline_init(*, lang: str | None = None) -> None:
-    """Pull from live API and overwrite the committed baseline.
-
-    For one-off use after cloning the repo or after intentional API changes.
-    Always overwrites; use ``baseline_accept`` to promote a sync-generated
-    observed snapshot instead.
-    """
-    lang_config = get_language_config(lang)
-    logger.info("Fetching cards from API to rebuild baseline...")
-    raw = fetcher.fetch_all_cards(probe.build_static_probe(language=lang_config.code))
-    snapshot = baseline.build_snapshot(raw)
-    baseline.save_baseline(snapshot)
-    logger.info(
-        "Baseline written to %s (%d cards, %d enum value sets).",
-        baseline.BASELINE_PATH,
-        snapshot["card_count"],
-        len(snapshot["enum_values"]),
-    )
 
 
 def baseline_accept() -> None:

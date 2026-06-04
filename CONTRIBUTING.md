@@ -170,10 +170,12 @@ Workflow when a sync halts on drift:
 
 1. Review the generated schema diff and observed snapshot.
 2. Update code/constants/locales if the new shape needs handling.
-3. Run `uv run kardscm baseline accept` to promote the latest observed snapshot,
-   or `uv run kardscm baseline init` to rebuild directly from the live API.
+3. Run `uv run kardscm baseline accept` to promote the latest observed snapshot.
 4. Commit the baseline update with the related code or data change, then re-run
    the sync.
+
+A from-scratch baseline is created automatically on the first sync when the
+baseline file is missing; there is no separate init command.
 
 GraphQL introspection is not assumed to be available. Treat the baseline as a
 data-derived contract snapshot.

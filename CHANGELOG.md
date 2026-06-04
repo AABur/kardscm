@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- `kardscm baseline init`. It blindly overwrote the baseline from the live API
+  with no review, contradicting the new drift gate. A from-scratch baseline is
+  auto-created on first sync; reviewed updates go through `baseline accept`.
 - `run_probe` and the Playwright runtime dependency. The production sync
   path has used `build_static_probe` (hardcoded constants) exclusively;
   the browser-based interceptor was unreachable dead code.

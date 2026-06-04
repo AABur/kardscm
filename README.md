@@ -133,8 +133,7 @@ ability value, or a sharp drop in card count — **halts the sync** and writes
 `sync-schema-diff-*.md` and `sync-schema-observed-*.json` to the current
 directory. Normal content growth (new card sets, more cards) is not a contract
 change and never blocks. After reviewing a halt, run `kardscm baseline accept`
-to adopt the new shape (or `kardscm baseline init` to rebuild from the live
-API), then sync again.
+to adopt the new shape, then sync again.
 
 ## Collection Export And Update
 
@@ -266,18 +265,19 @@ Rules:
 
 ## API Baseline
 
-Maintainers can refresh the committed API baseline (run from a clone;
-pipx users can drop the `uv run` prefix):
+The committed baseline at `kardscm/data/api_baseline.json` is the contract that
+sync drift is checked against. A contract change halts the sync; after reviewing
+the drift report, promote the new shape (run from a clone; pipx users can drop
+the `uv run` prefix):
 
 ```bash
-uv run kardscm baseline init
 uv run kardscm baseline accept
 ```
 
-A contract change halts the sync; use these commands to resolve it. Use
-`baseline init` after intentional API changes or for a fresh rebuild from the
-live API. Use `baseline accept` after reviewing the latest
-`sync-schema-observed-*.json` file from a sync drift report.
+`baseline accept` adopts the latest `sync-schema-observed-*.json` from the sync
+drift report — after you have reviewed it and updated any constants or
+translations. A from-scratch baseline is created automatically on the first sync
+when none exists.
 
 ## Output Files
 

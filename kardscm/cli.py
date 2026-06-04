@@ -14,7 +14,6 @@ from kardscm import __version__
 from kardscm.commands import (
     add_decks,
     baseline_accept,
-    baseline_init,
     export_collection,
     export_deck,
     import_deck,
@@ -353,17 +352,6 @@ def web(
         lang=_lang(ctx),
         admin=admin,
     )
-
-
-@baseline_app.command("init")
-def baseline_init_cmd(ctx: typer.Context) -> None:
-    """Pull from the live API and overwrite the committed baseline.
-
-    Use after cloning the repo or after intentional API changes. The
-    baseline file at `kardscm/data/api_baseline.json` is the source of
-    truth for drift detection during sync.
-    """
-    baseline_init(lang=_lang(ctx))
 
 
 @baseline_app.command("accept")

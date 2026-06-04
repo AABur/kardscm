@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
 
 import pytest
 
@@ -421,22 +420,3 @@ class TestBaselineCommands:
         baseline_accept()
         promoted = json.loads(baseline_path.read_text())
         assert promoted["card_count"] == 999
-
-    def test_init_writes_baseline_from_live_fetch(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_init
-        from kardscm.scraping import baseline as bm
-
-        baseline_path = tmp_path / "baseline.json"
-        monkeypatch.setattr(bm, "BASELINE_PATH", baseline_path)
-
-        fake_nodes = [_node(card_id="a"), _node(card_id="b")]
-        # baseline_init imports these locally — patch at their source modules.
-        with (
-            patch("kardscm.scraping.fetcher.fetch_all_cards", return_value=fake_nodes),
-            patch("kardscm.scraping.probe.build_static_probe"),
-        ):
-            baseline_init(lang="en")
-
-        assert baseline_path.exists()
-        loaded = json.loads(baseline_path.read_text())
-        assert loaded["card_count"] == 2
