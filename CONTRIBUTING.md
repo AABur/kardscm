@@ -151,22 +151,29 @@ The API baseline lives at:
 kardscm/data/api_baseline.json
 ```
 
-During sync, the raw GraphQL response shape is compared with this committed
-baseline. Drift produces local files:
+During sync, the raw GraphQL response *shape* is compared with this committed
+baseline. A contract change **halts the sync** (it raises
+`ApiContractDriftError` before any DB write) and produces local files for
+review:
 
 ```text
 sync-schema-diff-*.md
 sync-schema-observed-*.json
 ```
 
-Workflow for intentional API changes:
+A contract change means: a top-level or JSON key added or removed, a key
+becoming sparse, a new `faction`/`type`/`rarity`/ability value, or a sharp drop
+(>=10%) in card count. Benign content growth — new card sets, more cards — is not
+drift and never halts.
 
-1. Run `uv run kardscm sync --diff-only` or `uv run kardscm sync`.
-2. Review the generated schema diff and observed snapshot.
-3. Update code/constants/locales if needed.
-4. Run `uv run kardscm baseline accept` to promote the latest observed snapshot,
+Workflow when a sync halts on drift:
+
+1. Review the generated schema diff and observed snapshot.
+2. Update code/constants/locales if the new shape needs handling.
+3. Run `uv run kardscm baseline accept` to promote the latest observed snapshot,
    or `uv run kardscm baseline init` to rebuild directly from the live API.
-5. Commit the baseline update with the related code or data change.
+4. Commit the baseline update with the related code or data change, then re-run
+   the sync.
 
 GraphQL introspection is not assumed to be available. Treat the baseline as a
 data-derived contract snapshot.

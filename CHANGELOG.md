@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **API contract drift now halts the sync.** A real response-shape change (a
+  field added or removed, a field becoming sparse, a new
+  faction/type/rarity/ability value, or a sharp drop in card count) stops the
+  sync before any database write and asks the user to review, instead of
+  silently writing a report and continuing. Normal content growth — new card
+  sets, more cards — is no longer treated as drift. The CLI exits non-zero with
+  guidance; the web Sync flow shows a drift modal.
+
 ### Removed
 
 - `run_probe` and the Playwright runtime dependency. The production sync

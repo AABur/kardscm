@@ -126,10 +126,15 @@ changes.
 `--diff-only` writes the report without modifying the database. `--yes`
 (short: `-y`) auto-approves every category for scripted runs.
 
-Sync also checks the live GraphQL response shape against
-`kardscm/data/api_baseline.json`. If the API shape changes, `kardscm` writes
-`sync-schema-diff-*.md` and `sync-schema-observed-*.json` files in the current
-directory. This does not block the sync.
+Sync also checks the live GraphQL response *shape* against the committed
+baseline `kardscm/data/api_baseline.json`. A genuine contract change — a field
+added or removed, a field becoming sparse, a new `faction`/`type`/`rarity`/
+ability value, or a sharp drop in card count — **halts the sync** and writes
+`sync-schema-diff-*.md` and `sync-schema-observed-*.json` to the current
+directory. Normal content growth (new card sets, more cards) is not a contract
+change and never blocks. After reviewing a halt, run `kardscm baseline accept`
+to adopt the new shape (or `kardscm baseline init` to rebuild from the live
+API), then sync again.
 
 ## Collection Export And Update
 
@@ -269,9 +274,10 @@ uv run kardscm baseline init
 uv run kardscm baseline accept
 ```
 
-Use `baseline init` after intentional API changes or a fresh baseline rebuild.
-Use `baseline accept` after reviewing the latest `sync-schema-observed-*.json`
-file from a sync drift report.
+A contract change halts the sync; use these commands to resolve it. Use
+`baseline init` after intentional API changes or for a fresh rebuild from the
+live API. Use `baseline accept` after reviewing the latest
+`sync-schema-observed-*.json` file from a sync drift report.
 
 ## Output Files
 
