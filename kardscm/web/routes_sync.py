@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from kardscm.commands import apply_sync_changes, fetch_and_compute_diff
 from kardscm.config import LanguageConfig
 from kardscm.diff import is_empty
+from kardscm.scraping import ApiContractDriftError
 from kardscm.web.deps import SyncSession
 
 
@@ -40,7 +41,20 @@ def create_sync_router(
 
     @router.post("/sync/start", response_class=HTMLResponse)
     async def sync_start(request: Request) -> HTMLResponse:
-        report, new_cards, timestamp = await asyncio.to_thread(fetch_and_compute_diff, db_path, cfg)
+        try:
+            report, new_cards, timestamp = await asyncio.to_thread(
+                fetch_and_compute_diff, db_path, cfg
+            )
+        except ApiContractDriftError as exc:
+            return templates.TemplateResponse(
+                request,
+                "_sync_drift.html",
+                {
+                    "ui": cfg.ui_strings,
+                    "report_path": str(exc.report_path) if exc.report_path else None,
+                    "drift_count": exc.report.count(),
+                },
+            )
         if is_empty(report):
             await asyncio.to_thread(
                 apply_sync_changes,

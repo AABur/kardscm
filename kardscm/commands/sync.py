@@ -22,7 +22,7 @@ from kardscm.diff import (
     is_empty,
 )
 from kardscm.models import CardDict, DiffReport
-from kardscm.scraping import scrape_cards
+from kardscm.scraping import ApiContractDriftError, scrape_cards
 from kardscm.storage import (
     apply_extra_abilities_seed,
     delete_cards,
@@ -165,7 +165,16 @@ def sync_collection(
     _emit_locale_warnings(lang_config)
     logger.info("Starting sync from website (language: %s)...", lang_config.name)
 
-    report, new_cards, timestamp = fetch_and_compute_diff(db_path, lang_config)
+    try:
+        report, new_cards, timestamp = fetch_and_compute_diff(db_path, lang_config)
+    except ApiContractDriftError as exc:
+        location = exc.report_path or "the current directory"
+        raise SystemExit(
+            f"API contract drift detected ({exc.report.count()} change(s)). "
+            "Sync halted to avoid silently corrupting data.\n"
+            f"Review {location}, then run `kardscm baseline accept` to adopt the new "
+            "shape (or fix normalization), and re-run the sync."
+        ) from exc
 
     if is_empty(report):
         apply_sync_changes(db_path, new_cards, report, lang_config, timestamp)

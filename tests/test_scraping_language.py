@@ -23,10 +23,11 @@ def test_build_static_probe_supports_compound_codes():
     assert probe["body"]["variables"]["language"] == "zh-Hant"
 
 
+@patch("kardscm.scraping._check_api_drift")
 @patch("kardscm.scraping.normalize_card", return_value=None)
 @patch("kardscm.scraping.fetch_all_cards", return_value=[])
 @patch("kardscm.scraping.build_static_probe")
-def test_scrape_cards_forwards_language(mock_probe, mock_fetch, _normalize):
+def test_scrape_cards_forwards_language(mock_probe, mock_fetch, _normalize, _drift):
     mock_probe.return_value = {"url": "u", "headers": {}, "body": {}}
     scrape_cards("ja")
     mock_probe.assert_called_once_with("ja")

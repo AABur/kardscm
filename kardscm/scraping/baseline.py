@@ -21,9 +21,12 @@ if TYPE_CHECKING:
     from kardscm.locales import LanguageConfig
 
 # Enum-like fields whose distinct values we track for drift detection.
-_TRACKED_ENUM_FIELDS: tuple[str, ...] = ("faction", "type", "rarity", "set")
-# Threshold for INFO-level card-count delta.
-_CARD_COUNT_DELTA_PCT_THRESHOLD = 5.0
+# `set` (card expansion) is intentionally excluded: new sets are normal content
+# growth, not an API contract change.
+_TRACKED_ENUM_FIELDS: tuple[str, ...] = ("faction", "type", "rarity")
+# Card-count DROP threshold. Growth is never drift; only a sharp drop is flagged,
+# since it suggests a partial/broken fetch that would silently lose cards.
+_CARD_COUNT_DROP_PCT_THRESHOLD = 10.0
 # A JSON key whose presence ratio (count / card_count) drops by at least
 # this many percentage points is flagged as drift — catches "field
 # disappeared from some cards" without false-positives from card-count
@@ -58,7 +61,7 @@ class DriftReport:
     removed_enum_values: dict[str, list[str]] = field(default_factory=dict)
     card_count_baseline: int = 0
     card_count_observed: int = 0
-    card_count_delta_pct: float | None = None
+    card_count_drop_pct: float | None = None
 
     def has_changes(self) -> bool:
         return bool(
@@ -69,7 +72,7 @@ class DriftReport:
             or self.presence_dropped_json_keys
             or any(self.added_enum_values.values())
             or any(self.removed_enum_values.values())
-            or self.card_count_delta_pct is not None
+            or self.card_count_drop_pct is not None
         )
 
     def count(self) -> int:
@@ -81,8 +84,28 @@ class DriftReport:
             + len(self.presence_dropped_json_keys)
             + sum(len(v) for v in self.added_enum_values.values())
             + sum(len(v) for v in self.removed_enum_values.values())
-            + (1 if self.card_count_delta_pct is not None else 0)
+            + (1 if self.card_count_drop_pct is not None else 0)
         )
+
+
+class ApiContractDriftError(Exception):
+    """Raised when the observed API shape diverges from the committed baseline.
+
+    Carries the categorised ``DriftReport`` and the paths of the written drift
+    report / observed snapshot (``None`` if the disk write failed). The sync
+    layer catches this to halt and hand the decision to the user.
+    """
+
+    def __init__(
+        self,
+        report: DriftReport,
+        report_path: Path | None,
+        observed_path: Path | None,
+    ) -> None:
+        self.report = report
+        self.report_path = report_path
+        self.observed_path = observed_path
+        super().__init__(f"API contract drift detected ({report.count()} change(s)).")
 
 
 def build_snapshot(raw_nodes: list[dict]) -> Snapshot:
@@ -151,8 +174,10 @@ def diff_snapshots(baseline: Snapshot, observed: Snapshot) -> DriftReport:
 
     base_enums = baseline.get("enum_values", {})
     obs_enums = observed.get("enum_values", {})
-    all_enum_fields = set(base_enums) | set(obs_enums)
-    for field_name in sorted(all_enum_fields):
+    # Compare only contract-relevant enum fields; ignore stray fields such as a
+    # legacy baseline that still carries `set`.
+    tracked_enum_fields = (*_TRACKED_ENUM_FIELDS, "attributes")
+    for field_name in sorted(tracked_enum_fields):
         base_vals = set(base_enums.get(field_name, []))
         obs_vals = set(obs_enums.get(field_name, []))
         added = sorted(obs_vals - base_vals)
@@ -162,14 +187,14 @@ def diff_snapshots(baseline: Snapshot, observed: Snapshot) -> DriftReport:
         if removed:
             report.removed_enum_values[field_name] = removed
 
-    if report.card_count_baseline > 0:
-        delta_pct = (
-            abs(report.card_count_observed - report.card_count_baseline)
+    if report.card_count_baseline > 0 and report.card_count_observed < report.card_count_baseline:
+        drop_pct = (
+            (report.card_count_baseline - report.card_count_observed)
             / report.card_count_baseline
             * 100.0
         )
-        if delta_pct >= _CARD_COUNT_DELTA_PCT_THRESHOLD:
-            report.card_count_delta_pct = round(delta_pct, 2)
+        if drop_pct >= _CARD_COUNT_DROP_PCT_THRESHOLD:
+            report.card_count_drop_pct = round(drop_pct, 2)
 
     return report
 
@@ -224,11 +249,11 @@ def format_drift_report_md(report: DriftReport, lang_config: LanguageConfig) -> 
                 lines.append(f"- **{label_removed}:** `{v}`")
             lines.append("")
 
-    if report.card_count_delta_pct is not None:
+    if report.card_count_drop_pct is not None:
         lines.append(f"## {section_count}")
         lines.append(
             f"- {report.card_count_baseline} → {report.card_count_observed} "
-            f"(Δ {report.card_count_delta_pct}%)"
+            f"(drop {report.card_count_drop_pct}%)"
         )
         lines.append("")
 
