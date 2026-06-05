@@ -165,7 +165,6 @@ sync_drift_title = "API changed"
 sync_drift_body = "The card API structure changed, so the sync was stopped to avoid corrupting data. Review the drift report below, then resolve it from the command line (kardscm baseline accept) and sync again."
 export_modal_title = "Export collection"
 export_format_xlsx = "Excel (.xlsx)"
-export_format_csv = "CSV"
 export_format_json = "JSON"
 
 [diff_headers]

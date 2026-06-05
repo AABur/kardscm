@@ -11,7 +11,7 @@ from kardscm.commands.utils import _emit_locale_warnings
 from kardscm.config import LanguageConfig, get_language_config
 from kardscm.constants import DEFAULT_DB_PATH
 from kardscm.export import (
-    export_to_csv,
+    build_collection_headers,
     export_to_json,
     export_to_xlsx,
     translate_card_for_export,
@@ -100,10 +100,11 @@ def export_collection(
     """Export cards from SQLite to the selected format.
 
     Args:
-        export_format: Export format (csv, json, xlsx).
+        export_format: Export format (json, xlsx).
         filename: Output file path.
         db_path: SQLite database path.
-        lang: Active language code (e.g. "en", "ru"). Defaults to English.
+        lang: Active language code (e.g. "en", "ru"). Affects only the XLSX
+            export; the JSON export is a raw API-shape dump and is unaffected.
     """
     lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
@@ -115,19 +116,16 @@ def export_collection(
     if not raw_cards:
         raise SystemExit("No cards in database. Run 'kards sync' first.")
 
-    cards = [translate_card_for_export(card, lang_config) for card in raw_cards]
-
     if export_format == "xlsx":
+        cards = [translate_card_for_export(card, lang_config) for card in raw_cards]
         export_to_xlsx(
             cards,
             filename,
-            lang_config.export_headers,
+            build_collection_headers(lang_config),
             lang_config.collection_sheet_name,
         )
-    elif export_format == "csv":
-        export_to_csv(cards, filename, lang_config.export_headers)
     elif export_format == "json":
-        export_to_json(cards, filename, lang_config.code, lang_config.name)
+        export_to_json(raw_cards, filename)
     else:
         msg = f"Unsupported format: {export_format}"
         raise ValueError(msg)

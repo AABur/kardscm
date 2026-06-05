@@ -50,7 +50,6 @@ app.add_typer(baseline_app, name="baseline")
 
 class ExportFormat(StrEnum):
     xlsx = "xlsx"
-    csv = "csv"
     json = "json"
 
 
@@ -155,7 +154,6 @@ def sync(
 @app.command(
     epilog="Examples:\n\n"
     "* `kards export -f xlsx -o cards.xlsx`\n\n"
-    "* `kards export -f csv -o cards.csv`\n\n"
     "* `kards export -f json -o cards.json`",
 )
 def export(

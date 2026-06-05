@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterable
 
-from kardscm.constants import KNOWN_ABILITIES
+from kardscm.constants import KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
 from kardscm.models import CardDict
 
 
@@ -108,6 +108,7 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict]:
         List of card dictionaries.
     """
     ability_cols = ", ".join(f"ability_{a}" for a in KNOWN_ABILITIES)
+    extra_ability_cols = ", ".join(f"extra_ability_{a}" for a in KNOWN_EXTRA_ABILITIES)
     cursor = conn.execute(
         f"""
         SELECT
@@ -115,6 +116,7 @@ def fetch_cards(conn: sqlite3.Connection) -> list[dict]:
             faction, type, rarity, "set",
             title, text, kredits, attack, defense,
             {ability_cols},
+            {extra_ability_cols},
             operationCost, reserved,
             image, can_create, exile, quantity, updated_at
         FROM cards

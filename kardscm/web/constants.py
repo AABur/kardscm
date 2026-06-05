@@ -8,7 +8,6 @@ EDIT_MODE_COOKIE = "kardscm_edit"
 
 EXPORT_MIME_TYPES: dict[str, str] = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "csv": "text/csv",
     "json": "application/json",
 }
 

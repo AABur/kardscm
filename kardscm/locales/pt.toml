@@ -112,7 +112,6 @@ sync_field_old = "antes"
 sync_field_new = "depois"
 export_modal_title = "Exportar coleção"
 export_format_xlsx = "Excel (.xlsx)"
-export_format_csv = "CSV"
 export_format_json = "JSON"
 
 [diff_headers]

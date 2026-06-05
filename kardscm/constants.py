@@ -69,20 +69,25 @@ GRAPHQL_VARIABLES: dict = {
     "showReserved": True,
 }
 
-# Internal field names used to extract data from card dicts for export
-EXPORT_FIELD_NAMES: list[str] = [
+# Internal field names for the 12-column collection XLSX export. The order
+# mirrors the web collection table (kardscm/web/templates/_table.html) exactly.
+COLLECTION_TABLE_FIELDS: list[str] = [
     "faction",
     "title",
     "type",
     "rarity",
     "attributes",
+    "extra_attributes",
     "set",
     "quantity",
     "kredits",
+    "operationCost",
     "attack",
     "defense",
-    "text",
 ]
+
+# Column widths for the collection XLSX, aligned to COLLECTION_TABLE_FIELDS.
+COLLECTION_COLUMN_WIDTHS: list[int] = [15, 35, 18, 15, 18, 18, 20, 10, 10, 8, 8, 8]
 
 # === Abilities ===
 # Canonical ability keys — match [abilities] section of en.toml and DB column names.

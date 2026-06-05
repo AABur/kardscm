@@ -1,8 +1,13 @@
-"""Collection export helpers (XLSX, CSV, JSON) for card collections."""
+"""Collection export helpers (XLSX, JSON) for card collections.
+
+XLSX export is an exact replica of the 12-column web collection table
+(localized values). JSON export is a raw API-shape dump for downstream
+LLM use: raw codes, locale objects, ability arrays, plus quantity — not
+affected by ``--lang``.
+"""
 
 from __future__ import annotations
 
-import csv
 import json
 import logging
 
@@ -10,18 +15,29 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 from kardscm.config import LanguageConfig
-from kardscm.constants import EXPORT_FIELD_NAMES, KNOWN_ABILITIES
+from kardscm.constants import (
+    COLLECTION_COLUMN_WIDTHS,
+    COLLECTION_TABLE_FIELDS,
+    KNOWN_ABILITIES,
+    KNOWN_EXTRA_ABILITIES,
+)
 from kardscm.export.styles import HEADER_ALIGNMENT, HEADER_FILL, HEADER_FONT
 from kardscm.helpers import extract_locale, sanitize_text
 
 logger = logging.getLogger(__name__)
+
+# Fields written to the XLSX as numbers rather than strings.
+_NUMERIC_FIELDS = frozenset({"quantity", "kredits", "operationCost", "attack", "defense"})
 
 
 def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     """Translate a raw DB card dict to a localized export dict.
 
     Extracts localized title and text via locale_key, translates
-    faction/type/rarity/set via static mappings, formats attributes.
+    faction/type/rarity/set via static mappings, and formats both the
+    API abilities and the curated extra abilities into localized,
+    comma-joined strings. The returned dict carries all 12 web-table
+    fields plus ``text`` (kept for reuse; unused by the XLSX export).
 
     Args:
         card: Raw card dict from database.
@@ -59,19 +75,54 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
         lang_config.ability_names.get(a, a) for a in KNOWN_ABILITIES if card.get(f"ability_{a}", 0)
     )
 
+    # Format curated extra abilities from binary columns
+    extra_attributes = sanitize_text(
+        ", ".join(
+            lang_config.extra_ability_names.get(a, a)
+            for a in KNOWN_EXTRA_ABILITIES
+            if card.get(f"extra_ability_{a}", 0)
+        )
+    )
+
     return {
         "faction": sanitize_text(faction),
         "title": sanitize_text(title),
         "type": sanitize_text(type_name),
         "rarity": sanitize_text(rarity),
         "attributes": abilities,
+        "extra_attributes": extra_attributes,
         "set": sanitize_text(set_name),
         "quantity": card.get("quantity", 0),
         "kredits": card.get("kredits", 0),
+        "operationCost": card.get("operationCost"),
         "attack": card.get("attack"),
         "defense": card.get("defense"),
         "text": sanitize_text(str(text)) if text else "",
     }
+
+
+def build_collection_headers(lang_config: LanguageConfig) -> list[str]:
+    """Build the 12 collection XLSX headers, mirroring the web table order.
+
+    Interleaves ``export_headers`` with the two web-only headers (extra
+    abilities, cost) so the XLSX header row matches the rendered web
+    collection table exactly.
+
+    Args:
+        lang_config: Active language configuration.
+
+    Returns:
+        Twelve header strings in web-table order.
+    """
+    headers = lang_config.export_headers
+    ui = lang_config.ui_strings
+    return [
+        *headers[0:5],
+        ui["filter_extra_abilities"],
+        *headers[5:8],
+        ui["col_cost"],
+        *headers[8:10],
+    ]
 
 
 def export_to_xlsx(
@@ -105,16 +156,14 @@ def export_to_xlsx(
         cell.font = HEADER_FONT
         cell.alignment = HEADER_ALIGNMENT
 
-    numeric_fields = {"quantity", "kredits", "attack", "defense"}
     for card in cards:
         row = [
-            card.get(field) if field in numeric_fields else card.get(field, "")
-            for field in EXPORT_FIELD_NAMES
+            card.get(field) if field in _NUMERIC_FIELDS else card.get(field, "")
+            for field in COLLECTION_TABLE_FIELDS
         ]
         ws.append(row)
 
-    column_widths = [15, 35, 18, 15, 12, 20, 10, 10, 8, 8, 60]
-    for i, width in enumerate(column_widths, 1):
+    for i, width in enumerate(COLLECTION_COLUMN_WIDTHS, 1):
         ws.column_dimensions[get_column_letter(i)].width = width
 
     ws.freeze_panes = "A2"
@@ -124,61 +173,79 @@ def export_to_xlsx(
     logger.info("Excel file created: %s (%s cards)", filename, len(cards))
 
 
-def export_to_csv(
-    cards: list[dict],
-    filename: str,
-    headers: list[str],
-) -> None:
-    """Export cards to CSV format.
+def _parse_locale_field(value: object) -> object:
+    """Parse a stored JSON locale field back to its object form.
 
-    Uses UTF-8 with BOM for Excel compatibility on Windows.
+    Returns the parsed value on success, or the original value unchanged
+    when it is None or cannot be decoded.
+    """
+    if not isinstance(value, str):
+        return value
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return value
+
+
+def card_to_api_dict(raw_card: dict) -> dict:
+    """Build a raw API-shape dict from a raw database row.
+
+    Reconstructs the downstream-LLM JSON shape: raw codes for
+    faction/type/rarity/set, ``title``/``text``/``can_create`` parsed
+    back to locale objects, ``attributes``/``extra_abilities`` as arrays
+    of raw keys, plus per-card quantity and the remaining API fields.
+    Performs no localization or text sanitization.
 
     Args:
-        cards: List of card dictionaries (already translated for export).
-        filename: Output filename.
-        headers: Display headers for columns.
+        raw_card: Raw card dict from the database.
+
+    Returns:
+        Raw API-shape dict ready for JSON serialization.
     """
-    logger.info("Exporting %s cards to CSV: %s", len(cards), filename)
+    attributes = [a for a in KNOWN_ABILITIES if raw_card.get(f"ability_{a}")]
+    extra_abilities = [a for a in KNOWN_EXTRA_ABILITIES if raw_card.get(f"extra_ability_{a}")]
+    return {
+        "cardId": raw_card.get("cardId"),
+        "importId": raw_card.get("importId"),
+        "faction": raw_card.get("faction"),
+        "type": raw_card.get("type"),
+        "rarity": raw_card.get("rarity"),
+        "set": raw_card.get("set"),
+        "title": _parse_locale_field(raw_card.get("title")),
+        "text": _parse_locale_field(raw_card.get("text")),
+        "kredits": raw_card.get("kredits"),
+        "attack": raw_card.get("attack"),
+        "defense": raw_card.get("defense"),
+        "attributes": attributes,
+        "extra_abilities": extra_abilities,
+        "operationCost": raw_card.get("operationCost"),
+        "reserved": raw_card.get("reserved"),
+        "image": raw_card.get("image"),
+        "imageUrl": raw_card.get("imageUrl"),
+        "thumbUrl": raw_card.get("thumbUrl"),
+        "can_create": _parse_locale_field(raw_card.get("can_create")),
+        "exile": raw_card.get("exile"),
+        "quantity": raw_card.get("quantity", 0),
+    }
 
-    header_row = list(headers)
 
-    with open(filename, "w", newline="", encoding="utf-8-sig") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(header_row)
+def export_to_json(raw_cards: list[dict], filename: str) -> None:
+    """Export raw cards to JSON in raw API shape for downstream LLM use.
 
-        for card in cards:
-            row = [card.get(field, "") for field in EXPORT_FIELD_NAMES]
-            writer.writerow(row)
-
-    logger.info("CSV file created: %s (%s cards)", filename, len(cards))
-
-
-def export_to_json(
-    cards: list[dict],
-    filename: str,
-    language: str,
-    language_name: str,
-) -> None:
-    """Export cards to JSON format with metadata.
+    The payload is not localized and is unaffected by ``--lang``.
 
     Args:
-        cards: List of card dictionaries (already translated for export).
+        raw_cards: Raw card dicts from the database.
         filename: Output filename.
-        language: Language code for metadata.
-        language_name: Language name for metadata.
     """
-    logger.info("Exporting %s cards to JSON: %s", len(cards), filename)
+    logger.info("Exporting %s cards to JSON: %s", len(raw_cards), filename)
 
     output_data = {
-        "metadata": {
-            "language": language,
-            "language_name": language_name,
-            "total_cards": len(cards),
-        },
-        "cards": cards,
+        "metadata": {"total_cards": len(raw_cards)},
+        "cards": [card_to_api_dict(card) for card in raw_cards],
     }
 
     with open(filename, "w", encoding="utf-8") as jsonfile:
         json.dump(output_data, jsonfile, ensure_ascii=False, indent=2)
 
-    logger.info("JSON file created: %s (%s cards)", filename, len(cards))
+    logger.info("JSON file created: %s (%s cards)", filename, len(raw_cards))

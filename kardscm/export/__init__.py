@@ -1,7 +1,8 @@
 """Export subpackage for card data export."""
 
 from kardscm.export.collection import (
-    export_to_csv,
+    build_collection_headers,
+    card_to_api_dict,
     export_to_json,
     export_to_xlsx,
     translate_card_for_export,
@@ -9,7 +10,8 @@ from kardscm.export.collection import (
 from kardscm.export.decks import add_deck_sheet, export_deck_to_json
 
 __all__ = [
-    "export_to_csv",
+    "build_collection_headers",
+    "card_to_api_dict",
     "export_to_json",
     "export_to_xlsx",
     "translate_card_for_export",
