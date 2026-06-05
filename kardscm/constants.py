@@ -86,8 +86,22 @@ COLLECTION_TABLE_FIELDS: list[str] = [
     "defense",
 ]
 
-# Column widths for the collection XLSX, aligned to COLLECTION_TABLE_FIELDS.
-COLLECTION_COLUMN_WIDTHS: list[int] = [15, 35, 18, 15, 18, 18, 20, 10, 10, 8, 8, 8]
+# Column widths for the collection XLSX, keyed by field name so width stays
+# co-located with its column regardless of order.
+COLLECTION_COLUMN_WIDTHS: dict[str, int] = {
+    "faction": 15,
+    "title": 35,
+    "type": 18,
+    "rarity": 15,
+    "attributes": 18,
+    "extra_attributes": 18,
+    "set": 20,
+    "quantity": 10,
+    "kredits": 10,
+    "operationCost": 8,
+    "attack": 8,
+    "defense": 8,
+}
 
 # === Abilities ===
 # Canonical ability keys — match [abilities] section of en.toml and DB column names.
