@@ -15,10 +15,10 @@ from kardscm.locales import LANGUAGE_RU
 
 def test_export_requires_data(tmp_path: Path) -> None:
     db_path = tmp_path / "collection.db"
-    output_path = tmp_path / "out.csv"
+    output_path = tmp_path / "out.json"
 
     with pytest.raises(SystemExit, match="Run 'kards sync' first"):
-        export_collection("csv", str(output_path), db_path=str(db_path))
+        export_collection("json", str(output_path), db_path=str(db_path))
 
 
 @pytest.fixture()

@@ -49,20 +49,13 @@ class TestExportCollection:
         mock_config.return_value = LANGUAGE_EN
         db_path = str(tmp_path / "empty.db")
         with pytest.raises(SystemExit, match="No cards"):
-            export_collection("csv", str(tmp_path / "out.csv"), db_path=db_path)
+            export_collection("json", str(tmp_path / "out.json"), db_path=db_path)
 
     @patch("kardscm.commands.export.get_language_config")
     def test_xlsx(self, mock_config, db_path, tmp_path):
         mock_config.return_value = LANGUAGE_EN
         out = tmp_path / "out.xlsx"
         export_collection("xlsx", str(out), db_path=db_path)
-        assert out.exists()
-
-    @patch("kardscm.commands.export.get_language_config")
-    def test_csv(self, mock_config, db_path, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-        out = tmp_path / "out.csv"
-        export_collection("csv", str(out), db_path=db_path)
         assert out.exists()
 
     @patch("kardscm.commands.export.get_language_config")

@@ -37,12 +37,12 @@ def test_sync_command(runner) -> None:
 
 
 def test_export_requires_format(runner) -> None:
-    result = runner.invoke(app, ["export", "--file", "out.csv"])
+    result = runner.invoke(app, ["export", "--file", "out.json"])
     assert result.exit_code != 0
 
 
 def test_export_requires_file(runner) -> None:
-    result = runner.invoke(app, ["export", "--format", "csv"])
+    result = runner.invoke(app, ["export", "--format", "json"])
     assert result.exit_code != 0
 
 
@@ -52,13 +52,19 @@ def test_export_rejects_invalid_format(runner) -> None:
     assert "pdf" in result.output.lower()
 
 
+def test_export_rejects_csv_format(runner) -> None:
+    result = runner.invoke(app, ["export", "--format", "csv", "--file", "out.csv"])
+    assert result.exit_code != 0
+    assert "csv" in result.output.lower()
+
+
 def test_export_valid(runner) -> None:
     with patch("kardscm.cli.export_collection") as mock_export:
-        result = runner.invoke(app, ["export", "--format", "csv", "--file", "out.csv"])
+        result = runner.invoke(app, ["export", "--format", "json", "--file", "out.json"])
     assert result.exit_code == 0
     args = mock_export.call_args[0]
-    assert args[0] == "csv"
-    assert Path(args[1]).name == "out.csv"
+    assert args[0] == "json"
+    assert Path(args[1]).name == "out.json"
 
 
 def test_update_requires_file(runner) -> None:
@@ -100,7 +106,7 @@ def test_lang_flag_forwarded_to_export(runner, tmp_path: Path) -> None:
     with patch("kardscm.cli.export_collection") as mock_export:
         result = runner.invoke(
             app,
-            ["--lang", "ru", "export", "--format", "csv", "--file", str(tmp_path / "out.csv")],
+            ["--lang", "ru", "export", "--format", "json", "--file", str(tmp_path / "out.json")],
         )
     assert result.exit_code == 0
     assert mock_export.call_args.kwargs.get("lang") == "ru"
@@ -117,7 +123,15 @@ def test_compound_lang_passed_verbatim(runner, tmp_path: Path) -> None:
     with patch("kardscm.cli.export_collection") as mock_export:
         result = runner.invoke(
             app,
-            ["--lang", "zh-Hant", "export", "--format", "csv", "--file", str(tmp_path / "out.csv")],
+            [
+                "--lang",
+                "zh-Hant",
+                "export",
+                "--format",
+                "json",
+                "--file",
+                str(tmp_path / "out.json"),
+            ],
         )
     assert result.exit_code == 0
     assert mock_export.call_args.kwargs.get("lang") == "zh-Hant"
@@ -127,7 +141,7 @@ def test_no_lang_flag_passes_none(runner, tmp_path: Path) -> None:
     with patch("kardscm.cli.export_collection") as mock_export:
         result = runner.invoke(
             app,
-            ["export", "--format", "csv", "--file", str(tmp_path / "out.csv")],
+            ["export", "--format", "json", "--file", str(tmp_path / "out.json")],
         )
     assert result.exit_code == 0
     assert mock_export.call_args.kwargs.get("lang") is None

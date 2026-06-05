@@ -40,8 +40,9 @@ class TestExportModal:
         assert r.status_code == 200
         assert "modal-backdrop" in r.text
         assert LANGUAGE_EN.ui_strings["export_modal_title"] in r.text
-        for fmt in ("xlsx", "csv", "json"):
+        for fmt in ("xlsx", "json"):
             assert f"/export/{fmt}" in r.text
+        assert "/export/csv" not in r.text
 
 
 class TestExportDownload:
@@ -54,15 +55,9 @@ class TestExportDownload:
         # XLSX is a ZIP archive — first bytes are the ZIP signature.
         assert r.content[:4] == b"PK\x03\x04"
 
-    def test_csv_returns_attachment(self, client: TestClient) -> None:
+    def test_csv_returns_400(self, client: TestClient) -> None:
         r = client.get("/export/csv")
-        assert r.status_code == 200
-        disp = r.headers.get("content-disposition", "")
-        assert "attachment" in disp
-        assert ".csv" in disp
-        # UTF-8 BOM + header row containing the first export column ("Nation").
-        text = r.content.decode("utf-8-sig")
-        assert text.startswith(LANGUAGE_EN.export_headers[0])
+        assert r.status_code == 400
 
     def test_json_returns_attachment(self, client: TestClient) -> None:
         r = client.get("/export/json")
@@ -71,8 +66,13 @@ class TestExportDownload:
         assert "attachment" in disp
         assert ".json" in disp
         body = json.loads(r.content)
-        assert body["metadata"]["language"] == "en"
+        assert body["metadata"] == {"total_cards": len(body["cards"])}
+        assert "language" not in body["metadata"]
         assert isinstance(body["cards"], list)
+        card = body["cards"][0]
+        assert isinstance(card["title"], dict)
+        assert isinstance(card["attributes"], list)
+        assert card["faction"] == "USA"
 
     def test_unknown_format_returns_400(self, client: TestClient) -> None:
         r = client.get("/export/pdf")
