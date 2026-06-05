@@ -29,27 +29,6 @@ logger = logging.getLogger(__name__)
 # Fields written to the XLSX as numbers rather than strings.
 _NUMERIC_FIELDS = frozenset({"quantity", "kredits", "operationCost", "attack", "defense"})
 
-# Raw API fields copied verbatim from the DB row into the JSON export. The
-# remaining JSON keys (title/text/can_create, attributes/extra_abilities,
-# quantity) are computed in card_to_api_dict.
-_API_PASSTHROUGH_FIELDS = (
-    "cardId",
-    "importId",
-    "faction",
-    "type",
-    "rarity",
-    "set",
-    "kredits",
-    "attack",
-    "defense",
-    "operationCost",
-    "reserved",
-    "image",
-    "imageUrl",
-    "thumbUrl",
-    "exile",
-)
-
 
 def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     """Translate a raw DB card dict to a localized export dict.
@@ -234,16 +213,29 @@ def card_to_api_dict(raw_card: dict) -> dict:
     Returns:
         Raw API-shape dict ready for JSON serialization.
     """
-    result = {field: raw_card.get(field) for field in _API_PASSTHROUGH_FIELDS}
-    result["title"] = _decode_json_field(raw_card.get("title"))
-    result["text"] = _decode_json_field(raw_card.get("text"))
-    result["can_create"] = _decode_json_field(raw_card.get("can_create"))
-    result["attributes"] = [a for a in KNOWN_ABILITIES if raw_card.get(f"ability_{a}")]
-    result["extra_abilities"] = [
-        a for a in KNOWN_EXTRA_ABILITIES if raw_card.get(f"extra_ability_{a}")
-    ]
-    result["quantity"] = raw_card.get("quantity", 0)
-    return result
+    return {
+        "cardId": raw_card.get("cardId"),
+        "importId": raw_card.get("importId"),
+        "faction": raw_card.get("faction"),
+        "type": raw_card.get("type"),
+        "rarity": raw_card.get("rarity"),
+        "set": raw_card.get("set"),
+        "title": _decode_json_field(raw_card.get("title")),
+        "text": _decode_json_field(raw_card.get("text")),
+        "kredits": raw_card.get("kredits"),
+        "attack": raw_card.get("attack"),
+        "defense": raw_card.get("defense"),
+        "attributes": [a for a in KNOWN_ABILITIES if raw_card.get(f"ability_{a}")],
+        "extra_abilities": [a for a in KNOWN_EXTRA_ABILITIES if raw_card.get(f"extra_ability_{a}")],
+        "operationCost": raw_card.get("operationCost"),
+        "reserved": raw_card.get("reserved"),
+        "image": raw_card.get("image"),
+        "imageUrl": raw_card.get("imageUrl"),
+        "thumbUrl": raw_card.get("thumbUrl"),
+        "can_create": _decode_json_field(raw_card.get("can_create")),
+        "exile": raw_card.get("exile"),
+        "quantity": raw_card.get("quantity", 0),
+    }
 
 
 def export_to_json(raw_cards: list[dict], filename: str) -> None:
