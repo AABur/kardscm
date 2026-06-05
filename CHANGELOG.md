@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Collection export redesigned.** The JSON export is now a raw API-shape dump
+  for downstream LLM use: raw codes for faction/type/rarity/set, `title`/`text`
+  as their stored locale objects, `attributes` and `extra_abilities` as arrays
+  of raw keys, plus the per-card `quantity`. It is no longer localized and is
+  unaffected by `--lang`; the metadata wrapper now carries only `total_cards`.
+  The XLSX export is now an exact replica of the 12-column web collection table:
+  it adds **Extra abilities** and **Cost** columns and drops the **Description**
+  column. Known limitation: API attributes this tool does not recognize (for
+  example `BecomesVeteran`) are dropped at normalization and never appear in the
+  JSON.
 - **API contract drift now halts the sync.** A real response-shape change (a
   field added or removed, a field becoming sparse, a new
   faction/type/rarity/ability value, or a sharp drop in card count) stops the
@@ -19,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **CSV collection export.** The `kardscm export -f csv` format, the
+  `/export/csv` web route, the CSV button in the export modal, and the
+  `export_format_csv` locale string are gone. Use XLSX or JSON instead.
 - `kardscm baseline init`. It blindly overwrote the baseline from the live API
   with no review, contradicting the new drift gate. A from-scratch baseline is
   auto-created on first sync; reviewed updates go through `baseline accept`.
@@ -36,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   untouched. Empty diffs collapse to a single "no changes" notice and
   only update `last_sync` metadata.
 - **Web UI Export flow**: an **Export** button opens a format
-  selector (XLSX, CSV, JSON). The browser downloads the file
+  selector (XLSX, JSON). The browser downloads the file
   directly; the server only uses a tempfile that is cleaned up after
   the response is sent.
 - New CLI helpers `commands.fetch_and_compute_diff` and

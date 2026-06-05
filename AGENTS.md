@@ -32,7 +32,7 @@ the local collection/deck workflow.
 - Web UI: FastAPI, Jinja2, HTMX
 - Storage: SQLite
 - API access: httpx + static GraphQL shape
-- Export: openpyxl, CSV, JSON
+- Export: openpyxl, JSON
 
 ## Main Commands
 
@@ -56,7 +56,7 @@ kardscm/cli.py              Typer declarations only
 kardscm/commands/           user workflow orchestration (package)
 kardscm/scraping/           GraphQL fetch, normalize, API baseline drift
 kardscm/storage/            SQLite schema, migrations, persistence, backups
-kardscm/export/             XLSX/CSV/JSON collection and deck export
+kardscm/export/             XLSX/JSON collection and deck export
 kardscm/importing/          KARDS TXT deck parser
 kardscm/locales/            TOML locale loader and locale data
 kardscm/web/                local FastAPI/Jinja/HTMX web UI

@@ -96,7 +96,7 @@ official KARDS GraphQL API
 ```text
 collection.db
   -> export.exporters
-  -> XLSX / CSV / JSON
+  -> XLSX / JSON
 ```
 
 ```text

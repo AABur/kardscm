@@ -9,7 +9,7 @@
 
 It syncs the official card catalog into a local SQLite database, lets you keep
 your owned card quantities up to date, saves decks from KARDS client TXT files,
-and exports collection or deck data to XLSX, CSV, or JSON.
+and exports collection or deck data to XLSX or JSON.
 
 The tool is local-first:
 
@@ -37,7 +37,7 @@ SQLite catalog is built on the user's own machine.
 - Preserves user-managed card quantities across syncs.
 - Shows catalog changes before applying them: new cards, changed stats/text,
   reserve transitions, and removed cards.
-- Exports the collection to XLSX, CSV, or JSON.
+- Exports the collection to XLSX or JSON.
 - Updates card quantities from an edited XLSX export.
 - Imports, adds, replaces, deletes, and exports saved decks.
 - Provides a local browser UI for browsing, filtering, and editing quantities.
@@ -139,9 +139,21 @@ to adopt the new shape, then sync again.
 
 ```bash
 kardscm export -f xlsx -o cards.xlsx
-kardscm export -f csv -o cards.csv
 kardscm export -f json -o cards.json
 ```
+
+The XLSX export is an exact replica of the web collection table: the same
+twelve columns in the same order (Nation, Name, Type, Rarity, Abilities,
+Extra abilities, Set, Quantity, Credits, Cost, Attack, Defense), with values
+localized to the active `--lang`.
+
+The JSON export is a raw API-shape dump intended for downstream LLM use. It
+keeps raw API codes for faction/type/rarity/set, emits `title`/`text` as their
+stored locale objects, lists `attributes` and `extra_abilities` as arrays of
+raw keys, and adds the player's per-card `quantity`. It is **not** localized
+and is unaffected by `--lang`. Known limitation: attributes the API exposes but
+this tool does not recognize (for example `BecomesVeteran`) are dropped during
+normalization and therefore never appear in the JSON.
 
 To update quantities from an edited spreadsheet:
 
@@ -189,10 +201,12 @@ two-phase:
    only `last_sync` metadata is touched.
 
 Click **Export** to download the current collection. Pick **Excel
-(.xlsx)**, **CSV**, or **JSON** — the browser receives the file
-directly; nothing is written to the server filesystem. The exported
-content matches `kardscm export -f <fmt>` exactly, in the active
-language.
+(.xlsx)** or **JSON** — the browser receives the file directly; nothing
+is written to the server filesystem. The exported content matches
+`kardscm export -f <fmt>` exactly. The XLSX mirrors the web table you
+are viewing (same twelve columns, localized to the active language),
+while the JSON is a raw API-shape dump (raw codes, locale objects, ability
+arrays, plus quantity) that ignores `--lang`.
 
 ## Admin Mode
 
