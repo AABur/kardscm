@@ -78,7 +78,7 @@ def add_deck(
 
     Args:
         filename: Path to deck TXT file.
-        update: If True, update collection quantities to match deck.
+        update: If True, raise collection quantities to the deck's counts.
         replace: If True, replace existing deck with same name.
         db_path: SQLite database path.
         lang: Active language code (e.g. "en", "ru"). Defaults to English.
@@ -125,23 +125,24 @@ def add_deck(
             lines = "\n".join(f"  - {entry}" for entry in not_found)
             raise RuntimeError(f"Cards not found in collection:\n{lines}")
 
-        # Quantity check
-        mismatches: list[tuple[DeckCardEntry, str, int, int]] = []
+        # A deck comes from the game client, so it is evidence of ownership:
+        # a deck using more copies than the collection records means the
+        # collection is stale. Using fewer copies than owned is normal.
+        shortfalls: list[tuple[DeckCardEntry, str, int, int]] = []
         for card, card_id in resolved:
-            faction = DECK_NATION_TO_DB.get(card["nation"], card["nation"])
             collection_qty = get_card_quantity_by_id(conn, card_id)
-            if card["quantity"] != collection_qty:
-                mismatches.append((card, card_id, card["quantity"], collection_qty))
+            if card["quantity"] > collection_qty:
+                shortfalls.append((card, card_id, card["quantity"], collection_qty))
 
-        if mismatches and not update:
+        if shortfalls and not update:
             lines = "\n".join(
                 f"  - {DECK_NATION_TO_DB.get(c['nation'], c['nation'])} / {c['name']}:"
                 f" deck={deck_qty}, collection={col_qty}"
-                for c, _, deck_qty, col_qty in mismatches
+                for c, _, deck_qty, col_qty in shortfalls
             )
             raise RuntimeError(
                 f"Card quantity mismatch:\n{lines}\n"
-                "Re-run with --update (-u) to update collection quantities."
+                "Re-run with --update (-u) to raise collection quantities."
             )
 
         deck_id = insert_deck(conn, deck)
@@ -154,8 +155,8 @@ def add_deck(
         )
         conn.commit()
 
-        if update and mismatches:
-            for _, card_id, deck_qty, _ in mismatches:
+        if update and shortfalls:
+            for _, card_id, deck_qty, _ in shortfalls:
                 update_card_quantity_by_id(conn, card_id, deck_qty)
             conn.commit()
 
@@ -234,7 +235,7 @@ def add_decks(
 
     Args:
         filenames: List of paths to deck TXT files.
-        update: If True, update collection quantities to match deck.
+        update: If True, raise collection quantities to the deck's counts.
         replace: If True, replace existing decks with same name.
         db_path: SQLite database path.
         lang: Active language code (e.g. "en", "ru"). Defaults to English.

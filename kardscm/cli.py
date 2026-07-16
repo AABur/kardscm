@@ -222,7 +222,7 @@ def deck_add(
     ],
     update: Annotated[
         bool,
-        typer.Option("--update", "-u", help="Update collection quantities to match deck"),
+        typer.Option("--update", "-u", help="Raise collection quantities to the deck's counts"),
     ] = False,
     replace: Annotated[
         bool,
@@ -232,7 +232,8 @@ def deck_add(
     """Add deck(s) from TXT file(s), with exile card support.
 
     Looks up cards by faction first, then falls back to the exile field.
-    Checks collection quantities; use --update to fix mismatches.
+    Fails when a deck needs more copies than the collection records;
+    use --update to raise them.
     Use --replace to overwrite an existing deck with the same name.
     On error, continues with remaining files and prints a summary at the end.
     """
