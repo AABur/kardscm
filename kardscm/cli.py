@@ -16,7 +16,6 @@ from kardscm.commands import (
     baseline_accept,
     export_collection,
     export_deck,
-    import_deck,
     remove_deck,
     sync_collection,
     update_collection,
@@ -201,33 +200,6 @@ def update(
     """
     _validate_extension(file, ".xlsx")
     update_collection(str(file), lang=_lang(ctx))
-
-
-@deck_app.command(
-    "import",
-    epilog="Examples:\n\n* `kards deck import -i deck.txt`",
-)
-def deck_import(
-    ctx: typer.Context,
-    file: Annotated[
-        Path,
-        typer.Option(
-            "--file",
-            "-i",
-            help="Deck TXT file to import",
-            exists=True,
-            readable=True,
-            resolve_path=True,
-        ),
-    ],
-) -> None:
-    """Import a deck from a TXT file.
-
-    Parses the deck file and saves it to the local database.
-    Cards in the file must already exist in the collection.
-    """
-    _validate_extension(file, ".txt")
-    import_deck(str(file), lang=_lang(ctx))
 
 
 @deck_app.command(

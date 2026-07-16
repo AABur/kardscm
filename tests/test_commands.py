@@ -16,7 +16,6 @@ from kardscm.commands import (
     export_collection,
     export_deck,
     fetch_and_compute_diff,
-    import_deck,
     remove_deck,
     sync_collection,
     update_collection,
@@ -102,85 +101,6 @@ class TestUpdateCollection:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert cards[0]["quantity"] == 3
-
-
-class TestImportDeck:
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_file_not_found(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-        with pytest.raises(SystemExit, match="Failed to parse deck"):
-            import_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
-
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_duplicate_deck(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-
-        db_path = str(tmp_path / "test.db")
-        with get_connection(db_path) as conn:
-            initialize_schema(conn)
-            insert_deck(
-                conn,
-                {
-                    "name": "My Deck",
-                    "major_power": "soviet",
-                    "ally": None,
-                    "hq": None,
-                    "deck_code": None,
-                    "cards": [],
-                },
-            )
-            conn.commit()
-
-        deck_file = tmp_path / "deck.txt"
-        deck_file.write_text(
-            "My Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) Card\n",
-            encoding="utf-8",
-        )
-
-        with pytest.raises(SystemExit, match="already exists"):
-            import_deck(str(deck_file), db_path=db_path)
-
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_card_not_found(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-
-        db_path = str(tmp_path / "test.db")
-        with get_connection(db_path) as conn:
-            initialize_schema(conn)
-
-        deck_file = tmp_path / "deck.txt"
-        deck_file.write_text(
-            "New Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) MISSING\n",
-            encoding="utf-8",
-        )
-
-        with pytest.raises(SystemExit, match="Cards not found"):
-            import_deck(str(deck_file), db_path=db_path)
-
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_success(self, mock_config, tmp_path, make_card):
-        mock_config.return_value = LANGUAGE_EN
-
-        db_path = str(tmp_path / "test.db")
-        with get_connection(db_path) as conn:
-            initialize_schema(conn)
-            upsert_cards(
-                conn,
-                [make_card(title=json.dumps({"en-EN": "Alpha"}))],
-            )
-
-        deck_file = tmp_path / "deck.txt"
-        deck_file.write_text(
-            "My Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
-            encoding="utf-8",
-        )
-
-        import_deck(str(deck_file), db_path=db_path)
-
-        with get_connection(db_path) as conn:
-            decks = fetch_all_decks(conn)
-        assert len(decks) == 1
-        assert decks[0]["name"] == "My Deck"
 
 
 class TestSyncCollection:

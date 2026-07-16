@@ -81,11 +81,6 @@ def test_update_uses_input_flag(runner, tmp_path: Path) -> None:
     mock_update.assert_called_once()
 
 
-def test_deck_import_requires_file(runner) -> None:
-    result = runner.invoke(app, ["deck", "import"])
-    assert result.exit_code != 0
-
-
 def test_deck_export_requires_file(runner) -> None:
     result = runner.invoke(app, ["deck", "export"])
     assert result.exit_code != 0
@@ -93,7 +88,7 @@ def test_deck_export_requires_file(runner) -> None:
 
 def test_deck_no_args_shows_help(runner) -> None:
     result = runner.invoke(app, ["deck"])
-    assert "import" in result.output
+    assert "add" in result.output
     assert "export" in result.output
 
 
