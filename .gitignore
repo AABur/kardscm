@@ -65,3 +65,7 @@ sync-schema-observed-*.json
 # Local research sandbox + personal deck/xlsx fixtures
 experiments/
 test_data/
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json

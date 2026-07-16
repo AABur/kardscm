@@ -85,6 +85,12 @@ Do not create a new `docs/` tree for ordinary project documentation. The active
 project docs are `README.md` and `CONTRIBUTING.md`; agent-specific docs are
 `AGENTS.md` and `CLAUDE.md`.
 
+Two exceptions, both agent configuration rather than project documentation:
+`docs/agents/` holds the per-repo settings the engineering skills read (issue
+tracker, triage labels, domain-doc layout), and `docs/adr/` holds architecture
+decision records written by `/domain-modeling`. Neither replaces `README.md` or
+`CONTRIBUTING.md`, and ordinary project docs still must not move under `docs/`.
+
 ## Coding Rules
 
 - Match existing style and module boundaries.
