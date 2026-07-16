@@ -298,11 +298,11 @@ def test_get_card_quantity_by_id_missing(db_connection) -> None:
 def test_update_card_quantity_by_id(db_connection, make_card) -> None:
     upsert_cards(db_connection, [make_card(cardId="upd-card")])
 
-    update_card_quantity_by_id(db_connection, "upd-card", 7)
+    update_card_quantity_by_id(db_connection, "upd-card", 3)
     db_connection.commit()
 
     qty = get_card_quantity_by_id(db_connection, "upd-card")
-    assert qty == 7
+    assert qty == 3
 
 
 def test_insert_deck_cards_with_exile_fallback(db_connection, exile_card, storage_deck) -> None:
