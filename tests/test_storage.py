@@ -458,3 +458,63 @@ def test_delete_cards_empty_input_is_noop(db_connection, make_card) -> None:
     upsert_cards(db_connection, [make_card(cardId="A")])
     assert delete_cards(db_connection, []) == 0
     assert len(fetch_cards(db_connection)) == 1
+
+
+# ---------------------------------------------------------------------------
+# Rarity cap
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("rarity", "requested", "expected"),
+    [
+        ("Standard", 9, 4),
+        ("Limited", 9, 3),
+        ("Special", 9, 2),
+        ("Elite", 9, 1),
+        ("Standard", 2, 2),
+    ],
+)
+def test_update_card_quantity_by_id_caps_by_rarity(
+    db_connection, make_card, rarity, requested, expected
+) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A", rarity=rarity)])
+
+    update_card_quantity_by_id(db_connection, "A", requested)
+
+    assert get_card_quantity_by_id(db_connection, "A") == expected
+
+
+def test_update_quantity_caps_by_rarity(db_connection, make_card) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A", rarity="Elite")])
+
+    updated, not_found = update_quantity(db_connection, [("USA", "Alpha", 9)], "en-EN")
+
+    assert (updated, not_found) == (1, [])
+    assert get_card_quantity_by_id(db_connection, "A") == 1
+
+
+def test_update_quantity_warns_when_capping(db_connection, make_card, caplog) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A", rarity="Elite")])
+
+    with caplog.at_level("WARNING"):
+        update_quantity(db_connection, [("USA", "Alpha", 9)], "en-EN")
+
+    assert "9" in caplog.text and "1" in caplog.text
+
+
+def test_update_card_quantity_by_id_warns_when_capping(db_connection, make_card, caplog) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A", rarity="Elite")])
+
+    with caplog.at_level("WARNING"):
+        update_card_quantity_by_id(db_connection, "A", 9)
+
+    assert "9" in caplog.text and "1" in caplog.text
+
+
+def test_unknown_rarity_falls_back_to_standard_cap(db_connection, make_card) -> None:
+    upsert_cards(db_connection, [make_card(cardId="A", rarity="Mythic")])
+
+    update_card_quantity_by_id(db_connection, "A", 9)
+
+    assert get_card_quantity_by_id(db_connection, "A") == 4
