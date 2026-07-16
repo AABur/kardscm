@@ -10,7 +10,7 @@ def to_view(card: dict, lang_config: LanguageConfig) -> dict:
     """Translate a raw DB card into a dict for Jinja templates.
 
     Reuses translate_card_for_export (which already provides all 12
-    web-table fields, including extra_attributes and operationCost) and
+    web-table fields, including extra_abilities and operationCost) and
     adds the web-only fields the templates need (cardId, image URLs,
     raw rarity).
     """

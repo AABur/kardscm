@@ -225,7 +225,7 @@ def test_translate_card_reads_ability_columns():
 
     card = _ability_card(ability_guard=1, ability_blitz=1)
     result = translate_card_for_export(card, LANGUAGE_EN)
-    abilities_field = result["attributes"]
+    abilities_field = result["abilities"]
     assert "Guard" in abilities_field
     assert "Blitz" in abilities_field
     assert "Alpine" not in abilities_field
@@ -236,7 +236,7 @@ def test_translate_card_no_abilities_gives_empty_string():
 
     card = _ability_card()
     result = translate_card_for_export(card, LANGUAGE_EN)
-    assert result["attributes"] == ""
+    assert result["abilities"] == ""
 
 
 # ---------------------------------------------------------------------------

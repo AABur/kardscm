@@ -76,7 +76,7 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
     )
 
     # Format curated extra abilities from binary columns
-    extra_attributes = sanitize_text(
+    extra_abilities = sanitize_text(
         ", ".join(
             lang_config.extra_ability_names.get(a, a)
             for a in KNOWN_EXTRA_ABILITIES
@@ -89,8 +89,8 @@ def translate_card_for_export(card: dict, lang_config: LanguageConfig) -> dict:
         "title": sanitize_text(title),
         "type": sanitize_text(type_name),
         "rarity": sanitize_text(rarity),
-        "attributes": abilities,
-        "extra_attributes": extra_attributes,
+        "abilities": abilities,
+        "extra_abilities": extra_abilities,
         "set": sanitize_text(set_name),
         "quantity": card.get("quantity", 0),
         "kredits": card.get("kredits", 0),
@@ -123,8 +123,8 @@ def build_collection_headers(lang_config: LanguageConfig) -> list[str]:
         "title": h[1],
         "type": h[2],
         "rarity": h[3],
-        "attributes": h[4],
-        "extra_attributes": ui["filter_extra_abilities"],
+        "abilities": h[4],
+        "extra_abilities": ui["filter_extra_abilities"],
         "set": h[5],
         "quantity": h[6],
         "kredits": h[7],

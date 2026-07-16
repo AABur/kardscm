@@ -109,7 +109,7 @@ def _card_changes(old: dict, new: CardDict, locale_key: str) -> list[FieldChange
     if old_abilities != new_abilities:
         changes.append(
             {
-                "field": "attributes",
+                "field": "abilities",
                 "old": sorted(old_abilities),
                 "new": sorted(new_abilities),
             }
@@ -146,7 +146,7 @@ def _group_by_faction(cards: list[CardDict] | list[dict]) -> dict[str, list]:
 
 def _format_value(field: str, value: object, lang_config: LanguageConfig) -> str:
     """Render an old/new value for display in console + Markdown reports."""
-    if field == "attributes":
+    if field == "abilities":
         if isinstance(value, list):
             translated = [lang_config.ability_names.get(str(v), str(v)) for v in value]
             return "[" + ", ".join(translated) + "]"
