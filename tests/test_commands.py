@@ -676,6 +676,44 @@ class TestAddDeck:
         assert cards[0]["quantity"] == 2
 
     @patch("kardscm.commands.decks.get_language_config")
+    def test_deck_below_collection_is_not_a_mismatch(self, mock_config, db_with_card, tmp_path):
+        """A deck may use fewer copies than the player owns."""
+        mock_config.return_value = LANGUAGE_EN
+        with get_connection(db_with_card) as conn:
+            conn.execute("UPDATE cards SET quantity = 4 WHERE cardId = 'card-1'")
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Alpha Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            assert fetch_all_decks(conn)[0]["name"] == "Alpha Deck"
+
+    @patch("kardscm.commands.decks.get_language_config")
+    def test_update_never_lowers_collection_quantity(self, mock_config, db_with_card, tmp_path):
+        """--update raises quantities to match the deck; it never lowers them."""
+        mock_config.return_value = LANGUAGE_EN
+        with get_connection(db_with_card) as conn:
+            conn.execute("UPDATE cards SET quantity = 4 WHERE cardId = 'card-1'")
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Alpha Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), update=True, db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            assert fetch_cards(conn)[0]["quantity"] == 4
+
+    @patch("kardscm.commands.decks.get_language_config")
     def test_success_no_mismatch(self, mock_config, db_with_card, tmp_path):
         mock_config.return_value = LANGUAGE_EN
 
