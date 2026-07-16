@@ -8,7 +8,6 @@ from pathlib import Path
 import typer
 
 from kardscm.commands.utils import (
-    _default_diff_report_path,
     _emit_locale_warnings,
     _safe_timestamp,
     _utc_timestamp,
@@ -111,12 +110,13 @@ def apply_sync_changes(
         report: Diff report bucketed by category.
         lang_config: Active language configuration.
         timestamp: Filesystem-safe UTC timestamp from `fetch_and_compute_diff`.
-        diff_report_path: Optional override for the markdown report path.
-            Defaults to `./sync-diff-<timestamp>.md` when a report is written.
+        diff_report_path: Where to write the markdown report. No report is
+            written when None — the user has already reviewed the diff on
+            screen, so a file is only produced on explicit request.
 
     Returns:
-        Path to the markdown report when a non-empty diff was applied,
-        otherwise None (empty diff → metadata-only update).
+        Path to the markdown report when one was requested and written,
+        otherwise None.
     """
     with get_connection(db_path) as conn:
         initialize_schema(conn, db_path)
@@ -132,9 +132,10 @@ def apply_sync_changes(
         set_metadata(conn, "last_sync", _utc_timestamp())
         set_metadata(conn, "language", lang_config.code)
 
-    report_path = diff_report_path or _default_diff_report_path()
-    _write_diff_report(report_path, report, lang_config, timestamp)
-    return report_path
+    if diff_report_path is None:
+        return None
+    _write_diff_report(diff_report_path, report, lang_config, timestamp)
+    return diff_report_path
 
 
 def sync_collection(
@@ -149,17 +150,16 @@ def sync_collection(
 
     Computes a diff between the current DB state and the fresh API pull,
     prints it, and asks the user to bulk-approve each non-empty category.
-    Any rejection aborts the sync — the DB is left untouched. The
-    Markdown diff report is written whenever the diff is non-empty.
+    Any rejection aborts the sync — the DB is left untouched.
 
     Args:
         db_path: SQLite database path.
         lang: Active language code (e.g. "en", "ru"). Defaults to English.
-        diff_only: If True, write the report and return without prompting
+        diff_only: If True, print the diff and return without prompting
             or modifying the DB. Useful for previews and CI.
         yes: If True, auto-approve every category without prompting.
-        diff_report_path: Override the default report path
-            (`./sync-diff-<UTC-iso>.md`).
+        diff_report_path: Write a Markdown report to this path. Nothing is
+            written when None; the diff is shown on screen either way.
     """
     lang_config = get_language_config(lang)
     _emit_locale_warnings(lang_config)
@@ -182,17 +182,19 @@ def sync_collection(
         return
 
     typer.echo(format_console_report(report, lang_config))
-    report_path = diff_report_path or _default_diff_report_path()
 
     if diff_only:
-        _write_diff_report(report_path, report, lang_config, timestamp)
-        logger.info("Diff report written to %s. No DB changes.", report_path)
+        if diff_report_path is not None:
+            _write_diff_report(diff_report_path, report, lang_config, timestamp)
+            logger.info("Diff report written to %s.", diff_report_path)
+        logger.info("No DB changes.")
         return
 
     if not yes and not _approve_all_categories(report, lang_config):
-        _write_diff_report(report_path, report, lang_config, timestamp)
-        logger.info("Sync aborted by user. Diff report written to %s.", report_path)
+        logger.info("Sync aborted by user. No DB changes.")
         return
 
-    written = apply_sync_changes(db_path, new_cards, report, lang_config, timestamp, report_path)
+    written = apply_sync_changes(
+        db_path, new_cards, report, lang_config, timestamp, diff_report_path
+    )
     logger.info("Sync completed. Stored %s cards. Report: %s", len(new_cards), written)

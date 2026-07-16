@@ -110,11 +110,11 @@ class TestSyncCollection:
 
     @patch("kardscm.commands.sync.get_language_config")
     @patch("kardscm.commands.sync.scrape_cards")
-    def test_first_sync_writes_all_new_cards_and_report(
+    def test_first_sync_writes_all_new_cards(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
-        """Empty DB + non-empty scrape: every card lands in 'new', interactive
-        approval (auto via --yes) writes everything and emits a report."""
+        """Empty DB + non-empty scrape: every card lands in 'new' and
+        interactive approval (auto via --yes) writes everything."""
         mock_config.return_value = LANGUAGE_EN
         mock_scrape.return_value = [make_card()]
         monkeypatch.chdir(tmp_path)
@@ -126,7 +126,7 @@ class TestSyncCollection:
             cards = fetch_cards(conn)
         assert len(cards) == 1
         assert json.loads(cards[0]["title"])["en-EN"] == "Alpha"
-        assert len(self._list_diff_files(tmp_path)) == 1
+        assert self._list_diff_files(tmp_path) == []  # no report unless asked
 
     @patch("kardscm.commands.sync.get_language_config")
     @patch("kardscm.commands.sync.scrape_cards")
@@ -153,7 +153,7 @@ class TestSyncCollection:
 
     @patch("kardscm.commands.sync.get_language_config")
     @patch("kardscm.commands.sync.scrape_cards")
-    def test_diff_only_writes_report_no_db_changes(
+    def test_diff_only_makes_no_db_changes_and_writes_nothing(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
         mock_config.return_value = LANGUAGE_EN
@@ -172,9 +172,7 @@ class TestSyncCollection:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert cards[0]["kredits"] == 2  # unchanged
-        diff_files = self._list_diff_files(tmp_path)
-        assert len(diff_files) == 1
-        assert "kredits: `2` → `5`" in diff_files[0].read_text(encoding="utf-8")
+        assert self._list_diff_files(tmp_path) == []
 
     @patch("kardscm.commands.sync.typer.confirm", return_value=False)
     @patch("kardscm.commands.sync.get_language_config")
@@ -206,7 +204,7 @@ class TestSyncCollection:
             last_sync = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
         assert cards[0]["kredits"] == 2  # rejected — DB untouched
         assert last_sync is None  # rejection does not bump last_sync
-        assert len(self._list_diff_files(tmp_path)) == 1  # report still written
+        assert self._list_diff_files(tmp_path) == []
 
     @patch("kardscm.commands.sync.delete_cards")
     @patch("kardscm.commands.sync.get_language_config")

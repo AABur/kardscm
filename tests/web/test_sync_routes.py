@@ -127,7 +127,7 @@ class TestSyncApply:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert cards[0]["kredits"] == 5
-        assert list(tmp_path.glob("sync-diff-*.md"))
+        assert not list(tmp_path.glob("sync-diff-*.md"))  # browser flow writes no files
 
         # Session must be evicted — second apply with same id is 404.
         again = client.post(f"/sync/apply/{sync_id}")

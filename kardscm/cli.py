@@ -114,7 +114,7 @@ def sync(
         bool,
         typer.Option(
             "--diff-only",
-            help="Print diff and write the Markdown report; do not modify the DB.",
+            help="Print the diff; do not modify the DB.",
         ),
     ] = False,
     yes: Annotated[
@@ -129,7 +129,7 @@ def sync(
         Path | None,
         typer.Option(
             "--diff-report",
-            help="Markdown diff report path (default: ./sync-diff-TIMESTAMP.md).",
+            help="Also write the diff as Markdown to this path.",
             resolve_path=True,
         ),
     ] = None,
@@ -139,8 +139,8 @@ def sync(
     Fetches all cards via GraphQL, computes a diff against the local DB,
     and prompts approval per non-empty category (new cards / changed
     characteristics / reserve transitions / removed cards). Any
-    rejection aborts the sync; the DB is left untouched. A Markdown
-    diff report is always written when the diff is non-empty.
+    rejection aborts the sync; the DB is left untouched. The diff is
+    shown on screen; pass --diff-report to also save it as Markdown.
     """
     sync_collection(
         lang=_lang(ctx),
