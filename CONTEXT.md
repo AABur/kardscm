@@ -56,8 +56,12 @@ the game, it does not police it.
 **Exile**:
 A cross-faction link on a card: the card belongs to one faction but may be
 played in decks of another faction (its exile faction), reflecting the
-game's exile-forces mechanic. Deck import falls back to the exile link when
-a card is not found under its own faction.
+game's exile-forces mechanic. The card keeps its own faction (a Polish
+Exile card is still Poland); the link only grants a second faction it can
+be used by. Deck import falls back to the exile link when a card is not
+found under its own faction. Collection filtering by faction includes a
+faction's Exile cards by default (as the game client does), toggleable in
+the web UI.
 
 **Diff**:
 The comparison of card content between the local database and a fresh API
