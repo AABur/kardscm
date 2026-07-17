@@ -269,5 +269,3 @@ def save_baseline(snapshot: Snapshot) -> None:
         json.dumps(snapshot, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-
-
