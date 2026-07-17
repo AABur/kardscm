@@ -50,6 +50,7 @@ class CardFilters:
     text_query: str = ""
     include_spawnable: bool = False
     include_reserved: bool = False
+    include_exiles: bool = True
     owned_only: bool = False
 
 
@@ -70,8 +71,17 @@ def _build_where(filters: CardFilters, locale_key: str) -> tuple[list[str], list
 
     if filters.factions:
         placeholders = ",".join("?" for _ in filters.factions)
-        where.append(f"faction IN ({placeholders})")
-        params.extend(filters.factions)
+        if filters.include_exiles:
+            # An exile card keeps its own faction but may be played by its
+            # exile faction, so a nation view surfaces it too — matching the
+            # game client. Without a nation filter this branch is moot: every
+            # card is already listed under its own faction.
+            where.append(f"(faction IN ({placeholders}) OR exile IN ({placeholders}))")
+            params.extend(filters.factions)
+            params.extend(filters.factions)
+        else:
+            where.append(f"faction IN ({placeholders})")
+            params.extend(filters.factions)
 
     if filters.types:
         placeholders = ",".join("?" for _ in filters.types)

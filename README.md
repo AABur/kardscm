@@ -183,6 +183,13 @@ browsing, sorting, filters, card details, quantity editing, and full
 **Sync** and **Export** flows so the browser is the only surface needed to
 manage a collection.
 
+Filtering by nation includes that nation's **exile** cards by default — cards
+that belong to another nation but can be played in its decks (for example the
+Polish *T-34 76 PL* under Soviet), the way the game client shows them. Uncheck
+the **exiles** toggle to restrict the view to a nation's own cards. The toggle
+has no effect when no nation is selected, since every card is already listed
+under its own nation.
+
 Click **Edit** to enable quantity changes. Quantity writes are server-side
 validated by rarity caps:
 

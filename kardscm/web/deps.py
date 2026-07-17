@@ -40,9 +40,16 @@ def card_filters_dep(
     q: str = Query(default=""),
     spawnable: bool = Query(default=False),
     reserved: bool = Query(default=False),
+    exiles: list[str] = Query(default=[]),
     owned: bool = Query(default=False),
 ) -> CardFilters:
-    """FastAPI dependency that builds CardFilters from query string params."""
+    """FastAPI dependency that builds CardFilters from query string params.
+
+    `exiles` arrives as a list because the exile toggle defaults to ON: the
+    template pairs a hidden ``exiles=false`` with the checkbox's ``exiles=true``
+    so an unchecked box still submits a value. Absent entirely (a bare page
+    load with no form) means "use the default", which is ON.
+    """
     return CardFilters(
         factions=factions,
         types=types,
@@ -54,6 +61,7 @@ def card_filters_dep(
         text_query=q.strip(),
         include_spawnable=spawnable,
         include_reserved=reserved,
+        include_exiles=("true" in exiles) if exiles else True,
         owned_only=owned,
     )
 

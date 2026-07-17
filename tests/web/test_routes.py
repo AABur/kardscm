@@ -92,6 +92,28 @@ def db_path(tmp_path: Path) -> Path:
             None,
             0,
         ),
+        (
+            "pol_exile",
+            "",
+            "",
+            "",
+            "Poland",
+            "tank",
+            "Standard",
+            "Legions",
+            json.dumps({"en-EN": "T-34 76 PL", "ru-RU": "Т-34 76 PL"}),
+            json.dumps({"en-EN": "A Polish tank.", "ru-RU": "Польский танк."}),
+            4,
+            4,
+            4,
+            *_ZERO_ABILITIES,
+            None,
+            0,
+            "",
+            None,
+            "Soviet",  # exile faction
+            0,
+        ),
     ]
     conn.executemany(
         f"""
@@ -156,8 +178,8 @@ class TestIndex:
 
     def test_index_counter_visible(self, client: TestClient) -> None:
         r = client.get("/")
-        # 2 visible (reserved excluded) of 3 total
-        assert "2 / 3" in r.text
+        # 3 visible (reserved excluded) of 4 total
+        assert "3 / 4" in r.text
 
 
 class TestCardsPartial:
@@ -197,6 +219,31 @@ class TestCardsPartial:
     def test_include_reserved(self, client: TestClient) -> None:
         r = client.get("/cards", params={"reserved": "true"})
         assert "Reserved" in r.text
+
+    def test_faction_filter_includes_exiles_by_default(self, client: TestClient) -> None:
+        # No exiles param at all → default ON → the Polish exile tank shows
+        # up under a Soviet filter.
+        r = client.get("/cards", params={"factions": "Soviet"})
+        assert "T-34 76 PL" in r.text
+        assert "Soviet Rifles" in r.text
+
+    def test_exiles_off_hides_them_from_faction_filter(self, client: TestClient) -> None:
+        # Unchecked box submits the hidden false only.
+        r = client.get("/cards", params={"factions": "Soviet", "exiles": "false"})
+        assert "T-34 76 PL" not in r.text
+        assert "Soviet Rifles" in r.text
+
+    def test_exiles_checked_submits_both_values(self, client: TestClient) -> None:
+        # Checked box submits hidden false + checkbox true; last-wins → ON.
+        r = client.get(
+            "/cards", params=[("factions", "Soviet"), ("exiles", "false"), ("exiles", "true")]
+        )
+        assert "T-34 76 PL" in r.text
+
+    def test_index_form_has_exiles_toggle_checked(self, client: TestClient) -> None:
+        r = client.get("/")
+        assert 'name="exiles"' in r.text
+        assert 'value="true"' in r.text and "checked" in r.text
 
     def test_filter_by_single_ability(self, client: TestClient) -> None:
         r = client.get("/cards", params={"abilities": "blitz"})
