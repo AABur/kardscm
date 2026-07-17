@@ -105,6 +105,13 @@
       {{ ui.toggle_reserved }}
     </label>
     <label class="toggle">
+      {# Defaults to ON, so a hidden field submits "false" when unchecked. #}
+      <input type="hidden" name="exiles" value="false">
+      <input type="checkbox" name="exiles" value="true"
+        {% if filters.include_exiles %}checked{% endif %}>
+      {{ ui.toggle_exiles }}
+    </label>
+    <label class="toggle">
       <input type="checkbox" name="owned" value="true"
         {% if filters.owned_only %}checked{% endif %}>
       {{ ui.toggle_owned }}

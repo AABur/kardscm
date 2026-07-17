@@ -220,7 +220,7 @@ class TestFilters:
 
     def test_filter_by_kredits_multiple(self, conn):
         result = query_cards(conn, CardFilters(kredits=[3, 4]))
-        assert set(_ids(result)) == {"sov_tank_1", "usa_order"}
+        assert set(_ids(result)) == {"sov_tank_1", "usa_order", "pol_exile_tank"}
 
     def test_text_search_matches_title_en(self, conn):
         result = query_cards(conn, CardFilters(text_query="rifles"), locale_key="en-EN")
@@ -304,9 +304,7 @@ class TestExileFilter:
         assert {"sov_inf_1", "sov_tank_1"} <= set(_ids(result))
 
     def test_exiles_off_excludes_them_from_faction_filter(self, conn):
-        result = query_cards(
-            conn, CardFilters(factions=["Soviet"], include_exiles=False)
-        )
+        result = query_cards(conn, CardFilters(factions=["Soviet"], include_exiles=False))
         assert "pol_exile_tank" not in _ids(result)
 
     def test_exile_card_keeps_its_own_faction(self, conn):
@@ -331,7 +329,7 @@ class TestExileFilter:
 class TestAbilityFilter:
     def test_no_ability_filter_returns_all(self, conn):
         result = query_cards(conn, CardFilters())
-        assert len(result) == 4
+        assert len(result) == 5
 
     def test_filter_by_single_ability(self, conn):
         result = query_cards(conn, CardFilters(abilities=["guard"]))
@@ -345,7 +343,7 @@ class TestAbilityFilter:
     def test_filter_unknown_ability_silently_ignored(self, conn):
         # Unknown name not in KNOWN_ABILITIES → treated as if not provided
         result = query_cards(conn, CardFilters(abilities=["bogus_ability_x"]))
-        assert len(result) == 4
+        assert len(result) == 5
 
     def test_unknown_mixed_with_known_keeps_known(self, conn):
         result = query_cards(conn, CardFilters(abilities=["guard", "bogus"]))
@@ -374,7 +372,7 @@ class TestExtraAbilityFilter:
 
     def test_no_extra_ability_filter_returns_all(self, conn_with_extras):
         result = query_cards(conn_with_extras, CardFilters())
-        assert len(result) == 4
+        assert len(result) == 5
 
     def test_filter_by_single_extra_ability(self, conn_with_extras):
         result = query_cards(conn_with_extras, CardFilters(extra_abilities=["resistance"]))
@@ -389,7 +387,7 @@ class TestExtraAbilityFilter:
 
     def test_filter_unknown_extra_ability_silently_ignored(self, conn_with_extras):
         result = query_cards(conn_with_extras, CardFilters(extra_abilities=["bogus_extra_x"]))
-        assert len(result) == 4
+        assert len(result) == 5
 
     def test_extra_ability_combines_with_faction_via_and(self, conn_with_extras):
         # Soviet ∩ pincer → only sov_inf_1 (usa_order has pincer but not Soviet)
@@ -412,24 +410,30 @@ class TestExtraAbilityFilter:
 class TestSort:
     def test_sort_by_kredits_asc(self, conn):
         result = query_cards(conn, CardFilters(), sort_col="kredits", sort_dir="asc")
-        assert [r["kredits"] for r in result] == [2, 2, 3, 4]
+        assert [r["kredits"] for r in result] == [2, 2, 3, 4, 4]
 
     def test_sort_by_kredits_desc(self, conn):
         result = query_cards(conn, CardFilters(), sort_col="kredits", sort_dir="desc")
-        assert [r["kredits"] for r in result] == [4, 3, 2, 2]
+        assert [r["kredits"] for r in result] == [4, 4, 3, 2, 2]
 
     def test_sort_by_title_uses_locale(self, conn):
         result = query_cards(
             conn, CardFilters(), sort_col="title", sort_dir="asc", locale_key="en-EN"
         )
         ids = _ids(result)
-        # Air Strike < Soviet Rifles < T-34 < Wehrmacht
-        assert ids == ["usa_order", "sov_inf_1", "sov_tank_1", "ger_inf_1"]
+        # Air Strike < Soviet Rifles < T-34 < T-34 76 PL < Wehrmacht
+        assert ids == ["usa_order", "sov_inf_1", "sov_tank_1", "pol_exile_tank", "ger_inf_1"]
 
     def test_invalid_sort_column_falls_back_to_default(self, conn):
         result = query_cards(conn, CardFilters(), sort_col="bogus", sort_dir="asc")
         # default sort = faction -> title
-        assert _ids(result) == ["ger_inf_1", "sov_inf_1", "sov_tank_1", "usa_order"]
+        assert _ids(result) == [
+            "ger_inf_1",
+            "pol_exile_tank",
+            "sov_inf_1",
+            "sov_tank_1",
+            "usa_order",
+        ]
 
     def test_invalid_sort_dir_falls_back_to_asc(self, conn):
         result_default = query_cards(conn, CardFilters(), sort_col="kredits", sort_dir="asc")
