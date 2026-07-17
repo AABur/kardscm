@@ -7,7 +7,7 @@
 `kardscm` is a local collection and deck manager for
 [KARDS](https://www.kards.com/).
 
-It syncs the official card catalog into a local SQLite database, lets you keep
+It syncs the official card set into a local SQLite database, lets you keep
 your owned card quantities up to date, saves decks from KARDS client TXT files,
 and exports collection or deck data to XLSX or JSON.
 
@@ -29,13 +29,13 @@ responsible for complying with the
 [KARDS Terms of Use](https://www.kards.com/terms-of-use).
 
 This repository ships no card data, card art, or pre-built database. The local
-SQLite catalog is built on the user's own machine.
+SQLite collection is built on the user's own machine.
 
 ## What It Does
 
-- Syncs the full KARDS card catalog, including reserved and spawnable cards.
+- Syncs the full KARDS card set, including reserved and spawnable cards.
 - Preserves user-managed card quantities across syncs.
-- Shows catalog changes before applying them: new cards, changed stats/text,
+- Shows card-set changes before applying them: new cards, changed stats/text,
   reserve transitions, and removed cards.
 - Exports the collection to XLSX or JSON.
 - Updates card quantities from an edited XLSX export.
@@ -77,7 +77,7 @@ repo and ran `make sync`, prefix each command with `uv run` (or
 activate `.venv` first) so the console script is found:
 
 ```bash
-# 1. Sync the card catalog into collection.db.
+# 1. Sync the card set into collection.db.
 uv run kardscm sync
 
 # 2. Open the local browser UI and edit quantities.
@@ -118,22 +118,26 @@ kardscm sync --yes
 kardscm sync --diff-report ./sync-report.md
 ```
 
-`sync` fetches the official catalog, compares it with the local database, and
+`sync` fetches the official card set, compares it with the local database, and
 shows a diff before writing changes. Any rejected prompt aborts the sync and
-leaves the database unchanged. A Markdown report is written whenever there are
-changes.
+leaves the database unchanged. The diff is shown on screen; nothing is written
+to disk unless you pass `--diff-report`.
 
-`--diff-only` writes the report without modifying the database. `--yes`
+`--diff-only` prints the diff without modifying the database. `--yes`
 (short: `-y`) auto-approves every category for scripted runs.
+
+The diff is shown on screen and no file is written. Pass `--diff-report PATH`
+to also save it as Markdown — useful for scripted runs where nobody is
+watching the terminal.
 
 Sync also checks the live GraphQL response *shape* against the committed
 baseline `kardscm/data/api_baseline.json`. A genuine contract change — a field
 added or removed, a field becoming sparse, a new `faction`/`type`/`rarity`/
-ability value, or a sharp drop in card count — **halts the sync** and writes
-`sync-schema-diff-*.md` and `sync-schema-observed-*.json` to the current
-directory. Normal content growth (new card sets, more cards) is not a contract
-change and never blocks. After reviewing a halt, run `kardscm baseline accept`
-to adopt the new shape, then sync again.
+ability value, or a sharp drop in card count — **halts the sync** and prints
+what changed. Normal content growth (new card sets, more cards) is not a
+contract change and never blocks. The observed shape is stored in the database,
+so after reviewing a halt you can run `kardscm baseline accept` to adopt
+exactly the shape you reviewed, then sync again.
 
 ## Collection Export And Update
 
@@ -215,7 +219,7 @@ kardscm web --admin            # short: -A
 kardscm --lang ru web --admin
 ```
 
-Admin mode is for trusted local correction of catalog data. It exposes editable
+Admin mode is for trusted local correction of collection data. It exposes editable
 card stats, categories, ability flags, extra-ability flags, reserved state, and
 localized title/text for the active locale.
 
@@ -242,11 +246,12 @@ kardscm deck export -f json -o deck.json
 back to exile links when needed, checks collection quantities, and can update
 or replace existing data:
 
-- `--update` / `-u`: raise collection quantities to match the deck
+- `--update` / `-u`: raise collection quantities to the deck's counts
 - `--replace` / `-r`: overwrite an existing saved deck with the same name
 
-`deck import` still exists as a simpler single-file import path, but day-to-day
-use should prefer `deck add`.
+`deck add` only reports a quantity shortfall when the deck needs more copies
+than the collection records — a deck using fewer copies than you own is fine.
+Quantities are capped per rarity exactly as in the game.
 
 ## Deck File Format
 
@@ -280,26 +285,25 @@ Rules:
 ## API Baseline
 
 The committed baseline at `kardscm/data/api_baseline.json` is the contract that
-sync drift is checked against. A contract change halts the sync; after reviewing
-the drift report, promote the new shape (run from a clone; pipx users can drop
-the `uv run` prefix):
+sync drift is checked against. A contract change halts the sync and prints what
+changed; the observed shape is stored in the database. After reviewing the drift
+and updating any constants or translations, promote the reviewed shape (run from
+a clone; pipx users can drop the `uv run` prefix):
 
 ```bash
 uv run kardscm baseline accept
 ```
 
-`baseline accept` adopts the latest `sync-schema-observed-*.json` from the sync
-drift report — after you have reviewed it and updated any constants or
-translations. A from-scratch baseline is created automatically on the first sync
+`baseline accept` promotes the shape from the last halted sync — exactly what
+you reviewed, not whatever the API happens to serve at accept time — and then
+clears it. A from-scratch baseline is created automatically on the first sync
 when none exists.
 
 ## Output Files
 
 - `collection.db`: local SQLite database
 - `collection.db.bak*`: local backups
-- `sync-diff-*.md`: sync reports
-- `sync-schema-diff-*.md`: API drift reports
-- `sync-schema-observed-*.json`: observed API snapshots
+- `sync-diff-*.md`: sync reports, only when `--diff-report` is passed
 - export files: whatever path you pass with `-o`
 
 Generated local data is intentionally not part of the repository.

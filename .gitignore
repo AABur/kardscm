@@ -47,10 +47,8 @@ htmlcov/
 collection.db
 collection.db.bak*
 
-# Sync drift/diff reports (written to cwd by sync; regenerated on demand)
+# Sync diff reports (only written when `sync --diff-report PATH` is passed)
 sync-diff-*.md
-sync-schema-diff-*.md
-sync-schema-observed-*.json
 
 # Claude Code code-graph index cache
 .codegraph/

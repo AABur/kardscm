@@ -20,7 +20,7 @@ make help       # list available make targets
 make sync       # install runtime dependencies
 make sync-dev   # install runtime/dev dependencies
 make run        # show kardscm CLI help
-make sync-diff  # preview catalog sync without DB changes
+make sync-diff  # preview card-set sync without DB changes
 make web        # start the local web UI
 make web-admin  # start admin web UI with DB backup
 make test       # pytest with coverage
@@ -102,7 +102,7 @@ collection.db
 ```text
 KARDS deck TXT
   -> importing.parser
-  -> commands.add_deck (or) commands.import_deck
+  -> commands.add_deck
   -> storage.database
   -> collection.db
 ```
@@ -142,8 +142,9 @@ Schema initialization also handles:
 
 ## Sync And API Drift
 
-`kardscm sync` fetches the catalog, computes a diff, asks for category approval,
-and writes only after approval. Rejected syncs leave the DB unchanged.
+`kardscm sync` fetches the card set, computes a diff, asks for category approval,
+and writes only after approval. Rejected syncs leave the DB unchanged. The diff
+is shown on screen; nothing is written unless `--diff-report PATH` is passed.
 
 The API baseline lives at:
 
@@ -153,13 +154,10 @@ kardscm/data/api_baseline.json
 
 During sync, the raw GraphQL response *shape* is compared with this committed
 baseline. A contract change **halts the sync** (it raises
-`ApiContractDriftError` before any DB write) and produces local files for
-review:
-
-```text
-sync-schema-diff-*.md
-sync-schema-observed-*.json
-```
+`ApiContractDriftError` before any DB write). The halt prints the drift to the
+terminal (CLI) or renders it in the sync modal (web); no files are written. The
+observed shape is stashed in the database under the `drift_observed_snapshot`
+metadata key so it can be promoted later.
 
 A contract change means: a top-level or JSON key added or removed, a key
 becoming sparse, a new `faction`/`type`/`rarity`/ability value, or a sharp drop
@@ -168,9 +166,10 @@ drift and never halts.
 
 Workflow when a sync halts on drift:
 
-1. Review the generated schema diff and observed snapshot.
+1. Review the drift printed by the halt.
 2. Update code/constants/locales if the new shape needs handling.
-3. Run `uv run kardscm baseline accept` to promote the latest observed snapshot.
+3. Run `uv run kardscm baseline accept` to promote the stashed observed
+   snapshot — exactly the shape you reviewed — and clear it.
 4. Commit the baseline update with the related code or data change, then re-run
    the sync.
 
@@ -182,9 +181,8 @@ data-derived contract snapshot.
 
 ## Extra Abilities
 
-Some KARDS mechanics are visible in the game client but are not exposed as
-official GraphQL attributes. Those are tracked as manually curated
-extra-ability flags.
+Some KARDS abilities are visible in the game client but are not exposed by the
+official GraphQL API. Those are tracked as manually curated extra-ability flags.
 
 Relevant files:
 
