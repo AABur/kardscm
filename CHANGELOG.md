@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Exile-aware nation filter (web UI).** Filtering the collection by nation now
+  includes that nation's exile cards by default — cards of another nation that
+  can be played in its decks (for example the Polish *T-34 76 PL* under Soviet),
+  matching the game client. A new **exiles** toggle (on by default) restricts
+  the view to a nation's own cards. The toggle is inert when no nation is
+  selected.
 - **Web UI Sync flow**: a **Sync** button in the page header opens a
   confirmation modal, runs the same fetch + diff the CLI does (with a
   spinner during the request), and shows a categorized preview (new /
