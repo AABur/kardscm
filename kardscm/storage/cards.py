@@ -2,11 +2,38 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from collections.abc import Iterable
 
-from kardscm.constants import KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES
+from kardscm.constants import KNOWN_ABILITIES, KNOWN_EXTRA_ABILITIES, RARITY_MAX_QUANTITY
 from kardscm.models import CardDict
+
+logger = logging.getLogger(__name__)
+
+_DEFAULT_RARITY_CAP = 4
+
+
+def _cap_quantity(quantity: int, rarity: str, card_label: str) -> int:
+    """Clamp a quantity to the rarity's maximum, as the game does.
+
+    Owning more copies than the rarity allows is impossible in-game, so a
+    higher value is a data error (a mistyped spreadsheet cell, say) rather
+    than player intent. Clamping keeps the write path forgiving while the
+    warning tells the user their input was not taken literally.
+    """
+    cap = RARITY_MAX_QUANTITY.get(rarity, _DEFAULT_RARITY_CAP)
+    if quantity <= cap:
+        return quantity
+    logger.warning(
+        "%s: quantity %d exceeds the %s cap of %d — storing %d.",
+        card_label,
+        quantity,
+        rarity or "unknown rarity",
+        cap,
+        cap,
+    )
+    return cap
 
 
 def upsert_cards(conn: sqlite3.Connection, cards: Iterable[CardDict]) -> None:
@@ -158,6 +185,8 @@ def update_quantity(
         updates: Iterable of (faction_display, localized_title, quantity) tuples.
         locale_key: Locale key for JSON title extraction (e.g. "en-EN").
 
+    Quantities above the card's rarity cap are clamped (see `_cap_quantity`).
+
     Returns:
         Tuple of (updated_count, not_found_list).
     """
@@ -170,17 +199,21 @@ def update_quantity(
         if qty is None:
             continue
 
-        cursor = conn.execute(
-            "UPDATE cards SET quantity = ? "
+        rows = conn.execute(
+            "SELECT cardId, rarity FROM cards "
             "WHERE faction = ? "
             "AND sanitize_text(json_extract(title, ?)) = sanitize_text(?)",
-            (qty, faction, f'$."{locale_key}"', title),
-        )
+            (faction, f'$."{locale_key}"', title),
+        ).fetchall()
 
-        if cursor.rowcount > 0:
-            updated += 1
-        else:
+        if not rows:
             not_found.append(f"{faction} / {title}")
+            continue
+
+        for card_id, rarity in rows:
+            capped = _cap_quantity(qty, rarity or "", f"{faction} / {title}")
+            conn.execute("UPDATE cards SET quantity = ? WHERE cardId = ?", (capped, card_id))
+        updated += 1
 
     conn.commit()
     return updated, not_found
@@ -255,9 +288,14 @@ def get_card_quantity_by_id(conn: sqlite3.Connection, card_id: str) -> int:
 def update_card_quantity_by_id(conn: sqlite3.Connection, card_id: str, quantity: int) -> None:
     """Update quantity for a card by its ID.
 
+    Quantities above the card's rarity cap are clamped (see `_cap_quantity`).
+
     Args:
         conn: SQLite connection instance.
         card_id: cardId to update.
         quantity: New quantity value.
     """
+    row = conn.execute("SELECT rarity FROM cards WHERE cardId = ?", (card_id,)).fetchone()
+    if row is not None:
+        quantity = _cap_quantity(quantity, row[0] or "", card_id)
     conn.execute("UPDATE cards SET quantity = ? WHERE cardId = ?", (quantity, card_id))

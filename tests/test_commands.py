@@ -16,7 +16,6 @@ from kardscm.commands import (
     export_collection,
     export_deck,
     fetch_and_compute_diff,
-    import_deck,
     remove_deck,
     sync_collection,
     update_collection,
@@ -104,85 +103,6 @@ class TestUpdateCollection:
         assert cards[0]["quantity"] == 3
 
 
-class TestImportDeck:
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_file_not_found(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-        with pytest.raises(SystemExit, match="Failed to parse deck"):
-            import_deck(str(tmp_path / "missing.txt"), db_path=str(tmp_path / "t.db"))
-
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_duplicate_deck(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-
-        db_path = str(tmp_path / "test.db")
-        with get_connection(db_path) as conn:
-            initialize_schema(conn)
-            insert_deck(
-                conn,
-                {
-                    "name": "My Deck",
-                    "major_power": "soviet",
-                    "ally": None,
-                    "hq": None,
-                    "deck_code": None,
-                    "cards": [],
-                },
-            )
-            conn.commit()
-
-        deck_file = tmp_path / "deck.txt"
-        deck_file.write_text(
-            "My Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) Card\n",
-            encoding="utf-8",
-        )
-
-        with pytest.raises(SystemExit, match="already exists"):
-            import_deck(str(deck_file), db_path=db_path)
-
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_card_not_found(self, mock_config, tmp_path):
-        mock_config.return_value = LANGUAGE_EN
-
-        db_path = str(tmp_path / "test.db")
-        with get_connection(db_path) as conn:
-            initialize_schema(conn)
-
-        deck_file = tmp_path / "deck.txt"
-        deck_file.write_text(
-            "New Deck\nMajor power: soviet\n\nsoviet:\n1x (1K) MISSING\n",
-            encoding="utf-8",
-        )
-
-        with pytest.raises(SystemExit, match="Cards not found"):
-            import_deck(str(deck_file), db_path=db_path)
-
-    @patch("kardscm.commands.decks.get_language_config")
-    def test_success(self, mock_config, tmp_path, make_card):
-        mock_config.return_value = LANGUAGE_EN
-
-        db_path = str(tmp_path / "test.db")
-        with get_connection(db_path) as conn:
-            initialize_schema(conn)
-            upsert_cards(
-                conn,
-                [make_card(title=json.dumps({"en-EN": "Alpha"}))],
-            )
-
-        deck_file = tmp_path / "deck.txt"
-        deck_file.write_text(
-            "My Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
-            encoding="utf-8",
-        )
-
-        import_deck(str(deck_file), db_path=db_path)
-
-        with get_connection(db_path) as conn:
-            decks = fetch_all_decks(conn)
-        assert len(decks) == 1
-        assert decks[0]["name"] == "My Deck"
-
-
 class TestSyncCollection:
     @staticmethod
     def _list_diff_files(directory: Path) -> list[Path]:
@@ -190,11 +110,11 @@ class TestSyncCollection:
 
     @patch("kardscm.commands.sync.get_language_config")
     @patch("kardscm.commands.sync.scrape_cards")
-    def test_first_sync_writes_all_new_cards_and_report(
+    def test_first_sync_writes_all_new_cards(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
-        """Empty DB + non-empty scrape: every card lands in 'new', interactive
-        approval (auto via --yes) writes everything and emits a report."""
+        """Empty DB + non-empty scrape: every card lands in 'new' and
+        interactive approval (auto via --yes) writes everything."""
         mock_config.return_value = LANGUAGE_EN
         mock_scrape.return_value = [make_card()]
         monkeypatch.chdir(tmp_path)
@@ -206,7 +126,7 @@ class TestSyncCollection:
             cards = fetch_cards(conn)
         assert len(cards) == 1
         assert json.loads(cards[0]["title"])["en-EN"] == "Alpha"
-        assert len(self._list_diff_files(tmp_path)) == 1
+        assert self._list_diff_files(tmp_path) == []  # no report unless asked
 
     @patch("kardscm.commands.sync.get_language_config")
     @patch("kardscm.commands.sync.scrape_cards")
@@ -233,7 +153,7 @@ class TestSyncCollection:
 
     @patch("kardscm.commands.sync.get_language_config")
     @patch("kardscm.commands.sync.scrape_cards")
-    def test_diff_only_writes_report_no_db_changes(
+    def test_diff_only_makes_no_db_changes_and_writes_nothing(
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
         mock_config.return_value = LANGUAGE_EN
@@ -252,9 +172,7 @@ class TestSyncCollection:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert cards[0]["kredits"] == 2  # unchanged
-        diff_files = self._list_diff_files(tmp_path)
-        assert len(diff_files) == 1
-        assert "kredits: `2` → `5`" in diff_files[0].read_text(encoding="utf-8")
+        assert self._list_diff_files(tmp_path) == []
 
     @patch("kardscm.commands.sync.typer.confirm", return_value=False)
     @patch("kardscm.commands.sync.get_language_config")
@@ -286,7 +204,7 @@ class TestSyncCollection:
             last_sync = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
         assert cards[0]["kredits"] == 2  # rejected — DB untouched
         assert last_sync is None  # rejection does not bump last_sync
-        assert len(self._list_diff_files(tmp_path)) == 1  # report still written
+        assert self._list_diff_files(tmp_path) == []
 
     @patch("kardscm.commands.sync.delete_cards")
     @patch("kardscm.commands.sync.get_language_config")
@@ -345,17 +263,21 @@ class TestSyncCollection:
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
         """API contract drift halts the sync (exit non-zero, DB untouched)."""
+        from kardscm.commands.sync import OBSERVED_SNAPSHOT_KEY
         from kardscm.scraping import ApiContractDriftError
         from kardscm.scraping.baseline import DriftReport
 
         mock_config.return_value = LANGUAGE_EN
         report = DriftReport()
         report.added_json_keys.append("newField")
-        mock_scrape.side_effect = ApiContractDriftError(
-            report,
-            Path("sync-schema-diff-x.md"),
-            Path("sync-schema-observed-x.json"),
-        )
+        observed = {
+            "captured_at": "2026-01-01T00:00:00+00:00",
+            "card_count": 5,
+            "node_keys": ["cardId"],
+            "json_keys": {"newField": 5},
+            "enum_values": {},
+        }
+        mock_scrape.side_effect = ApiContractDriftError(report, observed)
         monkeypatch.chdir(tmp_path)
 
         db_path = str(tmp_path / "sync.db")
@@ -369,8 +291,14 @@ class TestSyncCollection:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
             last_sync = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+            stashed = conn.execute(
+                "SELECT value FROM metadata WHERE key=?", (OBSERVED_SNAPSHOT_KEY,)
+            ).fetchone()
         assert cards[0]["kredits"] == 2  # DB untouched
         assert last_sync is None
+        # The reviewed shape is stashed for `baseline accept` — and no files.
+        assert json.loads(stashed[0])["json_keys"] == {"newField": 5}
+        assert not list(tmp_path.glob("sync-schema-*"))
 
 
 class TestFetchAndComputeDiff:
@@ -754,6 +682,44 @@ class TestAddDeck:
         with get_connection(db_with_card) as conn:
             cards = fetch_cards(conn)
         assert cards[0]["quantity"] == 2
+
+    @patch("kardscm.commands.decks.get_language_config")
+    def test_deck_below_collection_is_not_a_mismatch(self, mock_config, db_with_card, tmp_path):
+        """A deck may use fewer copies than the player owns."""
+        mock_config.return_value = LANGUAGE_EN
+        with get_connection(db_with_card) as conn:
+            conn.execute("UPDATE cards SET quantity = 4 WHERE cardId = 'card-1'")
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Alpha Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            assert fetch_all_decks(conn)[0]["name"] == "Alpha Deck"
+
+    @patch("kardscm.commands.decks.get_language_config")
+    def test_update_never_lowers_collection_quantity(self, mock_config, db_with_card, tmp_path):
+        """--update raises quantities to match the deck; it never lowers them."""
+        mock_config.return_value = LANGUAGE_EN
+        with get_connection(db_with_card) as conn:
+            conn.execute("UPDATE cards SET quantity = 4 WHERE cardId = 'card-1'")
+            conn.commit()
+
+        deck_file = tmp_path / "deck.txt"
+        deck_file.write_text(
+            "Alpha Deck\nMajor power: usa\n\nusa:\n2x (1K) Alpha\n",
+            encoding="utf-8",
+        )
+
+        add_deck(str(deck_file), update=True, db_path=db_with_card)
+
+        with get_connection(db_with_card) as conn:
+            assert fetch_cards(conn)[0]["quantity"] == 4
 
     @patch("kardscm.commands.decks.get_language_config")
     def test_success_no_mismatch(self, mock_config, db_with_card, tmp_path):

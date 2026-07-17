@@ -51,7 +51,7 @@ def create_sync_router(
                 "_sync_drift.html",
                 {
                     "ui": cfg.ui_strings,
-                    "report_path": str(exc.report_path) if exc.report_path else None,
+                    "drift": exc.report,
                     "drift_count": exc.report.count(),
                 },
             )

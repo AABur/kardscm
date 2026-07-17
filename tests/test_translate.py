@@ -57,12 +57,12 @@ class TestTranslateCardEN:
     def test_attributes(self):
         card = _make_db_card(ability_blitz=1, ability_guard=1)
         result = translate_card_for_export(card, LANGUAGE_EN)
-        assert result["attributes"] == "Blitz, Guard"
+        assert result["abilities"] == "Blitz, Guard"
 
     def test_unknown_ability_not_in_output(self):
         card = _make_db_card(ability_blitz=1)
         result = translate_card_for_export(card, LANGUAGE_EN)
-        assert result["attributes"] == "Blitz"
+        assert result["abilities"] == "Blitz"
 
     def test_nullable_fields(self):
         card = _make_db_card(attack=None, defense=None)
@@ -85,7 +85,7 @@ class TestTranslateCardRU:
     def test_attributes_ru(self):
         card = _make_db_card(ability_guard=1)
         result = translate_card_for_export(card, LANGUAGE_RU)
-        assert result["attributes"] == "Охрана"
+        assert result["abilities"] == "Охрана"
 
 
 class TestTranslateEdgeCases:
@@ -109,7 +109,7 @@ class TestTranslateEdgeCases:
     def test_empty_attributes(self):
         card = _make_db_card()
         result = translate_card_for_export(card, LANGUAGE_EN)
-        assert result["attributes"] == ""
+        assert result["abilities"] == ""
 
     def test_quantity_preserved(self):
         card = _make_db_card(quantity=5)

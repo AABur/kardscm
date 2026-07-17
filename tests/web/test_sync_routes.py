@@ -84,15 +84,21 @@ class TestSyncStart:
 
         report = DriftReport()
         report.added_json_keys.append("newField")
-        mock_scrape.side_effect = ApiContractDriftError(
-            report,
-            Path("sync-schema-diff-x.md"),
-            Path("sync-schema-observed-x.json"),
-        )
+        report.added_enum_values["rarity"] = ["Mythic"]
+        observed = {
+            "captured_at": "2026-01-01T00:00:00+00:00",
+            "card_count": 5,
+            "node_keys": ["cardId"],
+            "json_keys": {"newField": 5},
+            "enum_values": {"rarity": ["Mythic"]},
+        }
+        mock_scrape.side_effect = ApiContractDriftError(report, observed)
         r = client.post("/sync/start")
         assert r.status_code == 200
-        # Drift modal points at the report and exposes no apply/cancel.
-        assert "sync-schema-diff-x.md" in r.text
+        # The modal shows the drift itself and offers no apply/cancel:
+        # accepting a baseline stays a deliberate CLI step.
+        assert "newField" in r.text
+        assert "Mythic" in r.text
         assert "/sync/apply/" not in r.text
         # DB must remain untouched.
         with get_connection(db_path) as conn:
@@ -127,7 +133,7 @@ class TestSyncApply:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
         assert cards[0]["kredits"] == 5
-        assert list(tmp_path.glob("sync-diff-*.md"))
+        assert not list(tmp_path.glob("sync-diff-*.md"))  # browser flow writes no files
 
         # Session must be evicted — second apply with same id is 404.
         again = client.post(f"/sync/apply/{sync_id}")

@@ -13,7 +13,6 @@ from kardscm.config import LanguageConfig
 from kardscm.constants import (
     KNOWN_ABILITIES,
     KNOWN_EXTRA_ABILITIES,
-    RARITY_MAX_QUANTITY,
 )
 from kardscm.helpers import extract_locale
 from kardscm.storage.database import (
@@ -198,8 +197,6 @@ def create_collection_router(
             if row is None:
                 raise HTTPException(status_code=404, detail="card not found")
             rarity_raw = row[0] or ""
-            max_qty = RARITY_MAX_QUANTITY.get(rarity_raw, 4)
-            quantity = min(quantity, max_qty)
             update_card_quantity_by_id(conn, card_id, quantity)
             conn.commit()
             persisted = get_card_quantity_by_id(conn, card_id)

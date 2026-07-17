@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from pathlib import Path
 
 import typer
 
@@ -29,7 +28,3 @@ def _emit_locale_warnings(cfg: LanguageConfig) -> None:
         f"Locale '{cfg.code}': {len(keys)} key(s) fell back to English ({summary}{suffix}).",
         err=True,
     )
-
-
-def _default_diff_report_path() -> Path:
-    return Path.cwd() / f"sync-diff-{_safe_timestamp()}.md"

@@ -4,49 +4,63 @@ from __future__ import annotations
 
 import json
 import logging
-import shutil
-from pathlib import Path
+from typing import cast
 
-from kardscm.scraping import baseline
+from kardscm.commands.sync import OBSERVED_SNAPSHOT_KEY
+from kardscm.constants import DEFAULT_DB_PATH
+from kardscm.scraping.baseline import Snapshot, save_baseline
+from kardscm.storage import (
+    delete_metadata,
+    get_connection,
+    get_metadata,
+    initialize_schema,
+)
 
 logger = logging.getLogger(__name__)
 
 _BASELINE_REQUIRED_KEYS = ("card_count", "node_keys", "json_keys", "enum_values")
+_REQUIRED_KEY_TYPES: dict[str, tuple[type, str]] = {
+    "card_count": (int, "an int"),
+    "node_keys": (list, "a list"),
+    "json_keys": (dict, "a dict"),
+    "enum_values": (dict, "a dict"),
+}
 
 
-def baseline_accept() -> None:
-    """Promote the most recent ``sync-schema-observed-*.json`` to baseline.
+def baseline_accept(db_path: str = DEFAULT_DB_PATH) -> None:
+    """Promote the snapshot stashed by the last halted sync to baseline.
 
-    Looks for files matching the pattern in cwd, picks the lexicographically
-    latest (timestamps are ISO-like and sort correctly), validates its
-    structural shape (must be a dict with all required snapshot keys of
-    the correct types), and copies it to the committed baseline location.
+    The snapshot is the shape the user reviewed when the sync halted, so
+    accepting adopts exactly that — not whatever the API serves right now.
+
+    Args:
+        db_path: SQLite database path.
     """
-    candidates = sorted(Path.cwd().glob("sync-schema-observed-*.json"))
-    if not candidates:
+    with get_connection(db_path) as conn:
+        initialize_schema(conn, db_path)
+        raw = get_metadata(conn, OBSERVED_SNAPSHOT_KEY)
+
+    if raw is None:
         raise SystemExit(
-            "No sync-schema-observed-*.json files found in current directory. "
-            "Run `kardscm sync` first."
+            "No drifted API shape is waiting to be accepted. "
+            "Run `kardscm sync` first — accept only applies after a sync halts on drift."
         )
-    latest = candidates[-1]
+
     try:
-        parsed = json.loads(latest.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError) as exc:
-        raise SystemExit(f"Cannot parse {latest}: {exc}") from exc
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Stored snapshot is not valid JSON: {exc}") from exc
 
     if not isinstance(parsed, dict):
-        raise SystemExit(f"{latest} is not a snapshot object (got {type(parsed).__name__}).")
+        raise SystemExit(f"Stored snapshot is not an object (got {type(parsed).__name__}).")
     missing = [k for k in _BASELINE_REQUIRED_KEYS if k not in parsed]
     if missing:
-        raise SystemExit(f"{latest} is missing required keys: {', '.join(missing)}")
-    if not isinstance(parsed["card_count"], int):
-        raise SystemExit(f"{latest}: card_count must be an int")
-    if not isinstance(parsed["node_keys"], list):
-        raise SystemExit(f"{latest}: node_keys must be a list")
-    if not isinstance(parsed["json_keys"], dict):
-        raise SystemExit(f"{latest}: json_keys must be a dict")
-    if not isinstance(parsed["enum_values"], dict):
-        raise SystemExit(f"{latest}: enum_values must be a dict")
+        raise SystemExit(f"Stored snapshot is missing required keys: {', '.join(missing)}")
+    for key, (expected, label) in _REQUIRED_KEY_TYPES.items():
+        if not isinstance(parsed[key], expected):
+            raise SystemExit(f"Stored snapshot: {key} must be {label}")
 
-    shutil.copy2(latest, baseline.BASELINE_PATH)
-    logger.info("Baseline updated from %s.", latest.name)
+    save_baseline(cast(Snapshot, parsed))
+    with get_connection(db_path) as conn:
+        delete_metadata(conn, OBSERVED_SNAPSHOT_KEY)
+    logger.info("Baseline updated from the last halted sync.")

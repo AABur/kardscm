@@ -57,7 +57,7 @@ def test_attributes_change_flagged(make_card):
     assert len(report["changed"]) == 1
     changes = report["changed"][0]["changes"]
     assert len(changes) == 1
-    assert changes[0]["field"] == "attributes"
+    assert changes[0]["field"] == "abilities"
     assert sorted(changes[0]["old"]) == ["heavyArmor2", "mobilize"]
     assert sorted(changes[0]["new"]) == ["blitz", "heavyArmor2", "shock"]
 
@@ -254,5 +254,5 @@ def test_compute_diff_detects_text_change(make_card):
 
     report = compute_diff([dict(old)], [new], locale_key="en-EN")
     fields = {c["field"] for c in report["changed"][0]["changes"]}
-    assert "attributes" in fields
+    assert "abilities" in fields
     assert "text" in fields

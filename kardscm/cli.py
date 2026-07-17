@@ -16,7 +16,6 @@ from kardscm.commands import (
     baseline_accept,
     export_collection,
     export_deck,
-    import_deck,
     remove_deck,
     sync_collection,
     update_collection,
@@ -115,7 +114,7 @@ def sync(
         bool,
         typer.Option(
             "--diff-only",
-            help="Print diff and write the Markdown report; do not modify the DB.",
+            help="Print the diff; do not modify the DB.",
         ),
     ] = False,
     yes: Annotated[
@@ -130,7 +129,7 @@ def sync(
         Path | None,
         typer.Option(
             "--diff-report",
-            help="Markdown diff report path (default: ./sync-diff-TIMESTAMP.md).",
+            help="Also write the diff as Markdown to this path.",
             resolve_path=True,
         ),
     ] = None,
@@ -140,8 +139,8 @@ def sync(
     Fetches all cards via GraphQL, computes a diff against the local DB,
     and prompts approval per non-empty category (new cards / changed
     characteristics / reserve transitions / removed cards). Any
-    rejection aborts the sync; the DB is left untouched. A Markdown
-    diff report is always written when the diff is non-empty.
+    rejection aborts the sync; the DB is left untouched. The diff is
+    shown on screen; pass --diff-report to also save it as Markdown.
     """
     sync_collection(
         lang=_lang(ctx),
@@ -204,33 +203,6 @@ def update(
 
 
 @deck_app.command(
-    "import",
-    epilog="Examples:\n\n* `kards deck import -i deck.txt`",
-)
-def deck_import(
-    ctx: typer.Context,
-    file: Annotated[
-        Path,
-        typer.Option(
-            "--file",
-            "-i",
-            help="Deck TXT file to import",
-            exists=True,
-            readable=True,
-            resolve_path=True,
-        ),
-    ],
-) -> None:
-    """Import a deck from a TXT file.
-
-    Parses the deck file and saves it to the local database.
-    Cards in the file must already exist in the collection.
-    """
-    _validate_extension(file, ".txt")
-    import_deck(str(file), lang=_lang(ctx))
-
-
-@deck_app.command(
     "add",
     epilog="Examples:\n\n"
     "* `kards deck add deck.txt`\n\n"
@@ -250,7 +222,7 @@ def deck_add(
     ],
     update: Annotated[
         bool,
-        typer.Option("--update", "-u", help="Update collection quantities to match deck"),
+        typer.Option("--update", "-u", help="Raise collection quantities to the deck's counts"),
     ] = False,
     replace: Annotated[
         bool,
@@ -260,7 +232,8 @@ def deck_add(
     """Add deck(s) from TXT file(s), with exile card support.
 
     Looks up cards by faction first, then falls back to the exile field.
-    Checks collection quantities; use --update to fix mismatches.
+    Fails when a deck needs more copies than the collection records;
+    use --update to raise them.
     Use --replace to overwrite an existing deck with the same name.
     On error, continues with remaining files and prints a summary at the end.
     """
@@ -354,10 +327,11 @@ def web(
 
 @baseline_app.command("accept")
 def baseline_accept_cmd() -> None:
-    """Promote the latest `sync-schema-observed-*.json` to baseline.
+    """Adopt the API shape from the last halted sync.
 
-    After reviewing a `sync-schema-diff-*.md` report and updating any
-    constants/translations, run this to acknowledge the new API shape.
+    After reviewing the drift a halted sync printed and updating any
+    constants/translations it calls for, run this to acknowledge the new
+    API shape, then sync again.
     """
     baseline_accept()
 
