@@ -16,8 +16,16 @@ _Avoid_: Catalog
 
 **Faction**:
 The power a card belongs to (Soviet, USA, Britain, Germany, Japan, France,
-Italy, Poland, Finland).
-_Avoid_: Nation (appears only as a KARDS client TXT deck-file artifact)
+Italy, Poland, Finland), named the way the game's data and API name it.
+Use Faction everywhere internal: code, database, GraphQL, business logic.
+
+**Nation**:
+The user-facing label for a Faction — what the player sees on screen and in
+exports (the "Nation" column, localized per language). Same concept as
+Faction, different layer: Nation is presentation, Faction is the internal
+code. A KARDS client TXT deck file also labels its sections by Nation.
+Do not use Nation in internal code; do not rename user-facing "Nation" to
+"Faction".
 
 **Deck**:
 A saved deck brought in from a KARDS client TXT file. Because a deck comes
