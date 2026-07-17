@@ -33,6 +33,7 @@ def _make_card(
     can_create: str | None = None,
     quantity: int = 0,
     abilities: frozenset[str] = frozenset(),
+    exile: str | None = None,
 ) -> tuple:
     title = json.dumps({"en-EN": title_en, "ru-RU": title_ru})
     text = json.dumps({"en-EN": text_en, "ru-RU": text_ru})
@@ -55,7 +56,7 @@ def _make_card(
         reserved,
         "",  # image
         can_create,
-        None,  # exile
+        exile,
         quantity,
     )
 
@@ -137,6 +138,20 @@ def conn() -> sqlite3.Connection:
             title_ru="Спаунованная карта",
             quantity=0,
         ),
+        _make_card(
+            card_id="pol_exile_tank",
+            faction="Poland",
+            card_type="tank",
+            rarity="Standard",
+            card_set="Legions",
+            title_en="T-34 76 PL",
+            title_ru="Т-34 76 PL",
+            kredits=4,
+            attack=4,
+            defense=4,
+            quantity=0,
+            exile="Soviet",
+        ),
     ]
     ability_cols = ", ".join(_ABILITY_COLS)
     ability_placeholders = ", ".join("?" for _ in KNOWN_ABILITIES)
@@ -167,18 +182,20 @@ class TestDefaults:
         result = query_cards(conn, CardFilters())
         assert "reserved_card" not in _ids(result)
         assert "spawnable_card" not in _ids(result)
-        assert len(result) == 4
+        # An exile card is a normal card under its own faction: shown by default.
+        assert "pol_exile_tank" in _ids(result)
+        assert len(result) == 5
 
     def test_default_sort_is_faction_then_title(self, conn):
         result = query_cards(conn, CardFilters(), locale_key="en-EN")
         ids = _ids(result)
-        # Germany < Soviet < USA; within Soviet alphabetical by title
-        assert ids == ["ger_inf_1", "sov_inf_1", "sov_tank_1", "usa_order"]
+        # Germany < Poland < Soviet < USA; within a faction alphabetical by title
+        assert ids == ["ger_inf_1", "pol_exile_tank", "sov_inf_1", "sov_tank_1", "usa_order"]
 
 
 class TestFilters:
     def test_filter_by_faction(self, conn):
-        result = query_cards(conn, CardFilters(factions=["Soviet"]))
+        result = query_cards(conn, CardFilters(factions=["Soviet"], include_exiles=False))
         assert _ids(result) == ["sov_inf_1", "sov_tank_1"]
 
     def test_filter_by_multiple_factions(self, conn):
@@ -270,9 +287,45 @@ class TestFilters:
     def test_filters_combined_with_and(self, conn):
         result = query_cards(
             conn,
-            CardFilters(factions=["Soviet"], types=["tank"]),
+            CardFilters(factions=["Soviet"], types=["tank"], include_exiles=False),
         )
         assert _ids(result) == ["sov_tank_1"]
+
+
+class TestExileFilter:
+    def test_include_exiles_defaults_to_true(self):
+        assert CardFilters().include_exiles is True
+
+    def test_faction_filter_includes_exiles_by_default(self, conn):
+        # Filtering by Soviet surfaces the Polish exile tank (exile=Soviet),
+        # the way the game client shows forces-in-exile in a nation's view.
+        result = query_cards(conn, CardFilters(factions=["Soviet"]))
+        assert "pol_exile_tank" in _ids(result)
+        assert {"sov_inf_1", "sov_tank_1"} <= set(_ids(result))
+
+    def test_exiles_off_excludes_them_from_faction_filter(self, conn):
+        result = query_cards(
+            conn, CardFilters(factions=["Soviet"], include_exiles=False)
+        )
+        assert "pol_exile_tank" not in _ids(result)
+
+    def test_exile_card_keeps_its_own_faction(self, conn):
+        result = query_cards(conn, CardFilters(factions=["Soviet"]))
+        row = next(r for r in result if r["cardId"] == "pol_exile_tank")
+        assert row["faction"] == "Poland"
+
+    def test_exiles_flag_is_inert_without_a_faction_filter(self, conn):
+        # With no nation selected every card is already shown, so the toggle
+        # changes nothing either way.
+        on = _ids(query_cards(conn, CardFilters(include_exiles=True)))
+        off = _ids(query_cards(conn, CardFilters(include_exiles=False)))
+        assert on == off
+        assert "pol_exile_tank" in on
+
+    def test_exile_only_matches_the_selected_faction(self, conn):
+        # The Polish tank's exile is Soviet, so a Germany filter must not pull it.
+        result = query_cards(conn, CardFilters(factions=["Germany"]))
+        assert "pol_exile_tank" not in _ids(result)
 
 
 class TestAbilityFilter:
