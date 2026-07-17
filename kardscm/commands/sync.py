@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from kardscm.diff import (
 )
 from kardscm.models import CardDict, DiffReport
 from kardscm.scraping import ApiContractDriftError, scrape_cards
+from kardscm.scraping.baseline import Snapshot, format_drift_report_md
 from kardscm.storage import (
     apply_extra_abilities_seed,
     delete_cards,
@@ -33,6 +35,11 @@ from kardscm.storage import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Metadata key holding the observed API snapshot from the last halted sync.
+# `baseline accept` promotes exactly this shape, so the user adopts what they
+# reviewed rather than whatever the API happens to serve at accept time.
+OBSERVED_SNAPSHOT_KEY = "drift_observed_snapshot"
 
 
 _APPROVAL_CATEGORIES = (
@@ -73,9 +80,9 @@ def fetch_and_compute_diff(
 ) -> tuple[DiffReport, list[CardDict], str]:
     """Fetch fresh cards from the website and compute the DB diff.
 
-    Pure read path: no DB writes, no console echo, no markdown report.
-    Web flows call this to drive the preview modal; the CLI orchestrator
-    composes it with `apply_sync_changes`.
+    Read path for the collection: no card writes, no console echo, no
+    markdown report. Web flows call this to drive the preview modal; the
+    CLI orchestrator composes it with `apply_sync_changes`.
 
     Args:
         db_path: SQLite database path.
@@ -85,13 +92,29 @@ def fetch_and_compute_diff(
         Tuple of (DiffReport, fetched cards, filesystem-safe UTC timestamp).
         The timestamp is generated once here so every report path the
         caller writes shares the same identifier.
+
+    Raises:
+        ApiContractDriftError: The API shape drifted. The observed snapshot
+            is stashed in metadata first, so `baseline accept` can promote
+            the very shape the user is about to review.
     """
-    new_cards = scrape_cards(language=lang_config.code, lang_config=lang_config)
+    try:
+        new_cards = scrape_cards(language=lang_config.code)
+    except ApiContractDriftError as exc:
+        _stash_observed_snapshot(db_path, exc.observed)
+        raise
     with get_connection(db_path) as conn:
         initialize_schema(conn, db_path)
         old_cards = fetch_cards(conn)
         report = compute_diff(old_cards, new_cards, lang_config.locale_key)
     return report, new_cards, _safe_timestamp()
+
+
+def _stash_observed_snapshot(db_path: str, observed: Snapshot) -> None:
+    """Persist the drifted API shape for a later `baseline accept`."""
+    with get_connection(db_path) as conn:
+        initialize_schema(conn, db_path)
+        set_metadata(conn, OBSERVED_SNAPSHOT_KEY, json.dumps(observed, sort_keys=True))
 
 
 def apply_sync_changes(
@@ -168,12 +191,13 @@ def sync_collection(
     try:
         report, new_cards, timestamp = fetch_and_compute_diff(db_path, lang_config)
     except ApiContractDriftError as exc:
-        location = exc.report_path or "the current directory"
+        typer.echo(format_drift_report_md(exc.report, lang_config), err=True)
         raise SystemExit(
             f"API contract drift detected ({exc.report.count()} change(s)). "
             "Sync halted to avoid silently corrupting data.\n"
-            f"Review {location}, then run `kardscm baseline accept` to adopt the new "
-            "shape (or fix normalization), and re-run the sync."
+            "Review the drift above, update any constants or translations it "
+            "calls for, then run `kardscm baseline accept` to adopt the new "
+            "shape and re-run the sync."
         ) from exc
 
     if is_empty(report):

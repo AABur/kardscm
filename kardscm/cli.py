@@ -327,10 +327,11 @@ def web(
 
 @baseline_app.command("accept")
 def baseline_accept_cmd() -> None:
-    """Promote the latest `sync-schema-observed-*.json` to baseline.
+    """Adopt the API shape from the last halted sync.
 
-    After reviewing a `sync-schema-diff-*.md` report and updating any
-    constants/translations, run this to acknowledge the new API shape.
+    After reviewing the drift a halted sync printed and updating any
+    constants/translations it calls for, run this to acknowledge the new
+    API shape, then sync again.
     """
     baseline_accept()
 

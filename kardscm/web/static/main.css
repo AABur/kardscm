@@ -488,6 +488,23 @@ body.admin-mode .cards-table th.sort-desc { background: #991b1b; }
   max-height: 80vh;
   overflow-y: auto;
 }
+.sync-drift-content {
+  max-width: 640px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.sync-drift-details h3 {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.95rem;
+}
+.sync-drift-details ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #374151;
+}
+.sync-drift-details p {
+  margin: 0.5rem 0 0.25rem;
+}
 .sync-confirm-body,
 .sync-empty-body {
   margin: 0.5rem 0 1rem;

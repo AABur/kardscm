@@ -19,3 +19,28 @@ def set_metadata(conn: sqlite3.Connection, key: str, value: str) -> None:
         (key, value),
     )
     conn.commit()
+
+
+def get_metadata(conn: sqlite3.Connection, key: str) -> str | None:
+    """Read a metadata key value.
+
+    Args:
+        conn: SQLite connection instance.
+        key: Metadata key.
+
+    Returns:
+        The stored value, or None if the key is not set.
+    """
+    row = conn.execute("SELECT value FROM metadata WHERE key = ?", (key,)).fetchone()
+    return row[0] if row else None
+
+
+def delete_metadata(conn: sqlite3.Connection, key: str) -> None:
+    """Remove a metadata key.
+
+    Args:
+        conn: SQLite connection instance.
+        key: Metadata key.
+    """
+    conn.execute("DELETE FROM metadata WHERE key = ?", (key,))
+    conn.commit()

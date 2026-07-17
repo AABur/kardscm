@@ -263,17 +263,21 @@ class TestSyncCollection:
         self, mock_scrape, mock_config, tmp_path, make_card, monkeypatch
     ):
         """API contract drift halts the sync (exit non-zero, DB untouched)."""
+        from kardscm.commands.sync import OBSERVED_SNAPSHOT_KEY
         from kardscm.scraping import ApiContractDriftError
         from kardscm.scraping.baseline import DriftReport
 
         mock_config.return_value = LANGUAGE_EN
         report = DriftReport()
         report.added_json_keys.append("newField")
-        mock_scrape.side_effect = ApiContractDriftError(
-            report,
-            Path("sync-schema-diff-x.md"),
-            Path("sync-schema-observed-x.json"),
-        )
+        observed = {
+            "captured_at": "2026-01-01T00:00:00+00:00",
+            "card_count": 5,
+            "node_keys": ["cardId"],
+            "json_keys": {"newField": 5},
+            "enum_values": {},
+        }
+        mock_scrape.side_effect = ApiContractDriftError(report, observed)
         monkeypatch.chdir(tmp_path)
 
         db_path = str(tmp_path / "sync.db")
@@ -287,8 +291,14 @@ class TestSyncCollection:
         with get_connection(db_path) as conn:
             cards = fetch_cards(conn)
             last_sync = conn.execute("SELECT value FROM metadata WHERE key='last_sync'").fetchone()
+            stashed = conn.execute(
+                "SELECT value FROM metadata WHERE key=?", (OBSERVED_SNAPSHOT_KEY,)
+            ).fetchone()
         assert cards[0]["kredits"] == 2  # DB untouched
         assert last_sync is None
+        # The reviewed shape is stashed for `baseline accept` — and no files.
+        assert json.loads(stashed[0])["json_keys"] == {"newField": 5}
+        assert not list(tmp_path.glob("sync-schema-*"))
 
 
 class TestFetchAndComputeDiff:

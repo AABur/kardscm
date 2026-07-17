@@ -14,7 +14,6 @@ from kardscm.scraping.baseline import (
     format_drift_report_md,
     load_baseline,
     save_baseline,
-    write_observed,
 )
 
 
@@ -293,14 +292,6 @@ class TestPersistence:
         assert loaded["json_keys"] == snap["json_keys"]
         assert loaded["enum_values"] == snap["enum_values"]
 
-    def test_write_observed_creates_valid_json(self, tmp_path) -> None:
-        snap = _baseline_snap()
-        out = tmp_path / "observed.json"
-        write_observed(snap, out)
-        assert out.exists()
-        loaded = json.loads(out.read_text())
-        assert loaded["card_count"] == snap["card_count"]
-
 
 class TestDriftReportSemantics:
     def test_has_changes_true_when_added_node_key(self) -> None:
@@ -345,78 +336,87 @@ class TestPresenceDropDetection:
 
 
 class TestBaselineCommands:
-    def test_accept_no_observed_files_exits(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_accept
+    """`baseline accept` promotes the snapshot the last halted sync stashed."""
 
-        monkeypatch.chdir(tmp_path)
-        with pytest.raises(SystemExit, match="No sync-schema-observed"):
-            baseline_accept()
+    @staticmethod
+    def _stash(db_path, payload) -> None:
+        from kardscm.commands.sync import OBSERVED_SNAPSHOT_KEY
+        from kardscm.storage import get_connection, initialize_schema, set_metadata
 
-    def test_accept_malformed_json_exits(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_accept
+        with get_connection(db_path) as conn:
+            initialize_schema(conn, db_path)
+            set_metadata(conn, OBSERVED_SNAPSHOT_KEY, payload)
 
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "sync-schema-observed-2026.json").write_text("{not json")
-        with pytest.raises(SystemExit, match="Cannot parse"):
-            baseline_accept()
-
-    def test_accept_non_dict_root_exits(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_accept
-
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "sync-schema-observed-2026.json").write_text("[]")
-        with pytest.raises(SystemExit, match="not a snapshot object"):
-            baseline_accept()
-
-    def test_accept_missing_required_keys_exits(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_accept
-
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "sync-schema-observed-2026.json").write_text(
-            json.dumps({"card_count": 10, "node_keys": []})
-        )
-        with pytest.raises(SystemExit, match="missing required keys"):
-            baseline_accept()
-
-    def test_accept_wrong_type_for_card_count_exits(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_accept
-
-        monkeypatch.chdir(tmp_path)
-        (tmp_path / "sync-schema-observed-2026.json").write_text(
-            json.dumps(
-                {
-                    "card_count": "ten",  # wrong type
-                    "node_keys": [],
-                    "json_keys": {},
-                    "enum_values": {},
-                }
-            )
-        )
-        with pytest.raises(SystemExit, match="card_count must be an int"):
-            baseline_accept()
-
-    def test_accept_picks_latest_observed_file(self, tmp_path, monkeypatch) -> None:
-        from kardscm.commands import baseline_accept
-        from kardscm.scraping import baseline as bm
-
-        monkeypatch.chdir(tmp_path)
-        baseline_path = tmp_path / "baseline.json"
-        monkeypatch.setattr(bm, "BASELINE_PATH", baseline_path)
-
-        valid = {
+    @staticmethod
+    def _valid_snapshot() -> dict:
+        return {
             "card_count": 10,
             "node_keys": ["cardId"],
             "json_keys": {"title": 10},
             "enum_values": {"faction": ["Soviet"]},
         }
-        # Older file
-        (tmp_path / "sync-schema-observed-2026-01-01T00-00-00Z.json").write_text(
-            json.dumps({**valid, "card_count": 1})
-        )
-        # Newer file (chosen)
-        (tmp_path / "sync-schema-observed-2026-12-31T23-59-59Z.json").write_text(
-            json.dumps({**valid, "card_count": 999})
-        )
-        baseline_accept()
-        promoted = json.loads(baseline_path.read_text())
-        assert promoted["card_count"] == 999
+
+    def test_accept_without_stashed_snapshot_exits(self, tmp_path) -> None:
+        from kardscm.commands import baseline_accept
+
+        with pytest.raises(SystemExit, match="No drifted API shape"):
+            baseline_accept(db_path=str(tmp_path / "t.db"))
+
+    def test_accept_malformed_json_exits(self, tmp_path) -> None:
+        from kardscm.commands import baseline_accept
+
+        db_path = str(tmp_path / "t.db")
+        self._stash(db_path, "{not json")
+        with pytest.raises(SystemExit, match="not valid JSON"):
+            baseline_accept(db_path=db_path)
+
+    def test_accept_non_dict_root_exits(self, tmp_path) -> None:
+        from kardscm.commands import baseline_accept
+
+        db_path = str(tmp_path / "t.db")
+        self._stash(db_path, "[]")
+        with pytest.raises(SystemExit, match="not an object"):
+            baseline_accept(db_path=db_path)
+
+    def test_accept_missing_required_keys_exits(self, tmp_path) -> None:
+        from kardscm.commands import baseline_accept
+
+        db_path = str(tmp_path / "t.db")
+        self._stash(db_path, json.dumps({"card_count": 10, "node_keys": []}))
+        with pytest.raises(SystemExit, match="missing required keys"):
+            baseline_accept(db_path=db_path)
+
+    def test_accept_wrong_type_for_card_count_exits(self, tmp_path) -> None:
+        from kardscm.commands import baseline_accept
+
+        db_path = str(tmp_path / "t.db")
+        self._stash(db_path, json.dumps({**self._valid_snapshot(), "card_count": "ten"}))
+        with pytest.raises(SystemExit, match="card_count must be an int"):
+            baseline_accept(db_path=db_path)
+
+    def test_accept_promotes_the_reviewed_snapshot(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+        from kardscm.scraping import baseline as bm
+
+        baseline_path = tmp_path / "baseline.json"
+        monkeypatch.setattr(bm, "BASELINE_PATH", baseline_path)
+
+        db_path = str(tmp_path / "t.db")
+        self._stash(db_path, json.dumps({**self._valid_snapshot(), "card_count": 999}))
+
+        baseline_accept(db_path=db_path)
+
+        assert json.loads(baseline_path.read_text())["card_count"] == 999
+
+    def test_accept_clears_the_snapshot_so_it_is_not_reused(self, tmp_path, monkeypatch) -> None:
+        from kardscm.commands import baseline_accept
+        from kardscm.scraping import baseline as bm
+
+        monkeypatch.setattr(bm, "BASELINE_PATH", tmp_path / "baseline.json")
+        db_path = str(tmp_path / "t.db")
+        self._stash(db_path, json.dumps(self._valid_snapshot()))
+
+        baseline_accept(db_path=db_path)
+
+        with pytest.raises(SystemExit, match="No drifted API shape"):
+            baseline_accept(db_path=db_path)

@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 import pytest
 
-from kardscm.locales import LANGUAGE_EN
 from kardscm.scraping import ApiContractDriftError, _check_api_drift, scrape_cards
 
 
@@ -75,7 +74,7 @@ class TestApiDriftGate:
         monkeypatch.setattr(bm, "BASELINE_PATH", tmp_path / "baseline.json")
         monkeypatch.chdir(tmp_path)
         # No baseline yet → initialize from this sync, no raise.
-        _check_api_drift([_raw_node()], LANGUAGE_EN)
+        _check_api_drift([_raw_node()])
         assert (tmp_path / "baseline.json").exists()
 
     def test_no_drift_does_not_raise(self, tmp_path, monkeypatch):
@@ -85,7 +84,7 @@ class TestApiDriftGate:
         monkeypatch.chdir(tmp_path)
         nodes = [_raw_node()]
         bm.save_baseline(bm.build_snapshot(nodes))
-        _check_api_drift(nodes, LANGUAGE_EN)  # identical observed → silent
+        _check_api_drift(nodes)  # identical observed → silent
 
     def test_benign_growth_does_not_raise(self, tmp_path, monkeypatch):
         from kardscm.scraping import baseline as bm
@@ -94,16 +93,28 @@ class TestApiDriftGate:
         monkeypatch.chdir(tmp_path)
         bm.save_baseline(bm.build_snapshot([_raw_node()]))
         # More cards of the same shape = growth, not drift → silent.
-        _check_api_drift([_raw_node(), _raw_node()], LANGUAGE_EN)
+        _check_api_drift([_raw_node(), _raw_node()])
 
-    def test_contract_change_raises_and_writes_report(self, tmp_path, monkeypatch):
+    def test_contract_change_raises_carrying_the_observed_shape(self, tmp_path, monkeypatch):
         from kardscm.scraping import baseline as bm
 
         monkeypatch.setattr(bm, "BASELINE_PATH", tmp_path / "baseline.json")
         monkeypatch.chdir(tmp_path)
         bm.save_baseline(bm.build_snapshot([_raw_node()]))
-        # A new json key is a contract change → halt + write report/observed.
+        # A new json key is a contract change → halt, carrying the snapshot.
+        with pytest.raises(ApiContractDriftError) as exc_info:
+            _check_api_drift([_raw_node(newField=1)])
+
+        assert "newField" in exc_info.value.observed["json_keys"]
+        assert exc_info.value.report.added_json_keys == ["newField"]
+
+    def test_drift_writes_no_files(self, tmp_path, monkeypatch):
+        from kardscm.scraping import baseline as bm
+
+        monkeypatch.setattr(bm, "BASELINE_PATH", tmp_path / "baseline.json")
+        monkeypatch.chdir(tmp_path)
+        bm.save_baseline(bm.build_snapshot([_raw_node()]))
         with pytest.raises(ApiContractDriftError):
-            _check_api_drift([_raw_node(newField=1)], LANGUAGE_EN)
-        assert list(tmp_path.glob("sync-schema-diff-*.md"))
-        assert list(tmp_path.glob("sync-schema-observed-*.json"))
+            _check_api_drift([_raw_node(newField=1)])
+
+        assert list(tmp_path.iterdir()) == [tmp_path / "baseline.json"]

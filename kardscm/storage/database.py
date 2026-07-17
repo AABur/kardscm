@@ -26,7 +26,11 @@ from kardscm.storage.decks import (  # noqa: F401
     insert_deck,
     insert_deck_cards,
 )
-from kardscm.storage.metadata import set_metadata  # noqa: F401
+from kardscm.storage.metadata import (  # noqa: F401
+    delete_metadata,
+    get_metadata,
+    set_metadata,
+)
 from kardscm.storage.schema import (  # noqa: F401
     SCHEMA_SQL,
     _ensure_extra_ability_columns,

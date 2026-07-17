@@ -1,5 +1,5 @@
 <div class="modal-backdrop" hx-on:click="document.getElementById('modal').replaceChildren()">
-  <div class="modal-content sync-empty-content" hx-on:click="event.stopPropagation()">
+  <div class="modal-content sync-drift-content" hx-on:click="event.stopPropagation()">
     <button
       type="button"
       class="modal-close"
@@ -8,7 +8,66 @@
     >×</button>
     <h2>{{ ui.sync_drift_title }}</h2>
     <p class="sync-empty-body">{{ ui.sync_drift_body }}</p>
-    {% if report_path %}<p class="sync-empty-body"><code>{{ report_path }}</code></p>{% endif %}
+
+    <div class="sync-drift-details">
+      {% if drift.added_node_keys or drift.removed_node_keys %}
+        <h3>{{ ui.schema_drift_section_node_keys }}</h3>
+        <ul>
+          {% for k in drift.added_node_keys %}
+            <li><strong>{{ ui.schema_drift_added }}:</strong> <code>{{ k }}</code></li>
+          {% endfor %}
+          {% for k in drift.removed_node_keys %}
+            <li><strong>{{ ui.schema_drift_removed }}:</strong> <code>{{ k }}</code></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if drift.added_json_keys or drift.removed_json_keys or drift.presence_dropped_json_keys %}
+        <h3>{{ ui.schema_drift_section_json_keys }}</h3>
+        <ul>
+          {% for k in drift.added_json_keys %}
+            <li><strong>{{ ui.schema_drift_added }}:</strong> <code>{{ k }}</code></li>
+          {% endfor %}
+          {% for k in drift.removed_json_keys %}
+            <li><strong>{{ ui.schema_drift_removed }}:</strong> <code>{{ k }}</code></li>
+          {% endfor %}
+          {% for entry in drift.presence_dropped_json_keys %}
+            <li><strong>{{ ui.schema_drift_presence_dropped }}:</strong> {{ entry }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if drift.added_enum_values or drift.removed_enum_values %}
+        <h3>{{ ui.schema_drift_section_enum_values }}</h3>
+        {% for field_name, values in drift.added_enum_values.items() %}
+          <p><code>{{ field_name }}</code></p>
+          <ul>
+            {% for v in values %}
+              <li><strong>{{ ui.schema_drift_added }}:</strong> <code>{{ v }}</code></li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+        {% for field_name, values in drift.removed_enum_values.items() %}
+          <p><code>{{ field_name }}</code></p>
+          <ul>
+            {% for v in values %}
+              <li><strong>{{ ui.schema_drift_removed }}:</strong> <code>{{ v }}</code></li>
+            {% endfor %}
+          </ul>
+        {% endfor %}
+      {% endif %}
+
+      {% if drift.card_count_drop_pct is not none %}
+        <h3>{{ ui.schema_drift_section_card_count }}</h3>
+        <ul>
+          <li>
+            {{ drift.card_count_baseline }} → {{ drift.card_count_observed }}
+            ({{ drift.card_count_drop_pct }}%)
+          </li>
+        </ul>
+      {% endif %}
+    </div>
+
     <div class="sync-modal-actions">
       <button class="btn-sync-ok"
               hx-on:click="document.getElementById('modal').replaceChildren()">

@@ -91,20 +91,15 @@ class DriftReport:
 class ApiContractDriftError(Exception):
     """Raised when the observed API shape diverges from the committed baseline.
 
-    Carries the categorised ``DriftReport`` and the paths of the written drift
-    report / observed snapshot (``None`` if the disk write failed). The sync
-    layer catches this to halt and hand the decision to the user.
+    Carries the categorised ``DriftReport`` and the ``Snapshot`` that produced
+    it, so the sync layer can both show the drift and stash the exact reviewed
+    shape for a later ``baseline accept``. Scraping stays free of storage
+    concerns: persisting the snapshot is the caller's job.
     """
 
-    def __init__(
-        self,
-        report: DriftReport,
-        report_path: Path | None,
-        observed_path: Path | None,
-    ) -> None:
+    def __init__(self, report: DriftReport, observed: Snapshot) -> None:
         self.report = report
-        self.report_path = report_path
-        self.observed_path = observed_path
+        self.observed = observed
         super().__init__(f"API contract drift detected ({report.count()} change(s)).")
 
 
@@ -276,9 +271,3 @@ def save_baseline(snapshot: Snapshot) -> None:
     )
 
 
-def write_observed(snapshot: Snapshot, path: Path) -> None:
-    """Write a per-sync observed snapshot (for later promotion to baseline)."""
-    path.write_text(
-        json.dumps(snapshot, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
